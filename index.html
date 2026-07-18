@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#0f172a">
 <title>NexoBalance</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230ea5e9'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial'>N$</text></svg>">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#f1f5f9;--card:#ffffff;--txt:#0f172a;--sub:#64748b;--line:#e2e8f0;--pri:#0ea5e9;--pri2:#0284c7;--ok:#16a34a;--bad:#dc2626;--chip:#f1f5f9;--nav:#ffffff;--shadow:0 1px 3px rgba(15,23,42,.08)}
 [data-theme="dark"]{--bg:#0b1220;--card:#111a2e;--txt:#e2e8f0;--sub:#94a3b8;--line:#1e293b;--pri:#38bdf8;--pri2:#0ea5e9;--ok:#4ade80;--bad:#f87171;--chip:#1e293b;--nav:#0f172a;--shadow:0 1px 3px rgba(0,0,0,.4)}
@@ -300,7 +301,7 @@ function viewInicio(){
   </div>
   <div class="card"><div class="sub" style="margin-bottom:10px">Últimos 6 meses</div>${chart6m(act)}</div>
   <div class="card" style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#fff">
-    <div class="row spread" onclick="window.open('https://nexoenvios.josmatech.com','_blank')">
+    <div class="row spread" onclick="window.open('https://whatsapp.com/channel/0029VbCquWb7T8bd9kfuap3x','_blank')">
       <div style="flex:1"><div style="font-weight:800;font-size:1.02rem">🚢 ¿Necesitas enviar algo a Cuba?</div>
       <div style="opacity:.9;font-size:.82rem;margin-top:3px">Conoce NexoEnvíos <span onclick="event.stopPropagation();toggleNexoInfo('nexoInfoHome')" style="text-decoration:underline;font-weight:700">· cómo funciona ▾</span></div></div>
       <span style="font-size:1.3rem">›</span>
@@ -411,11 +412,11 @@ function viewAjustes(){
   <div class="card">
     <div class="item">
       <div class="mico" style="background:var(--chip)">🚢</div>
-      <div class="mtxt" onclick="window.open('https://nexoenvios.josmatech.com','_blank')" style="cursor:pointer">
+      <div class="mtxt" onclick="window.open('https://whatsapp.com/channel/0029VbCquWb7T8bd9kfuap3x','_blank')" style="cursor:pointer">
         <div>NexoEnvíos</div>
         <div class="sub">Pedidos desde EE.UU. hasta Cuba · <span onclick="event.stopPropagation();toggleNexoInfo('nexoInfoAj')" style="text-decoration:underline;font-weight:700">cómo funciona</span></div>
       </div>
-      <span class="sub" onclick="window.open('https://nexoenvios.josmatech.com','_blank')">›</span>
+      <span class="sub" onclick="window.open('https://whatsapp.com/channel/0029VbCquWb7T8bd9kfuap3x','_blank')">›</span>
     </div>
     <div id="nexoInfoAj" class="hidden" style="margin:-2px 0 12px 54px;font-size:.8rem;line-height:1.5;color:var(--sub);position:relative;padding-right:22px">
       <button onclick="hideNexoInfo('nexoInfoAj')" style="position:absolute;top:0;right:0;color:var(--sub)">✕</button>
