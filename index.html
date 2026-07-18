@@ -71,6 +71,12 @@ nav button span:first-child{font-size:1.3rem}
 svg text{font-family:inherit}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
 .empty div:first-child{font-size:2.4rem;margin-bottom:8px}
+.install-pill{position:fixed;left:14px;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));background:var(--txt);color:var(--bg);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:11px;z-index:70;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:slideup .25s}
+.install-pill button.go{background:var(--pri);color:#fff;border-radius:11px;padding:9px 14px;font-weight:700;font-size:.85rem;white-space:nowrap}
+.install-pill button.x{color:var(--sub);font-size:1.1rem;padding:4px 6px}
+.install-pill.out{animation:slidedown .25s forwards}
+@keyframes slideup{from{transform:translateY(30px);opacity:0}}
+@keyframes slidedown{to{transform:translateY(30px);opacity:0}}
 </style>
 </head>
 <body>
@@ -78,7 +84,12 @@ svg text{font-family:inherit}
 <div id="authView" class="auth hidden">
   <div class="logo">N$</div>
   <h1 style="text-align:center;font-size:1.5rem">NexoBalance</h1>
-  <p class="sub" style="text-align:center;margin:6px 0 22px">Tus finanzas personales, simples y privadas</p>
+  <p class="sub" style="text-align:center;margin:6px 0 14px">Tus finanzas personales, simples y privadas</p>
+  <div class="card" style="margin-bottom:16px">
+    <p style="font-size:.87rem;line-height:1.5">🇨🇺 Somos cubanos. Creamos NexoBalance porque sabemos lo importante que es aprender a organizar nuestras finanzas, más todavía lejos de casa. Nació pensando en ayudar a nuestros compatriotas — pero está abierta a cualquier hermano de cualquier nación.</p>
+    <button class="link" style="padding:8px 0 0;font-size:.82rem" onclick="togglePaises()" id="paisesBtn">Ver países donde ya se usa ›</button>
+    <p class="sub" id="paisesList" style="display:none;margin-top:6px;line-height:1.6">Argentina, Bolivia, Brasil, Canadá, Chile, Colombia, Costa Rica, Cuba, Ecuador, El Salvador, España, Estados Unidos, Guatemala, Guyana, Honduras, Italia, México, Nicaragua, Panamá, Paraguay, Perú, República Dominicana, Rusia, Uruguay, Venezuela y más.</p>
+  </div>
   <div id="loginForm">
     <div class="field"><label>Número de teléfono</label><input class="inp" id="loginPhone" type="tel" inputmode="tel" placeholder="098 123 456"></div>
     <div class="field"><label>Contraseña</label><input class="inp" id="loginPass" type="password" placeholder="Tu contraseña"></div>
@@ -108,6 +119,7 @@ svg text{font-family:inherit}
 </div>
 
 <div id="sheetHost"></div>
+<div id="installHost"></div>
 <div id="toastHost"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -197,6 +209,7 @@ async function init(){
 
 function showAuth(){document.getElementById('authView').classList.remove('hidden');document.getElementById('appView').classList.add('hidden')}
 function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg)}
+function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
 function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
 
 async function doRegister(){
@@ -285,6 +298,13 @@ function viewInicio(){
     <div class="card"><div class="sub">Ahorro del mes</div><div class="mid">${tasa}%</div></div>
   </div>
   <div class="card"><div class="sub" style="margin-bottom:10px">Últimos 6 meses</div>${chart6m(act)}</div>
+  <div class="card" style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#fff" onclick="window.open('https://nexoenvios.josmatech.com','_blank')">
+    <div class="row spread">
+      <div><div style="font-weight:800;font-size:1.02rem">🚢 ¿Necesitas enviar algo a Cuba?</div>
+      <div style="opacity:.9;font-size:.82rem;margin-top:3px">Conoce NexoEnvíos: pedidos desde EE.UU. hasta la puerta de tu familia</div></div>
+      <span style="font-size:1.3rem">›</span>
+    </div>
+  </div>
   <div class="card">
     <div class="row spread" style="margin-bottom:6px"><h2>Últimos movimientos</h2><button class="link" onclick="go('movs')">Ver todos</button></div>
     ${ult.length?ult.map(movRow).join(''):'<div class="empty"><div>🌱</div>Toca ＋ para registrar tu primer movimiento</div>'}
@@ -384,8 +404,13 @@ function viewAjustes(){
     <input class="inp" style="width:90px;text-align:right" type="number" inputmode="decimal" value="${S.settings.tc}" onchange="setTC(this.value)"></div>
   </div>
   <div class="card">
+    <div class="item" onclick="window.open('https://nexoenvios.josmatech.com','_blank')"><div class="mico" style="background:var(--chip)">🚢</div><div class="mtxt"><div>NexoEnvíos</div><div class="sub">Pedidos desde EE.UU. hasta Cuba</div></div><span class="sub">›</span></div>
     <div class="item" onclick="openPassSheet()"><div class="mico" style="background:var(--chip)">🔑</div><div class="mtxt"><div>Cambiar contraseña</div></div><span class="sub">›</span></div>
     <div class="item" onclick="doLogout()"><div class="mico" style="background:var(--chip)">🚪</div><div class="mtxt"><div>Cerrar sesión</div></div><span class="sub">›</span></div>
+  </div>
+  <div class="card">
+    <h2 style="margin-bottom:8px">🇨🇺 ¿Qué es JosmaTech?</h2>
+    <p class="sub" style="font-size:.85rem;line-height:1.5">Proyecto de cubanos enfocados en ayudar a nuestra comunidad de emigrantes y servir de puente a todos los hermanos que nos han brindado su hogar para cumplir nuestros sueños y metas.</p>
   </div>
   <div class="card">
     <h2 style="margin-bottom:8px">🔒 Privacidad</h2>
@@ -592,6 +617,45 @@ document.addEventListener('touchend',e=>{
 },{passive:true});
 
 setInterval(()=>{if(navigator.onLine&&S.uid&&!S.syncing)trySync()},45000);
+
+let deferredInstall=null,installTimer=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredInstall=e;
+  if(localStorage.getItem('nb_install_done'))return;
+  if(window.matchMedia('(display-mode: standalone)').matches)return;
+  showInstallPill();
+});
+window.addEventListener('appinstalled',()=>{localStorage.setItem('nb_install_done','1');hideInstallPill(true)});
+
+function showInstallPill(){
+  const h=document.getElementById('installHost');
+  h.innerHTML=`<div class="install-pill" id="instPill">
+    <div style="font-size:1.4rem">📲</div>
+    <div style="flex:1;font-size:.85rem;font-weight:600">Instala NexoBalance en tu teléfono</div>
+    <button class="go" onclick="doInstall()">Instalar</button>
+    <button class="x" onclick="hideInstallPill()">✕</button>
+  </div>`;
+  clearTimeout(installTimer);
+  installTimer=setTimeout(()=>hideInstallPill(),8000);
+}
+function hideInstallPill(skipAnim){
+  clearTimeout(installTimer);
+  const el=document.getElementById('instPill');
+  if(!el)return;
+  if(skipAnim){el.remove();return}
+  el.classList.add('out');
+  setTimeout(()=>{const h=document.getElementById('installHost');if(h)h.innerHTML=''},250);
+}
+async function doInstall(){
+  hideInstallPill(true);
+  if(!deferredInstall)return;
+  deferredInstall.prompt();
+  const{outcome}=await deferredInstall.userChoice;
+  if(outcome==='accepted')localStorage.setItem('nb_install_done','1');
+  deferredInstall=null;
+}
+
 init();
 </script>
 </body>
