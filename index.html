@@ -453,11 +453,41 @@ function viewAjustes(){
     <div class="sub">NexoBalance v${APP_VERSION}</div>
     <div class="sub">Desarrollado por Josielis Machado Fajardo · JosmaTech</div>
     <a class="link" href="https://wa.me/59898308375" target="_blank" rel="noopener">Soporte por WhatsApp</a>
+  </div>
+  <div style="text-align:center;padding:20px 0 4px">
+    <button onclick="toggleApoyo()" style="opacity:.4;font-size:.7rem;color:var(--sub);padding:8px 12px">💙</button>
+  </div>
+  <div id="apoyoBlock" class="hidden card">
+    <div class="sub" style="font-weight:700;margin-bottom:6px">Apoya este proyecto</div>
+    <p class="sub" style="font-size:.78rem;line-height:1.55;margin-bottom:8px">JosmaTech es y será siempre gratuito. Si esta herramienta te ha sido útil y puedes colaborar, cualquier aporte —desde $10— ayuda a que sigamos mejorando, desarrollando nuevas aplicaciones gratuitas para la comunidad y apoyando a más hermanos. Es completamente libre y voluntario, nunca una condición para usar la app.</p>
+    ${donRow('Nombre','Josielis Machado Fajardo')}
+    ${donRow('Prex','22441810')}
+    ${donRow('MiDinero','3701732771')}
+    ${donRow('Mercado Pago','1003180721830')}
+    <a class="link" style="font-size:.76rem;display:block;margin-top:10px" href="https://wa.me/59898308375" target="_blank" rel="noopener">¿Dudas, sugerencias o donaciones grandes? Escríbenos por WhatsApp</a>
   </div>`;
 }
 
 function setTheme(t){S.settings.theme=t;localStorage.setItem('nb_theme',t);document.documentElement.dataset.theme=t;kvSet('settings',S.settings);render()}
 function setTC(v){const n=Number(v);if(!n||n<=0)return toast('El tipo de cambio debe ser mayor a 0');S.settings.tc=n;kvSet('settings',S.settings);toast('Tipo de cambio actualizado');render()}
+
+function donRow(label,value){
+  return `<div class="item" onclick="copyText('${value.replace(/'/g,"\\'")}')" style="cursor:pointer">
+    <div class="mtxt"><div class="sub" style="font-weight:700">${esc(label)}</div><div style="font-size:.92rem;font-weight:600">${esc(value)}</div></div>
+    <span class="sub" style="font-size:1.05rem">📋</span>
+  </div>`;
+}
+function toggleApoyo(){const b=document.getElementById('apoyoBlock');if(b)b.classList.toggle('hidden')}
+function copyText(txt){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast('Copiado ✓')).catch(()=>fallbackCopy(txt));
+  }else fallbackCopy(txt);
+}
+function fallbackCopy(txt){
+  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');toast('Copiado ✓')}catch(e){toast('No se pudo copiar')}
+  document.body.removeChild(ta);
+}
 
 const _nexoTimers={};
 function toggleNexoInfo(id){
