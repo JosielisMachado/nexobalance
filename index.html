@@ -24,6 +24,7 @@ h1{font-size:1.15rem}h2{font-size:1rem}
 .spread{justify-content:space-between}
 .sub{color:var(--sub);font-size:.82rem}
 .big{font-size:1.7rem;font-weight:800;letter-spacing:-.5px}
+.big2{font-size:1.32rem;font-weight:800;letter-spacing:-.3px}
 .mid{font-size:1.05rem;font-weight:700}
 .ok{color:var(--ok)}.bad{color:var(--bad)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -278,8 +279,16 @@ function render(){
 function viewInicio(){
   const[d1,d2]=monthRange(new Date());
   const act=movsActivos();
-  let saldo=0,ingMes=0,gasMes=0,ingMesUSD=0,gasMesUSD=0;
-  for(const m of act){const v=toUYU(m);if(m.tipo==='ingreso')saldo+=v;else saldo-=v;if(m.fecha>=d1&&m.fecha<=d2){if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto}else{gasMes+=v;if(m.moneda==='USD')gasMesUSD+=m.monto}}}
+  let saldo=0,saldoUYU=0,saldoUSD=0,ingMes=0,gasMes=0,ingMesUYU=0,ingMesUSD=0,gasMesUYU=0,gasMesUSD=0;
+  for(const m of act){
+    const v=toUYU(m);const sign=m.tipo==='ingreso'?1:-1;
+    saldo+=sign*v;
+    if(m.moneda==='USD')saldoUSD+=sign*m.monto;else saldoUYU+=sign*m.monto;
+    if(m.fecha>=d1&&m.fecha<=d2){
+      if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto;else ingMesUYU+=m.monto}
+      else{gasMes+=v;if(m.moneda==='USD')gasMesUSD+=m.monto;else gasMesUYU+=m.monto}
+    }
+  }
   const bal=ingMes-gasMes;
   const tasa=ingMes>0?Math.max(0,Math.round(bal/ingMes*100)):0;
   const ult=[...act].sort((a,b)=>(b.fecha+(b.hora||''))<(a.fecha+(a.hora||''))?-1:1).slice(0,6);
@@ -290,12 +299,11 @@ function viewInicio(){
   </div>
   <div class="card" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff">
     <div style="opacity:.85;font-size:.8rem;font-weight:600">Saldo actual</div>
-    <div class="big">${money(saldo)}</div>
-    <div style="opacity:.8;font-size:.75rem;margin-top:4px">Consolidado en pesos uruguayos</div>
+    ${dualMoney(saldoUYU,saldoUSD,'big2',saldo,'Equivalente total')}
   </div>
   <div class="grid2">
-    <div class="card"><div class="sub">Ingresos · ${esc(mesName)}</div><div class="mid ok">${money(ingMes)}</div>${ingMesUSD>0?`<div class="sub" style="margin-top:2px">incluye ${money(ingMesUSD,'USD')}</div>`:''}</div>
-    <div class="card"><div class="sub">Gastos · ${esc(mesName)}</div><div class="mid bad">${money(gasMes)}</div>${gasMesUSD>0?`<div class="sub" style="margin-top:2px">incluye ${money(gasMesUSD,'USD')}</div>`:''}</div>
+    <div class="card"><div class="sub">Ingresos · ${esc(mesName)}</div>${dualMoney(ingMesUYU,ingMesUSD,'mid ok',ingMes,'Equivalente')}</div>
+    <div class="card"><div class="sub">Gastos · ${esc(mesName)}</div>${dualMoney(gasMesUYU,gasMesUSD,'mid bad',gasMes,'Equivalente')}</div>
     <div class="card"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}">${money(bal)}</div></div>
     <div class="card"><div class="sub">Ahorro del mes</div><div class="mid">${tasa}%</div></div>
   </div>
@@ -333,6 +341,13 @@ function chart6m(act){
   <div class="row" style="gap:16px;font-size:.75rem;color:var(--sub);justify-content:center"><span>🟩 Ingresos</span><span>🟥 Gastos</span></div>`;
 }
 
+function dualMoney(uyu,usd,cls,equivTotal,equivLabel){
+  const parts=[];
+  if(uyu!==0||usd===0)parts.push(`<div class="${cls}">$ ${fmt(uyu)}</div>`);
+  if(usd!==0)parts.push(`<div class="${cls}">US$ ${fmt(usd)}</div>`);
+  const equiv=usd!==0?`<div class="sub" style="margin-top:3px">${equivLabel}: ${money(equivTotal)}</div>`:'';
+  return `<div class="row" style="gap:12px;flex-wrap:wrap;align-items:baseline;margin-top:2px">${parts.join('')}</div>${equiv}`;
+}
 function movRow(m){
   const c=catById(m.categoria_id);
   const icon=c?c.icon:(m.tipo==='ingreso'?'💰':'📌');
@@ -428,7 +443,7 @@ function viewAjustes(){
   </div>
   <div class="card">
     <h2 style="margin-bottom:8px">🇨🇺 ¿Qué es JosmaTech?</h2>
-    <p class="sub" style="font-size:.85rem;line-height:1.5">Proyecto de cubanos enfocados en ayudar a nuestra comunidad de emigrantes y servir de puente a todos los hermanos que nos han brindado su hogar para cumplir nuestros sueños y metas.</p>
+    <p class="sub" style="font-size:.85rem;line-height:1.5">Proyecto de cubanos enfocados en ayudar a nuestra comunidad de emigrantes y servir de ayuda a todos los hermanos que nos han brindado su hogar para cumplir nuestros sueños y metas.</p>
   </div>
   <div class="card">
     <h2 style="margin-bottom:8px">🔒 Privacidad</h2>
