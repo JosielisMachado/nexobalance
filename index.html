@@ -299,13 +299,14 @@ function viewInicio(){
   </div>
   <div class="card" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff">
     <div style="opacity:.85;font-size:.8rem;font-weight:600">Saldo actual</div>
-    ${dualMoney(saldoUYU,saldoUSD,'big2',saldo,'Equivalente total')}
+    ${splitMoney(saldoUYU,saldoUSD)}
+    <div style="opacity:.9;font-size:.78rem;margin-top:10px;text-align:center">Equivalente total: ${equivBoth(saldo)}</div>
   </div>
   <div class="grid2">
-    <div class="card"><div class="sub">Ingresos · ${esc(mesName)}</div>${dualMoney(ingMesUYU,ingMesUSD,'mid ok',ingMes,'Equivalente')}</div>
-    <div class="card"><div class="sub">Gastos · ${esc(mesName)}</div>${dualMoney(gasMesUYU,gasMesUSD,'mid bad',gasMes,'Equivalente')}</div>
-    <div class="card"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}">${money(bal)}</div></div>
-    <div class="card"><div class="sub">Ahorro del mes</div><div class="mid">${tasa}%</div></div>
+    <div class="card"><div class="sub">Ingresos · ${esc(mesName)}</div>${stackMoney(ingMesUYU,ingMesUSD,'mid ok')}<div class="sub" style="margin-top:4px">Equivalente: ${equivBoth(ingMes)}</div></div>
+    <div class="card"><div class="sub">Gastos · ${esc(mesName)}</div>${stackMoney(gasMesUYU,gasMesUSD,'mid bad')}<div class="sub" style="margin-top:4px">Equivalente: ${equivBoth(gasMes)}</div></div>
+    <div class="card" style="text-align:center"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}" style="margin-top:4px">${money(bal)}</div></div>
+    <div class="card" style="text-align:center"><div class="sub">Ahorro del mes</div><div class="mid" style="margin-top:4px">${tasa}%</div></div>
   </div>
   <div class="card"><div class="sub" style="margin-bottom:10px">Últimos 6 meses</div>${chart6m(act)}</div>
   <div class="card" style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#fff">
@@ -341,12 +342,28 @@ function chart6m(act){
   <div class="row" style="gap:16px;font-size:.75rem;color:var(--sub);justify-content:center"><span>🟩 Ingresos</span><span>🟥 Gastos</span></div>`;
 }
 
-function dualMoney(uyu,usd,cls,equivTotal,equivLabel){
-  const parts=[];
-  if(uyu!==0||usd===0)parts.push(`<div class="${cls}">$ ${fmt(uyu)}</div>`);
-  if(usd!==0)parts.push(`<div class="${cls}">US$ ${fmt(usd)}</div>`);
-  const equiv=usd!==0?`<div class="sub" style="margin-top:3px">${equivLabel}: ${money(equivTotal)}</div>`:'';
-  return `<div class="row" style="gap:12px;flex-wrap:wrap;align-items:baseline;margin-top:2px">${parts.join('')}</div>${equiv}`;
+function equivBoth(totalUYU){
+  const tc=Number(S.settings.tc)||40;
+  return `$ ${fmt(totalUYU)} · US$ ${fmt(totalUYU/tc)}`;
+}
+function splitMoney(uyu,usd){
+  return `<div style="display:flex;align-items:stretch;margin-top:10px">
+    <div style="flex:1;display:flex;justify-content:space-between;align-items:center;padding-right:12px">
+      <span style="font-size:1rem;font-weight:700;opacity:.85">$</span>
+      <span style="font-size:1.5rem;font-weight:800;color:#4ade80">${fmt(uyu)}</span>
+    </div>
+    <div style="width:1px;background:rgba(255,255,255,.3)"></div>
+    <div style="flex:1;display:flex;justify-content:space-between;align-items:center;padding-left:12px">
+      <span style="font-size:1rem;font-weight:700;opacity:.85">US$</span>
+      <span style="font-size:1.5rem;font-weight:800;color:#4ade80">${fmt(usd)}</span>
+    </div>
+  </div>`;
+}
+function stackMoney(uyu,usd,cls){
+  return `<div style="margin-top:4px">
+    <div class="row spread" style="margin-top:4px"><span class="sub" style="font-weight:700">$</span><span class="${cls}">${fmt(uyu)}</span></div>
+    <div class="row spread" style="margin-top:3px"><span class="sub" style="font-weight:700">US$</span><span class="${cls}">${fmt(usd)}</span></div>
+  </div>`;
 }
 function movRow(m){
   const c=catById(m.categoria_id);
@@ -373,15 +390,15 @@ function viewMovs(){
   const groups={};
   for(const m of list){(groups[m.fecha]=groups[m.fecha]||[]).push(m)}
   let tot=0;for(const m of list)tot+=(m.tipo==='ingreso'?1:-1)*toUYU(m);
-  const cats=activeCats().filter(c=>!c.parent_id);
+  const cats=activeCats().filter(c=>!c.parent_id&&(!f.tipo||c.tipo===f.tipo));
   return `
   <div class="row spread" style="margin-bottom:12px"><h1>Movimientos</h1><span class="pill" id="syncPill">…</span></div>
   <div class="card">
     <input class="inp" placeholder="🔍 Buscar por texto, monto o etiqueta" value="${esc(f.q)}" oninput="S.filtro.q=this.value;renderSoon()">
     <div class="chips" style="margin-top:10px">
-      <button class="chip ${!f.tipo?'on':''}" onclick="S.filtro.tipo='';render()">Todos</button>
-      <button class="chip ${f.tipo==='ingreso'?'on':''}" onclick="S.filtro.tipo='ingreso';render()">Ingresos</button>
-      <button class="chip ${f.tipo==='gasto'?'on':''}" onclick="S.filtro.tipo='gasto';render()">Gastos</button>
+      <button class="chip ${!f.tipo?'on':''}" onclick="S.filtro.tipo='';S.filtro.cat='';render()">Todos</button>
+      <button class="chip ${f.tipo==='ingreso'?'on':''}" onclick="S.filtro.tipo='ingreso';S.filtro.cat='';render()">Ingresos</button>
+      <button class="chip ${f.tipo==='gasto'?'on':''}" onclick="S.filtro.tipo='gasto';S.filtro.cat='';render()">Gastos</button>
     </div>
     <div class="row" style="margin-top:10px">
       <input class="inp" type="date" value="${f.desde}" onchange="S.filtro.desde=this.value;render()">
@@ -459,7 +476,7 @@ function viewAjustes(){
   </div>
   <div id="apoyoBlock" class="hidden card">
     <div class="sub" style="font-weight:700;margin-bottom:6px">Apoya este proyecto</div>
-    <p class="sub" style="font-size:.78rem;line-height:1.55;margin-bottom:8px">JosmaTech es y será siempre gratuito. Si esta herramienta te ha sido útil y puedes colaborar, cualquier aporte —desde $10— ayuda a que sigamos mejorando, desarrollando nuevas aplicaciones gratuitas para la comunidad y apoyando a más hermanos. Es completamente libre y voluntario, nunca una condición para usar la app.</p>
+    <p class="sub" style="font-size:.78rem;line-height:1.55;margin-bottom:8px">JosmaTech es y será siempre gratuito. Si esta herramienta te ha sido útil y puedes colaborar, cualquier aporte —desde 10 pesos uruguayos 🇺🇾— ayuda a que sigamos mejorando, desarrollando nuevas aplicaciones gratuitas para la comunidad y apoyando a más hermanos. Es completamente libre y voluntario, nunca una condición para usar la app.</p>
     ${donRow('Nombre','Josielis Machado Fajardo')}
     ${donRow('Prex','22441810')}
     ${donRow('MiDinero','3701732771')}
@@ -474,7 +491,7 @@ function setTC(v){const n=Number(v);if(!n||n<=0)return toast('El tipo de cambio 
 function donRow(label,value){
   return `<div class="item" onclick="copyText('${value.replace(/'/g,"\\'")}')" style="cursor:pointer">
     <div class="mtxt"><div class="sub" style="font-weight:700">${esc(label)}</div><div style="font-size:.92rem;font-weight:600">${esc(value)}</div></div>
-    <span class="sub" style="font-size:1.05rem">📋</span>
+    <span class="link" style="font-size:.8rem;font-weight:700">Copiar</span>
   </div>`;
 }
 function toggleApoyo(){const b=document.getElementById('apoyoBlock');if(b)b.classList.toggle('hidden')}
@@ -495,7 +512,7 @@ function toggleNexoInfo(id){
   const show=el.classList.contains('hidden');
   el.classList.toggle('hidden',!show);
   clearTimeout(_nexoTimers[id]);
-  if(show)_nexoTimers[id]=setTimeout(()=>hideNexoInfo(id),8000);
+  if(show)_nexoTimers[id]=setTimeout(()=>hideNexoInfo(id),16000);
 }
 function hideNexoInfo(id){const el=document.getElementById(id);if(el)el.classList.add('hidden');clearTimeout(_nexoTimers[id])}
 
