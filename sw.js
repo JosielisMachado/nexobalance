@@ -1,4 +1,4 @@
-const CACHE='nexobalance-v1.2.1';
+const CACHE='nexobalance-v1.3.0';
 const ASSETS=['./','./index.html','./manifest.json','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'];
 
 self.addEventListener('install',e=>{

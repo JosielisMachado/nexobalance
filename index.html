@@ -252,6 +252,7 @@ async function startApp(user,isNew){
   const st=await kvGet('settings');if(st)S.settings=Object.assign(S.settings,st);
   document.documentElement.dataset.theme=S.settings.theme||'light';
   render();
+  armExitGuard();
   if(navigator.onLine){await trySync()}
   if(isNew&&!activeCats().length){await seedCats();toast('¡Bienvenido! Creamos tus categorías iniciales')}
   else if(!S.movs.length&&!activeCats().length&&navigator.onLine){await pullAll();if(!activeCats().length)await seedCats()}
@@ -276,8 +277,8 @@ function render(){
 function viewInicio(){
   const[d1,d2]=monthRange(new Date());
   const act=movsActivos();
-  let saldo=0,ingMes=0,gasMes=0;
-  for(const m of act){const v=toUYU(m);if(m.tipo==='ingreso')saldo+=v;else saldo-=v;if(m.fecha>=d1&&m.fecha<=d2){if(m.tipo==='ingreso')ingMes+=v;else gasMes+=v}}
+  let saldo=0,ingMes=0,gasMes=0,ingMesUSD=0,gasMesUSD=0;
+  for(const m of act){const v=toUYU(m);if(m.tipo==='ingreso')saldo+=v;else saldo-=v;if(m.fecha>=d1&&m.fecha<=d2){if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto}else{gasMes+=v;if(m.moneda==='USD')gasMesUSD+=m.monto}}}
   const bal=ingMes-gasMes;
   const tasa=ingMes>0?Math.max(0,Math.round(bal/ingMes*100)):0;
   const ult=[...act].sort((a,b)=>(b.fecha+(b.hora||''))<(a.fecha+(a.hora||''))?-1:1).slice(0,6);
@@ -292,17 +293,21 @@ function viewInicio(){
     <div style="opacity:.8;font-size:.75rem;margin-top:4px">Consolidado en pesos uruguayos</div>
   </div>
   <div class="grid2">
-    <div class="card"><div class="sub">Ingresos · ${esc(mesName)}</div><div class="mid ok">${money(ingMes)}</div></div>
-    <div class="card"><div class="sub">Gastos · ${esc(mesName)}</div><div class="mid bad">${money(gasMes)}</div></div>
+    <div class="card"><div class="sub">Ingresos · ${esc(mesName)}</div><div class="mid ok">${money(ingMes)}</div>${ingMesUSD>0?`<div class="sub" style="margin-top:2px">incluye ${money(ingMesUSD,'USD')}</div>`:''}</div>
+    <div class="card"><div class="sub">Gastos · ${esc(mesName)}</div><div class="mid bad">${money(gasMes)}</div>${gasMesUSD>0?`<div class="sub" style="margin-top:2px">incluye ${money(gasMesUSD,'USD')}</div>`:''}</div>
     <div class="card"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}">${money(bal)}</div></div>
     <div class="card"><div class="sub">Ahorro del mes</div><div class="mid">${tasa}%</div></div>
   </div>
   <div class="card"><div class="sub" style="margin-bottom:10px">Últimos 6 meses</div>${chart6m(act)}</div>
-  <div class="card" style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#fff" onclick="window.open('https://nexoenvios.josmatech.com','_blank')">
-    <div class="row spread">
-      <div><div style="font-weight:800;font-size:1.02rem">🚢 ¿Necesitas enviar algo a Cuba?</div>
-      <div style="opacity:.9;font-size:.82rem;margin-top:3px">Conoce NexoEnvíos: pedidos desde EE.UU. hasta la puerta de tu familia</div></div>
+  <div class="card" style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#fff">
+    <div class="row spread" onclick="window.open('https://nexoenvios.josmatech.com','_blank')">
+      <div style="flex:1"><div style="font-weight:800;font-size:1.02rem">🚢 ¿Necesitas enviar algo a Cuba?</div>
+      <div style="opacity:.9;font-size:.82rem;margin-top:3px">Conoce NexoEnvíos <span onclick="event.stopPropagation();toggleNexoInfo('nexoInfoHome')" style="text-decoration:underline;font-weight:700">· cómo funciona ▾</span></div></div>
       <span style="font-size:1.3rem">›</span>
+    </div>
+    <div id="nexoInfoHome" class="hidden" style="margin-top:10px;background:rgba(255,255,255,.16);border-radius:11px;padding:10px 30px 10px 10px;font-size:.8rem;line-height:1.5;position:relative">
+      <button onclick="event.stopPropagation();hideNexoInfo('nexoInfoHome')" style="position:absolute;top:6px;right:8px;color:#fff;font-size:.95rem">✕</button>
+      Te hacemos la compra en Temu u otra tienda online. Pagas en Uruguay 🇺🇾 mediante Prex, MiDinero, Mercado Pago o efectivo en La Unión, Montevideo. Enviamos a Miami y pagas el envío a la puerta de tu casa en Cuba 🇨🇺.
     </div>
   </div>
   <div class="card">
@@ -404,7 +409,19 @@ function viewAjustes(){
     <input class="inp" style="width:90px;text-align:right" type="number" inputmode="decimal" value="${S.settings.tc}" onchange="setTC(this.value)"></div>
   </div>
   <div class="card">
-    <div class="item" onclick="window.open('https://nexoenvios.josmatech.com','_blank')"><div class="mico" style="background:var(--chip)">🚢</div><div class="mtxt"><div>NexoEnvíos</div><div class="sub">Pedidos desde EE.UU. hasta Cuba</div></div><span class="sub">›</span></div>
+    <div class="item">
+      <div class="mico" style="background:var(--chip)">🚢</div>
+      <div class="mtxt" onclick="window.open('https://nexoenvios.josmatech.com','_blank')" style="cursor:pointer">
+        <div>NexoEnvíos</div>
+        <div class="sub">Pedidos desde EE.UU. hasta Cuba · <span onclick="event.stopPropagation();toggleNexoInfo('nexoInfoAj')" style="text-decoration:underline;font-weight:700">cómo funciona</span></div>
+      </div>
+      <span class="sub" onclick="window.open('https://nexoenvios.josmatech.com','_blank')">›</span>
+    </div>
+    <div id="nexoInfoAj" class="hidden" style="margin:-2px 0 12px 54px;font-size:.8rem;line-height:1.5;color:var(--sub);position:relative;padding-right:22px">
+      <button onclick="hideNexoInfo('nexoInfoAj')" style="position:absolute;top:0;right:0;color:var(--sub)">✕</button>
+      Te hacemos la compra en Temu u otra tienda online. Pagas en Uruguay 🇺🇾 mediante Prex, MiDinero, Mercado Pago o efectivo en La Unión, Montevideo. Enviamos a Miami y pagas el envío a la puerta de tu casa en Cuba 🇨🇺.
+    </div>
+    <div class="item" onclick="triggerInstall()"><div class="mico" style="background:var(--chip)">📲</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span class="sub">›</span></div>
     <div class="item" onclick="openPassSheet()"><div class="mico" style="background:var(--chip)">🔑</div><div class="mtxt"><div>Cambiar contraseña</div></div><span class="sub">›</span></div>
     <div class="item" onclick="doLogout()"><div class="mico" style="background:var(--chip)">🚪</div><div class="mtxt"><div>Cerrar sesión</div></div><span class="sub">›</span></div>
   </div>
@@ -425,6 +442,16 @@ function viewAjustes(){
 
 function setTheme(t){S.settings.theme=t;localStorage.setItem('nb_theme',t);document.documentElement.dataset.theme=t;kvSet('settings',S.settings);render()}
 function setTC(v){const n=Number(v);if(!n||n<=0)return toast('El tipo de cambio debe ser mayor a 0');S.settings.tc=n;kvSet('settings',S.settings);toast('Tipo de cambio actualizado');render()}
+
+const _nexoTimers={};
+function toggleNexoInfo(id){
+  const el=document.getElementById(id);if(!el)return;
+  const show=el.classList.contains('hidden');
+  el.classList.toggle('hidden',!show);
+  clearTimeout(_nexoTimers[id]);
+  if(show)_nexoTimers[id]=setTimeout(()=>hideNexoInfo(id),8000);
+}
+function hideNexoInfo(id){const el=document.getElementById(id);if(el)el.classList.add('hidden');clearTimeout(_nexoTimers[id])}
 
 function closeSheet(){document.getElementById('sheetHost').innerHTML='';confirmSheetOpen=false}
 let confirmSheetOpen=false;
@@ -618,6 +645,35 @@ document.addEventListener('touchend',e=>{
 
 setInterval(()=>{if(navigator.onLine&&S.uid&&!S.syncing)trySync()},45000);
 
+async function triggerInstall(){
+  if(window.matchMedia('(display-mode: standalone)').matches)return toast('Ya está instalada en tu teléfono');
+  if(!deferredInstall)return toast('Abre el menú ⋮ del navegador y elige "Instalar aplicación"');
+  hideInstallPill(true);
+  deferredInstall.prompt();
+  const{outcome}=await deferredInstall.userChoice;
+  if(outcome==='accepted')localStorage.setItem('nb_install_done','1');
+  deferredInstall=null;
+}
+async function doInstall(){await triggerInstall()}
+
+let _exitGuardArmed=false;
+function armExitGuard(){if(_exitGuardArmed)return;_exitGuardArmed=true;try{history.pushState({nbGuard:true},'',location.href)}catch(e){}}
+window.addEventListener('popstate',()=>{
+  if(!S.uid)return;
+  if(document.querySelector('.sheet-bg')&&!document.getElementById('exitSheetMark')){closeSheet();_exitGuardArmed=false;armExitGuard();return}
+  showExitConfirm();
+});
+function showExitConfirm(){
+  const h=document.getElementById('sheetHost');
+  h.innerHTML=`<div class="sheet-bg" id="exitSheetMark"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:8px">¿Salir de NexoBalance?</h2>
+    <p class="sub" style="margin-bottom:16px">Tus datos están guardados y sincronizados.</p>
+    <div class="row"><button class="btn ghost" id="exitStay">Quedarme</button><button class="btn danger" id="exitGo">Salir</button></div>
+  </div></div>`;
+  document.getElementById('exitStay').onclick=()=>{document.getElementById('sheetHost').innerHTML='';_exitGuardArmed=false;armExitGuard()};
+  document.getElementById('exitGo').onclick=()=>{document.getElementById('sheetHost').innerHTML='';try{window.close()}catch(e){}};
+}
+window.addEventListener('beforeunload',e=>{if(S.uid){e.preventDefault();e.returnValue=''}});
 let deferredInstall=null,installTimer=null;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
