@@ -1,4 +1,4 @@
-const CACHE='nexobalance-v1.7.0';
+const CACHE='nexobalance-v2.1.0';
 const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'];
 
 self.addEventListener('install',e=>{
@@ -12,7 +12,7 @@ self.addEventListener('activate',e=>{
 self.addEventListener('fetch',e=>{
   const url=new URL(e.request.url);
   if(e.request.method!=='GET')return;
-  if(url.origin===self.location.origin||url.hostname==='cdn.jsdelivr.net'){
+  if(url.origin===self.location.origin||url.hostname==='cdn.jsdelivr.net'||url.hostname==='fonts.googleapis.com'||url.hostname==='fonts.gstatic.com'){
     e.respondWith(
       caches.match(e.request).then(hit=>{
         const net=fetch(e.request).then(res=>{
