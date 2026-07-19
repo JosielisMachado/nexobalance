@@ -209,7 +209,7 @@ function catIconKey(name){const n=(name||'').toLowerCase();for(const[k,v]of ICON
 function catIcon(c,size){return ic(catIconKey(c?c.name:''),size||20,c?c.color:'var(--sub)')}
 
 let sb=null;
-let S={uid:null,tab:'inicio',movs:[],cats:[],settings:{theme:'dark',tc:40},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,tab:'inicio',movs:[],cats:[],settings:{theme:'dark',tc:40},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -300,7 +300,8 @@ async function doRegister(){
   const{data,error}=await sb.auth.signUp({email,password:pass});
   if(error){if(String(error.message).toLowerCase().includes('already'))toast('Ese número ya tiene una cuenta. Inicia sesión.');else toast('No se pudo crear la cuenta. Intenta de nuevo.');return}
   if(!data.session){toast('Cuenta creada. Inicia sesión.');toggleAuth(false);return}
-  await sb.from('profiles').upsert({id:data.user.id,phone:'+'+digits,display_name:name||null,updated_at:nowISO()});
+  const{error:perr}=await sb.from('profiles').upsert({id:data.user.id,phone:'+'+digits,display_name:name||null,updated_at:nowISO()});
+  if(perr)console.error('profile upsert (registro):',perr);
   if(name)S.userName=name;
   await startApp(data.user,true);
 }
@@ -316,7 +317,7 @@ async function doLogin(){
   let ok=null;
   for(const email of [...new Set(tries)]){const{data,error}=await sb.auth.signInWithPassword({email,password:pass});if(!error){ok=data;break}}
   if(!ok){toast('Teléfono o contraseña incorrectos');return}
-  try{await sb.from('profiles').upsert({id:ok.user.id,phone:'+'+ok.user.email.split('@')[0],updated_at:nowISO()})}catch(e){}
+  try{const{error:perr}=await sb.from('profiles').upsert({id:ok.user.id,phone:'+'+ok.user.email.split('@')[0],updated_at:nowISO()});if(perr)console.error('profile upsert (login):',perr)}catch(e){console.error('profile upsert (login) excepción:',e)}
   await startApp(ok.user);
 }
 
@@ -337,8 +338,12 @@ async function startApp(user,isNew){
 }
 async function loadUserName(){
   try{
-    const{data}=await sb.from('profiles').select('display_name').eq('id',S.uid).single();
-    if(data&&data.display_name){S.userName=data.display_name;S.settings.name=data.display_name;await kvSet('settings',S.settings);if(S.tab==='inicio')render()}
+    const{data}=await sb.from('profiles').select('display_name,is_admin').eq('id',S.uid).single();
+    if(data){
+      if(data.display_name){S.userName=data.display_name;S.settings.name=data.display_name;await kvSet('settings',S.settings)}
+      S.isAdmin=!!data.is_admin;
+      if(S.tab==='inicio'||S.tab==='ajustes')render();
+    }
   }catch(e){}
 }
 
@@ -693,6 +698,7 @@ function viewAjustes(){
     </div>
     <div class="item" onclick="triggerInstall()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('phone',19)}</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    ${S.isAdmin?`<div class="item" onclick="openAdminSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--purple)">${ic('users',19)}</div><div class="mtxt"><div>Panel de administrador</div><div class="sub">Cuentas registradas en NexoBalance</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>`:''}
     <div class="item" onclick="doLogout()"><div class="iconbadge" style="background:var(--chip);color:var(--bad)">${ic('logout',19)}</div><div class="mtxt"><div>Cerrar sesión</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
   </div>
   <div class="card">
@@ -941,6 +947,29 @@ async function doChangePass(){
   const{error}=await sb.auth.updateUser({password:a});
   if(error)return toast('No se pudo actualizar. Intenta de nuevo.');
   closeSheet();toast('Contraseña actualizada');
+}
+
+async function openAdminSheet(){
+  if(!navigator.onLine)return toast('Necesitas Internet para ver las estadísticas');
+  const h=document.getElementById('sheetHost');
+  h.innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:14px">Panel de administrador</h2>
+    <div id="adminBody" class="sub">Cargando…</div>
+  </div></div>`;
+  try{
+    const{data,error}=await sb.rpc('admin_stats');
+    if(error)throw error;
+    const ultimo=data.ultimo_registro?new Date(data.ultimo_registro).toLocaleDateString('es-UY',{day:'numeric',month:'long',year:'numeric'}):'—';
+    document.getElementById('adminBody').outerHTML=`
+    <div class="grid2" id="adminBody">
+      <div class="card" style="margin-bottom:0"><div class="sub">Cuentas registradas</div><div class="big2" style="margin-top:4px">${data.total}</div></div>
+      <div class="card" style="margin-bottom:0"><div class="sub">Nuevas este mes</div><div class="big2" style="margin-top:4px;color:var(--ok)">${data.nuevos_mes}</div></div>
+      <div class="card" style="margin-bottom:0"><div class="sub">Nuevas esta semana</div><div class="big2" style="margin-top:4px;color:var(--pri)">${data.nuevos_semana}</div></div>
+      <div class="card" style="margin-bottom:0"><div class="sub">Último registro</div><div class="mid" style="margin-top:4px">${ultimo}</div></div>
+    </div>`;
+  }catch(e){
+    document.getElementById('adminBody').textContent='No se pudieron cargar las estadísticas.';
+  }
 }
 
 let _tx0=null,_ty0=null;
