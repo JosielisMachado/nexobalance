@@ -315,6 +315,11 @@ function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('
 function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
 function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
 
+function turnstileListo(token){
+  const configurado=TURNSTILE_SITEKEY&&!TURNSTILE_SITEKEY.includes('PEGAR');
+  return !configurado||!!token;
+}
+
 async function doRegister(){
   const name=document.getElementById('regName').value.trim();
   const code=document.getElementById('regCode').value.trim();
@@ -323,11 +328,18 @@ async function doRegister(){
   if(!phone||phone.replace(/\D/g,'').length<6)return toast('Ingresa un número de teléfono válido');
   if(!pass||pass.length<6)return toast('La contraseña debe tener al menos 6 caracteres');
   if(!navigator.onLine)return toast('Necesitas Internet para crear la cuenta');
+  if(!turnstileListo(turnstileTokenReg))return toast('Esperá un segundo, verificando seguridad…');
   const{digits,email}=phoneToEmail(code,phone);
   const{data,error}=await sb.auth.signUp({email,password:pass,options:turnstileTokenReg?{captchaToken:turnstileTokenReg}:undefined});
   if(twRegId&&window.turnstile)turnstile.reset(twRegId);
   turnstileTokenReg=null;
-  if(error){if(String(error.message).toLowerCase().includes('already'))toast('Ese número ya tiene una cuenta. Inicia sesión.');else toast('No se pudo crear la cuenta. Intenta de nuevo.');return}
+  if(error){
+    const msg=String(error.message).toLowerCase();
+    if(msg.includes('already'))toast('Ese número ya tiene una cuenta. Inicia sesión.');
+    else if(msg.includes('captcha'))toast('La verificación de seguridad falló. Intenta de nuevo.');
+    else toast('No se pudo crear la cuenta. Intenta de nuevo.');
+    return;
+  }
   if(!data.session){toast('Cuenta creada. Inicia sesión.');toggleAuth(false);return}
   const{error:perr}=await sb.from('profiles').upsert({id:data.user.id,phone:'+'+digits,display_name:name||null,updated_at:nowISO()});
   if(perr){console.error('profile upsert (registro):',perr);logSyncError('profile_upsert_registro',perr.message,data.user.id)}
@@ -340,15 +352,21 @@ async function doLogin(){
   const pass=document.getElementById('loginPass').value;
   if(!phone||!pass)return toast('Completa teléfono y contraseña');
   if(!navigator.onLine)return toast('Necesitas Internet para iniciar sesión la primera vez');
+  if(!turnstileListo(turnstileTokenLogin))return toast('Esperá un segundo, verificando seguridad…');
   const digits=phone.replace(/\D/g,'');
   const tries=[digits+EMAIL_DOMAIN];
   if(!digits.startsWith('598'))tries.push('598'+digits.replace(/^0/,'')+EMAIL_DOMAIN);
   const captchaOpt=turnstileTokenLogin?{captchaToken:turnstileTokenLogin}:undefined;
-  let ok=null;
-  for(const email of [...new Set(tries)]){const{data,error}=await sb.auth.signInWithPassword({email,password:pass,options:captchaOpt});if(!error){ok=data;break}}
+  let ok=null,lastErr=null;
+  for(const email of [...new Set(tries)]){const{data,error}=await sb.auth.signInWithPassword({email,password:pass,options:captchaOpt});if(!error){ok=data;break}lastErr=error}
   if(twLoginId&&window.turnstile)turnstile.reset(twLoginId);
   turnstileTokenLogin=null;
-  if(!ok){toast('Teléfono o contraseña incorrectos');return}
+  if(!ok){
+    const msg=String((lastErr&&lastErr.message)||'').toLowerCase();
+    if(msg.includes('captcha'))toast('La verificación de seguridad falló. Intenta de nuevo.');
+    else toast('Teléfono o contraseña incorrectos');
+    return;
+  }
   try{const{error:perr}=await sb.from('profiles').upsert({id:ok.user.id,phone:'+'+ok.user.email.split('@')[0],updated_at:nowISO()});if(perr){console.error('profile upsert (login):',perr);logSyncError('profile_upsert_login',perr.message,ok.user.id)}}catch(e){console.error('profile upsert (login) excepción:',e);logSyncError('profile_upsert_login_exc',e.message,ok.user.id)}
   await startApp(ok.user);
 }
