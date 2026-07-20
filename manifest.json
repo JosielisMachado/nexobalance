@@ -1,14 +1,19 @@
 {
-  "name": "NexoBalance",
+  "id": "/",
+  "name": "NexoBalance — Tus finanzas personales",
   "short_name": "NexoBalance",
-  "description": "Tus finanzas personales, simples y privadas. Por JosmaTech.",
+  "description": "Controla tus ingresos y gastos en pesos y dólares. Simple, privado y sin conexión.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#0ea5e9",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#F4F6FB",
+  "theme_color": "#1788FF",
   "lang": "es",
+  "dir": "ltr",
+  "categories": ["finance", "productivity", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icon-192.png",
@@ -21,6 +26,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

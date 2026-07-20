@@ -76,6 +76,19 @@ nav button svg{transition:.15s}
 .mtxt div:first-child{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mamt{font-weight:800;white-space:nowrap}
 .sheet-bg{position:fixed;inset:0;background:rgba(3,6,14,.6);z-index:60;display:flex;align-items:flex-end;animation:fade .15s}
+@media(min-width:720px){
+  nav{max-width:560px;margin:0 auto;border-radius:16px 16px 0 0;border:1px solid var(--line);border-bottom:none}
+  .fab{right:calc((100vw - 560px)/2 + 18px)}
+  .sheet-bg{align-items:center;justify-content:center;padding:24px}
+  .sheet{border-radius:22px;max-height:84vh;animation:fade .18s}
+  .sheet .handle{display:none}
+  body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+}
+@media(hover:hover){
+  .item:hover{background:var(--chip);border-radius:10px}
+  .btn:hover{filter:brightness(1.06)}
+  nav button:hover{opacity:.85}
+}
 .sheet{background:var(--card);border:1px solid var(--line);border-radius:26px 26px 0 0;width:100%;max-width:560px;margin:0 auto;max-height:92vh;overflow-y:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom));animation:up .25s cubic-bezier(.4,0,.2,1)}
 @keyframes fade{from{opacity:0}}
 @keyframes up{from{transform:translateY(40px)}}
@@ -208,7 +221,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.7.0';
+const APP_VERSION='1.8.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -730,7 +743,24 @@ function detectPais(){
   for(const c of codes){if(p.startsWith(c))return PAISES_INFO[c]}
   return PAISES_INFO['598'];
 }
-function localFlag(){return detectPais().flag}
+let _flagsOk=null;
+function flagsSoportadas(){
+  if(_flagsOk!==null)return _flagsOk;
+  try{
+    const c=document.createElement('canvas');c.width=24;c.height=24;
+    const x=c.getContext('2d');
+    x.font='20px sans-serif';x.textBaseline='top';x.fillText('🇺🇾',0,0);
+    const d=x.getImageData(0,0,24,24).data;
+    let color=false;
+    for(let i=0;i<d.length;i+=4){
+      if(d[i+3]>10&&(Math.abs(d[i]-d[i+1])>14||Math.abs(d[i+1]-d[i+2])>14)){color=true;break}
+    }
+    _flagsOk=color;
+  }catch(e){_flagsOk=false}
+  return _flagsOk;
+}
+function localFlag(){const i=detectPais();return flagsSoportadas()?i.flag:i.cur}
+function usdFlag(){return flagsSoportadas()?'🇺🇸':'USD'}
 function fitFont(value,maxRem,minRem,capChars){
   const len=fmt(value).length;
   if(len<=capChars)return maxRem.toFixed(2)+'rem';
@@ -748,7 +778,7 @@ function splitMoney(uyu,usd,oculto){
     </div>
     <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.3);flex-shrink:0"></div>
     <div style="flex:1;min-width:0;text-align:right">
-      <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">🇺🇸 Dólares</div>
+      <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">${usdFlag()} Dólares</div>
       <div style="color:${colUsd};font-weight:800;letter-spacing:-.5px;line-height:1.1;font-size:${fitFont(usd,1.85,0.85,8)}">${cnum(usd,oculto)}</div>
     </div>
   </div>`;
@@ -757,7 +787,7 @@ function stackMoney(uyu,usd,cls,oculto){
   const flagLocal=localFlag();
   return `<div style="margin-top:6px">
     <div class="row spread" style="margin-top:4px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">${flagLocal}</span><span class="${cls}" style="font-size:${fitFont(uyu,1.12,0.72,9)};min-width:0;text-align:right;line-height:1.2">${cnum(uyu,oculto)}</span></div>
-    <div class="row spread" style="margin-top:3px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">🇺🇸</span><span class="${cls}" style="font-size:${fitFont(usd,1.12,0.72,9)};min-width:0;text-align:right;line-height:1.2">${cnum(usd,oculto)}</span></div>
+    <div class="row spread" style="margin-top:3px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">${usdFlag()}</span><span class="${cls}" style="font-size:${fitFont(usd,1.12,0.72,9)};min-width:0;text-align:right;line-height:1.2">${cnum(usd,oculto)}</span></div>
   </div>`;
 }
 function toggleSaldo(){S.saldoOculto=!S.saldoOculto;render()}
@@ -1110,7 +1140,7 @@ function drawMovSheet(){
         <input class="inp" id="mMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${e.monto}" style="font-size:1.3rem;font-weight:700">
         <div class="seg" style="width:130px">
           <button class="${e.moneda==='UYU'?'on':''}" onclick="movMoneda('UYU')">${localFlag()} ${detectPais().cur}</button>
-          <button class="${e.moneda==='USD'?'on':''}" onclick="movMoneda('USD')">🇺🇸 USD</button>
+          <button class="${e.moneda==='USD'?'on':''}" onclick="movMoneda('USD')">${usdFlag()} USD</button>
         </div>
       </div>
     </div>
