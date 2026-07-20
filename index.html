@@ -208,7 +208,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.6.2';
+const APP_VERSION='1.7.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -233,6 +233,8 @@ const ICONS={
   sun:'<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
   exchange:'<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
   key:'<circle cx="8" cy="15" r="4"/><path d="M11 12 20 3M16 4l3 3M13 7l2.5 2.5"/>',
+  download:'<path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/>',
+  shield:'<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/>',
   logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
   phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
   heart:'<path d="M12 20s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z"/>',
@@ -881,6 +883,7 @@ function viewAjustes(){
     </div>
     <div class="item" onclick="shareApp()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('share',19)}</div><div class="mtxt"><div>Compartir aplicación</div><div class="sub">Invita a otros a usar NexoBalance gratis</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="triggerInstall()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('phone',19)}</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     ${S.isAdmin?`<div class="item" onclick="openAdminSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--purple)">${ic('users',19)}</div><div class="mtxt"><div>Panel de administrador</div><div class="sub">Cuentas registradas en NexoBalance</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>`:''}
     <div class="item" onclick="doLogout()"><div class="iconbadge" style="background:var(--chip);color:var(--bad)">${ic('logout',19)}</div><div class="mtxt"><div>Cerrar sesión</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -977,6 +980,65 @@ function donRow(label,value){
   </div>`;
 }
 function toggleApoyo(){const b=document.getElementById('apoyoBlock');if(b)b.classList.toggle('hidden')}
+function csvEscape(v){
+  const s=(v===null||v===undefined)?'':String(v);
+  return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function toCSV(rows,cols){
+  const head=cols.join(';');
+  const body=rows.map(r=>cols.map(c=>csvEscape(r[c])).join(';')).join('\n');
+  return '\ufeff'+head+'\n'+body;
+}
+function descargarArchivo(nombre,contenido,tipo){
+  try{
+    const blob=new Blob([contenido],{type:tipo||'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=nombre;
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    return true;
+  }catch(e){toast('No se pudo descargar el archivo');return false}
+}
+function stamp(){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());
+}
+function exportarMisDatos(){
+  const movs=movsActivos();
+  if(!movs.length)return toast('Todavía no tienes movimientos para exportar');
+  const rows=movs.map(m=>{
+    const c=catById(m.categoria_id);
+    const sc=catById(m.subcategoria_id);
+    return{
+      fecha:m.fecha,hora:m.hora||'',tipo:m.tipo,monto:m.monto,moneda:m.moneda,
+      categoria:c?c.name:'',subcategoria:sc?sc.name:'',
+      descripcion:m.descripcion||'',forma_pago:m.forma_pago||'',notas:m.notas||''
+    };
+  }).sort((a,b)=>a.fecha<b.fecha?-1:1);
+  const csv=toCSV(rows,['fecha','hora','tipo','monto','moneda','categoria','subcategoria','descripcion','forma_pago','notas']);
+  if(descargarArchivo('nexobalance_mis_movimientos_'+stamp()+'.csv',csv))toast('Archivo descargado ✓');
+}
+async function descargarRespaldoCompleto(){
+  if(!navigator.onLine)return toast('Necesitas Internet para generar el respaldo');
+  toast('Generando respaldo…');
+  try{
+    const{data,error}=await sb.rpc('admin_export_todo');
+    if(error)throw error;
+    const json=JSON.stringify(data,null,2);
+    descargarArchivo('nexobalance_respaldo_'+stamp()+'.json',json,'application/json;charset=utf-8');
+    const movs=data.movimientos||[];
+    if(movs.length){
+      const csv=toCSV(movs,['id','user_id','tipo','monto','moneda','fecha','hora','categoria_id','subcategoria_id','descripcion','forma_pago','notas','deleted','created_at','updated_at']);
+      setTimeout(()=>descargarArchivo('nexobalance_movimientos_'+stamp()+'.csv',csv),700);
+    }
+    toast('Respaldo descargado · guárdalo fuera del teléfono');
+  }catch(e){
+    toast('No se pudo generar el respaldo');
+  }
+}
 function copyText(txt){
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(txt).then(()=>toast('Copiado ✓')).catch(()=>fallbackCopy(txt));
@@ -1323,6 +1385,11 @@ async function openAdminSheet(){
       <div class="card">
         <div class="row spread" style="margin-bottom:8px"><h2>Errores de sincronización</h2><span class="pill" style="background:rgba(255,75,85,.15);color:var(--bad)">${data.errores_semana} esta semana</span></div>
         ${errores}
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:8px">🛡️ Respaldo de seguridad</h2>
+        <p class="sub" style="margin-bottom:10px">Descarga una copia completa de todos los datos. Hazlo <b>antes de cualquier cambio de SQL</b> y guarda el archivo fuera del teléfono (Drive, correo, PC).</p>
+        <button class="btn" onclick="descargarRespaldoCompleto()">Descargar respaldo completo</button>
       </div>
       <div class="card">
         <h2 style="margin-bottom:8px">Generar código de recuperación</h2>
