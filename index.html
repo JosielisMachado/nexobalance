@@ -201,7 +201,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.3.2';
+const APP_VERSION='1.3.3';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1162,7 +1162,7 @@ async function openAdminSheet(){
         <h2 style="margin-bottom:8px">Generar código de recuperación</h2>
         <p class="sub" style="margin-bottom:10px">Genera un código y envíaselo tú mismo por WhatsApp a la persona.</p>
         <div class="field"><label>Teléfono (con código de país, ej: +59891234567)</label><input class="inp" id="resetPhoneAdmin" type="tel" placeholder="+59891234567"></div>
-        <button class="btn" onclick="generarCodigoReset()">Generar código</button>
+        <button class="btn" onclick="generarCodigoReset()">Generar y enviar</button>
         <div id="resetCodeResult" style="margin-top:12px"></div>
       </div>
     </div>`;
@@ -1184,6 +1184,9 @@ async function generarCodigoReset(){
       <div style="font-size:1.8rem;font-weight:800;letter-spacing:.1em">${esc(data)}</div>
       <button class="link" style="margin-top:8px" onclick="copyText('${esc(data)}')">Copiar código</button>
     </div>`;
+    const msg=`Este es tu código para recuperar tu contraseña en NexoBalance: *${data}*\n\nVálido por 15 minutos. Si no lo pediste, ignora este mensaje.`;
+    const waPhone=phone.replace(/\D/g,'');
+    window.open('https://wa.me/'+waPhone+'?text='+encodeURIComponent(msg),'_blank');
   }catch(e){
     box.innerHTML='';
     toast(e.message&&e.message.includes('No existe')?'No existe una cuenta con ese teléfono':'No se pudo generar el código');
