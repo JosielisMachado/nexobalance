@@ -45,6 +45,7 @@ h1{font-size:1.3rem;font-weight:800;letter-spacing:-.3px}h2{font-size:1.02rem;fo
 .mid{font-size:1.15rem;font-weight:700}
 .ok{color:var(--ok)}.bad{color:var(--bad)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid2>*{min-width:0;overflow:hidden}
 .btn{background:var(--pri);color:#fff;border-radius:var(--radius-sm);padding:15px;font-weight:700;width:100%;font-size:1rem;transition:.2s cubic-bezier(.4,0,.2,1)}
 .btn:active{transform:scale(.97);background:var(--pri2)}
 .btn.ghost{background:var(--chip);color:var(--txt)}
@@ -207,7 +208,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.5.1';
+const APP_VERSION='1.5.2';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -521,12 +522,12 @@ function viewInicio(){
     <div style="position:relative">
       <div style="opacity:.85;font-size:.8rem;font-weight:600">Saldo total</div>
       ${splitMoney(saldoUYU,saldoUSD,oculto)}
-      <div class="row spread" style="margin-top:14px;align-items:flex-end">
-        <div>
+      <div class="row spread" style="margin-top:14px;align-items:flex-end;gap:8px">
+        <div style="min-width:0;flex:1">
           <div style="opacity:.75;font-size:.7rem;font-weight:600">Equivalente total</div>
-          <div class="row" style="gap:6px;opacity:.95;font-size:.85rem;font-weight:700">${oculto?'••••':equivBoth(saldo)} <span onclick="toast('Calculado con tu tipo de cambio en Ajustes')" style="opacity:.8">${ic('info',14)}</span></div>
+          <div class="row" style="gap:6px;opacity:.95;font-size:.8rem;font-weight:700;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${oculto?'••••':equivBoth(saldo)}</span> <span onclick="toast('Calculado con tu tipo de cambio en Ajustes')" style="opacity:.8;flex-shrink:0">${ic('info',14)}</span></div>
         </div>
-        <button onclick="toggleSaldo()" style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center">${ic(oculto?'eyeoff':'eye',18,'#fff')}</button>
+        <button onclick="toggleSaldo()" style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic(oculto?'eyeoff':'eye',18,'#fff')}</button>
       </div>
     </div>
   </div>
@@ -536,23 +537,23 @@ function viewInicio(){
       <div class="row spread"><span class="sub" style="color:var(--ok);font-weight:700">Ingresos · ${esc(mesName.split(' ')[0])}</span>
       <span class="iconbadge" style="background:rgba(51,209,111,.15);color:var(--ok)">${ic('arrowup',17)}</span></div>
       ${stackMoney(ingMesUYU,ingMesUSD,'mid ok',oculto)}
-      <div class="sub" style="margin-top:6px">Equiv: ${oculto?'••••':equivBoth(ingMes)}</div>
+      <div class="sub" style="margin-top:6px;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Equiv: ${oculto?'••••':equivBoth(ingMes)}</div>
       <div class="sparkwrap">${sparkline(act,'ingreso','ok')}</div>
     </div>
     <div class="card" style="position:relative;overflow:hidden">
       <div class="row spread"><span class="sub" style="color:var(--bad);font-weight:700">Gastos · ${esc(mesName.split(' ')[0])}</span>
       <span class="iconbadge" style="background:rgba(255,75,85,.15);color:var(--bad)">${ic('arrowdown',17)}</span></div>
       ${stackMoney(gasMesUYU,gasMesUSD,'mid bad',oculto)}
-      <div class="sub" style="margin-top:6px">Equiv: ${oculto?'••••':equivBoth(gasMes)}</div>
+      <div class="sub" style="margin-top:6px;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Equiv: ${oculto?'••••':equivBoth(gasMes)}</div>
       <div class="sparkwrap">${sparkline(act,'gasto','bad')}</div>
     </div>
-    <div class="card row" style="gap:13px">
-      <span class="iconbadge" style="width:44px;height:44px;background:rgba(23,136,255,.15);color:var(--pri)">${ic('wallet',20)}</span>
-      <div><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}" style="margin-top:2px">${oculto?'••••':'$ '+cnum(bal,false)}</div></div>
+    <div class="card row" style="gap:13px;min-width:0">
+      <span class="iconbadge" style="width:44px;height:44px;background:rgba(23,136,255,.15);color:var(--pri);flex-shrink:0">${ic('wallet',20)}</span>
+      <div style="min-width:0;flex:1"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}" style="margin-top:2px;font-size:${autoFontSize(bal,1.15)};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${oculto?'••••':'$ '+cnum(bal,false)}</div></div>
     </div>
-    <div class="card row" style="gap:13px">
-      <span class="iconbadge" style="width:44px;height:44px;background:rgba(155,92,255,.15);color:var(--purple)">${ic('target',20)}</span>
-      <div><div class="sub">Ahorro del mes</div><div class="mid" style="margin-top:2px;color:var(--purple)">${cpct(tasa,oculto)}</div></div>
+    <div class="card row" style="gap:13px;min-width:0">
+      <span class="iconbadge" style="width:44px;height:44px;background:rgba(155,92,255,.15);color:var(--purple);flex-shrink:0">${ic('target',20)}</span>
+      <div style="min-width:0;flex:1"><div class="sub">Ahorro del mes</div><div class="mid" style="margin-top:2px;color:var(--purple);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cpct(tasa,oculto)}</div></div>
     </div>
   </div>
 
@@ -696,31 +697,34 @@ function equivBoth(totalUYU){
 function autoFontSize(value,baseRem){
   const len=Math.abs(Math.round(Number(value)||0)).toString().length;
   let scale=1;
-  if(len>=9)scale=0.5;
-  else if(len===8)scale=0.6;
-  else if(len===7)scale=0.72;
-  else if(len===6)scale=0.86;
+  if(len>=11)scale=0.5;
+  else if(len===10)scale=0.58;
+  else if(len===9)scale=0.66;
+  else if(len===8)scale=0.76;
+  else if(len===7)scale=0.88;
   return (baseRem*scale).toFixed(2)+'rem';
 }
 function splitMoney(uyu,usd,oculto){
-  const szUyu=autoFontSize(uyu,2.1);
-  const szUsd=autoFontSize(usd,1.32);
-  return `<div style="display:flex;align-items:stretch;margin-top:10px">
-    <div style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;padding-right:12px;gap:4px">
-      <span style="font-size:1rem;font-weight:700;opacity:.85;flex-shrink:0">$</span>
-      <span class="big" style="color:#fff;font-size:${szUyu};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(uyu,oculto)}</span>
+  const szUyu=autoFontSize(uyu,1.9);
+  const szUsd=autoFontSize(usd,1.9);
+  return `<div style="display:flex;align-items:stretch;margin-top:10px;gap:10px">
+    <div style="flex:1;min-width:0">
+      <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">🇺🇾 Pesos</div>
+      <div class="big" style="color:#fff;font-size:${szUyu};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cnum(uyu,oculto)}</div>
     </div>
     <div style="width:1px;background:rgba(255,255,255,.3);flex-shrink:0"></div>
-    <div style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;padding-left:12px;gap:4px">
-      <span style="font-size:1rem;font-weight:700;opacity:.85;flex-shrink:0">US$</span>
-      <span class="big2" style="color:#fff;font-size:${szUsd};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(usd,oculto)}</span>
+    <div style="flex:1;min-width:0">
+      <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">🇺🇸 Dólares</div>
+      <div class="big" style="color:#fff;font-size:${szUsd};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cnum(usd,oculto)}</div>
     </div>
   </div>`;
 }
 function stackMoney(uyu,usd,cls,oculto){
+  const szUyu=autoFontSize(uyu,1.15);
+  const szUsd=autoFontSize(usd,1.15);
   return `<div style="margin-top:6px">
-    <div class="row spread" style="margin-top:4px"><span class="sub" style="font-weight:700">$</span><span class="${cls}">${cnum(uyu,oculto)}</span></div>
-    <div class="row spread" style="margin-top:3px"><span class="sub" style="font-weight:700">US$</span><span class="${cls}">${cnum(usd,oculto)}</span></div>
+    <div class="row spread" style="margin-top:4px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">🇺🇾</span><span class="${cls}" style="font-size:${szUyu};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(uyu,oculto)}</span></div>
+    <div class="row spread" style="margin-top:3px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">🇺🇸</span><span class="${cls}" style="font-size:${szUsd};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(usd,oculto)}</span></div>
   </div>`;
 }
 function toggleSaldo(){S.saldoOculto=!S.saldoOculto;render()}
