@@ -207,7 +207,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.5.0';
+const APP_VERSION='1.5.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -693,16 +693,27 @@ function equivBoth(totalUYU){
   const tc=Number(S.settings.tc)||40;
   return `$ ${fmt(totalUYU)} · US$ ${fmt(totalUYU/tc)}`;
 }
+function autoFontSize(value,baseRem){
+  const len=Math.abs(Math.round(Number(value)||0)).toString().length;
+  let scale=1;
+  if(len>=9)scale=0.5;
+  else if(len===8)scale=0.6;
+  else if(len===7)scale=0.72;
+  else if(len===6)scale=0.86;
+  return (baseRem*scale).toFixed(2)+'rem';
+}
 function splitMoney(uyu,usd,oculto){
+  const szUyu=autoFontSize(uyu,2.1);
+  const szUsd=autoFontSize(usd,1.32);
   return `<div style="display:flex;align-items:stretch;margin-top:10px">
-    <div style="flex:1;display:flex;justify-content:space-between;align-items:center;padding-right:12px">
-      <span style="font-size:1rem;font-weight:700;opacity:.85">$</span>
-      <span class="big" style="color:#fff">${cnum(uyu,oculto)}</span>
+    <div style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;padding-right:12px;gap:4px">
+      <span style="font-size:1rem;font-weight:700;opacity:.85;flex-shrink:0">$</span>
+      <span class="big" style="color:#fff;font-size:${szUyu};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(uyu,oculto)}</span>
     </div>
-    <div style="width:1px;background:rgba(255,255,255,.3)"></div>
-    <div style="flex:1;display:flex;justify-content:space-between;align-items:center;padding-left:12px">
-      <span style="font-size:1rem;font-weight:700;opacity:.85">US$</span>
-      <span class="big2" style="color:#fff">${cnum(usd,oculto)}</span>
+    <div style="width:1px;background:rgba(255,255,255,.3);flex-shrink:0"></div>
+    <div style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;padding-left:12px;gap:4px">
+      <span style="font-size:1rem;font-weight:700;opacity:.85;flex-shrink:0">US$</span>
+      <span class="big2" style="color:#fff;font-size:${szUsd};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(usd,oculto)}</span>
     </div>
   </div>`;
 }
