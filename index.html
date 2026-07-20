@@ -133,11 +133,43 @@ svg text{font-family:inherit}
   </div>
   <div id="registerForm" class="hidden">
     <div class="field"><label>Tu nombre</label><input class="inp" id="regName" placeholder="Ej: Josielis"></div>
-    <div class="field"><label>Código de país</label><input class="inp" id="regCode" type="tel" inputmode="tel" value="+598"></div>
-    <div class="field"><label>Número de teléfono</label><input class="inp" id="regPhone" type="tel" inputmode="tel" placeholder="098 123 456"></div>
-    <div class="field"><label>Contraseña (mínimo 6 caracteres)</label><div style="position:relative">
+    <div class="field"><label>País</label>
+      <select class="inp" id="regCode" onchange="onCountryChange()">
+        <option value="54" data-digits="10">🇦🇷 Argentina +54</option>
+        <option value="591" data-digits="8">🇧🇴 Bolivia +591</option>
+        <option value="55" data-digits="10">🇧🇷 Brasil +55</option>
+        <option value="1" data-digits="10">🇨🇦 Canadá +1</option>
+        <option value="56" data-digits="9">🇨🇱 Chile +56</option>
+        <option value="57" data-digits="10">🇨🇴 Colombia +57</option>
+        <option value="506" data-digits="8">🇨🇷 Costa Rica +506</option>
+        <option value="53" data-digits="8">🇨🇺 Cuba +53</option>
+        <option value="593" data-digits="9">🇪🇨 Ecuador +593</option>
+        <option value="503" data-digits="8">🇸🇻 El Salvador +503</option>
+        <option value="34" data-digits="9">🇪🇸 España +34</option>
+        <option value="1" data-digits="10">🇺🇸 Estados Unidos +1</option>
+        <option value="502" data-digits="8">🇬🇹 Guatemala +502</option>
+        <option value="592" data-digits="7">🇬🇾 Guyana +592</option>
+        <option value="504" data-digits="8">🇭🇳 Honduras +504</option>
+        <option value="39" data-digits="10">🇮🇹 Italia +39</option>
+        <option value="52" data-digits="10">🇲🇽 México +52</option>
+        <option value="505" data-digits="8">🇳🇮 Nicaragua +505</option>
+        <option value="507" data-digits="8">🇵🇦 Panamá +507</option>
+        <option value="595" data-digits="9">🇵🇾 Paraguay +595</option>
+        <option value="51" data-digits="9">🇵🇪 Perú +51</option>
+        <option value="1" data-digits="10">🇩🇴 República Dominicana +1</option>
+        <option value="7" data-digits="10">🇷🇺 Rusia +7</option>
+        <option value="598" data-digits="8" selected>🇺🇾 Uruguay +598</option>
+        <option value="58" data-digits="10">🇻🇪 Venezuela +58</option>
+      </select>
+    </div>
+    <div class="field"><label>Número de teléfono</label><input class="inp" id="regPhone" type="tel" inputmode="numeric" placeholder="98308375" maxlength="8" oninput="sanitizePhoneInput(this)"></div>
+    <div class="field"><label>Contraseña (mínimo 8 caracteres)</label><div style="position:relative">
       <input class="inp" id="regPass" type="password" placeholder="Elige una contraseña" style="padding-right:46px">
       <button type="button" onclick="togglePassVis('regPass',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </div></div>
+    <div class="field"><label>Repetir contraseña</label><div style="position:relative">
+      <input class="inp" id="regPassConfirm" type="password" placeholder="Repite tu contraseña" style="padding-right:46px">
+      <button type="button" onclick="togglePassVis('regPassConfirm',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div></div>
     <div id="turnstileReg" style="margin-bottom:14px"></div>
     <button class="btn" onclick="doRegister()">Crear mi cuenta</button>
@@ -168,7 +200,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.1.1';
+const APP_VERSION='1.2.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -305,6 +337,7 @@ async function init(){
   if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
   document.documentElement.dataset.theme=(localStorage.getItem('nb_theme'))||'dark';
   sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'nb'}});
+  onCountryChange();
   window.addEventListener('online',()=>{S.online=true;updateSyncPill();trySync()});
   window.addEventListener('offline',()=>{S.online=false;updateSyncPill()});
   const{data}=await sb.auth.getSession();
@@ -314,6 +347,18 @@ async function init(){
 function showAuth(){document.getElementById('authView').classList.remove('hidden');document.getElementById('appView').classList.add('hidden')}
 function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg)}
 function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
+function onCountryChange(){
+  const sel=document.getElementById('regCode');
+  const digits=Number(sel.selectedOptions[0].dataset.digits)||8;
+  const phoneEl=document.getElementById('regPhone');
+  phoneEl.setAttribute('maxlength',digits);
+  phoneEl.placeholder='Ej: '+'9'.repeat(digits);
+  if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits);
+}
+function sanitizePhoneInput(el){
+  const max=Number(el.getAttribute('maxlength'))||8;
+  el.value=el.value.replace(/\D/g,'').slice(0,max);
+}
 function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
 
 function turnstileListo(token){
@@ -324,12 +369,16 @@ function turnstileListo(token){
 async function doRegister(){
   const name=document.getElementById('regName').value.trim();
   const code=document.getElementById('regCode').value.trim();
+  const expectedDigits=Number(document.getElementById('regCode').selectedOptions[0].dataset.digits)||8;
   const phone=document.getElementById('regPhone').value.trim();
   const pass=document.getElementById('regPass').value;
-  if(!phone||phone.replace(/\D/g,'').length<6)return toast('Ingresa un número de teléfono válido');
-  if(!pass||pass.length<6)return toast('La contraseña debe tener al menos 6 caracteres');
+  const passConfirm=document.getElementById('regPassConfirm').value;
+  const phoneDigits=phone.replace(/\D/g,'');
+  if(phoneDigits.length!==expectedDigits)return toast('El número debe tener '+expectedDigits+' dígitos para el país elegido');
+  if(!pass||pass.length<8)return toast('La contraseña debe tener al menos 8 caracteres');
+  if(pass!==passConfirm)return toast('Las contraseñas no coinciden');
   if(!navigator.onLine)return toast('Necesitas Internet para crear la cuenta');
-  if(!turnstileListo(turnstileTokenReg))return toast('Esperá un segundo, verificando seguridad…');
+  if(!turnstileListo(turnstileTokenReg))return toast('Marca la casilla de verificación para continuar');
   const{digits,email}=phoneToEmail(code,phone);
   const signUpOptions={data:{display_name:name||null}};
   if(turnstileTokenReg)signUpOptions.captchaToken=turnstileTokenReg;
@@ -353,7 +402,7 @@ async function doLogin(){
   const pass=document.getElementById('loginPass').value;
   if(!phone||!pass)return toast('Completa teléfono y contraseña');
   if(!navigator.onLine)return toast('Necesitas Internet para iniciar sesión la primera vez');
-  if(!turnstileListo(turnstileTokenLogin))return toast('Esperá un segundo, verificando seguridad…');
+  if(!turnstileListo(turnstileTokenLogin))return toast('Marca la casilla de verificación para continuar');
   let digits=phone.replace(/\D/g,'');
   if(!digits.startsWith('598')){if(digits.startsWith('0'))digits=digits.slice(1);digits='598'+digits}
   const email=digits+EMAIL_DOMAIN;
