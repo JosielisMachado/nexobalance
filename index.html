@@ -207,7 +207,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.4.0';
+const APP_VERSION='1.5.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1227,6 +1227,44 @@ async function openAdminSheet(){
       </div>
       <div class="card"><h2 style="margin-bottom:8px">Cuentas por país</h2>${paises}</div>
       <div class="card">
+        <h2 style="margin-bottom:10px">Consultar movimientos</h2>
+        <div class="row" style="gap:8px;margin-bottom:8px">
+          <div class="field" style="flex:1;margin-bottom:0"><label>Desde</label><input class="inp" id="admDesde" type="date"></div>
+          <div class="field" style="flex:1;margin-bottom:0"><label>Hasta</label><input class="inp" id="admHasta" type="date"></div>
+        </div>
+        <div class="field"><label>País</label>
+          <select class="inp" id="admPais">
+            <option value="Todos">Todos los países</option>
+            <option value="Argentina">Argentina</option>
+            <option value="Bolivia">Bolivia</option>
+            <option value="Brasil">Brasil</option>
+            <option value="Chile">Chile</option>
+            <option value="Colombia">Colombia</option>
+            <option value="Costa Rica">Costa Rica</option>
+            <option value="Cuba">Cuba</option>
+            <option value="EE.UU./Canadá/Rep. Dominicana">EE.UU. / Canadá / Rep. Dominicana</option>
+            <option value="Ecuador">Ecuador</option>
+            <option value="El Salvador">El Salvador</option>
+            <option value="España">España</option>
+            <option value="Guatemala">Guatemala</option>
+            <option value="Guyana">Guyana</option>
+            <option value="Honduras">Honduras</option>
+            <option value="Italia">Italia</option>
+            <option value="México">México</option>
+            <option value="Nicaragua">Nicaragua</option>
+            <option value="Panamá">Panamá</option>
+            <option value="Paraguay">Paraguay</option>
+            <option value="Perú">Perú</option>
+            <option value="Rusia">Rusia</option>
+            <option value="Uruguay">Uruguay</option>
+            <option value="Venezuela">Venezuela</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <button class="btn" onclick="consultarMovimientosFiltrados()">Consultar</button>
+        <div id="admResult" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
         <div class="row spread" style="margin-bottom:8px"><h2>Errores de sincronización</h2><span class="pill" style="background:rgba(255,75,85,.15);color:var(--bad)">${data.errores_semana} esta semana</span></div>
         ${errores}
       </div>
@@ -1240,6 +1278,29 @@ async function openAdminSheet(){
     </div>`;
   }catch(e){
     document.getElementById('adminBody').textContent='No se pudieron cargar las estadísticas.';
+  }
+}
+async function consultarMovimientosFiltrados(){
+  if(!navigator.onLine)return toast('Necesitas Internet para esta consulta');
+  const desde=document.getElementById('admDesde').value||null;
+  const hasta=document.getElementById('admHasta').value||null;
+  const pais=document.getElementById('admPais').value;
+  const box=document.getElementById('admResult');
+  box.innerHTML='<div class="sub">Consultando…</div>';
+  try{
+    const{data,error}=await sb.rpc('admin_movimientos_filtrados',{p_desde:desde,p_hasta:hasta,p_pais:pais});
+    if(error)throw error;
+    box.innerHTML=`
+    <div class="grid2">
+      <div class="card" style="margin-bottom:0;background:var(--chip)"><div class="sub">Movimientos</div><div class="big2" style="margin-top:4px">${data.cantidad}</div></div>
+      <div class="card" style="margin-bottom:0;background:var(--chip)"><div class="sub">Total UYU</div><div class="big2" style="margin-top:4px">$ ${fmt(data.total_uyu)}</div></div>
+      <div class="card" style="margin-bottom:0;background:var(--chip)"><div class="sub">Ingresos</div><div class="mid" style="margin-top:4px;color:var(--ok)">$ ${fmt(data.ingresos_uyu)} · US$ ${fmt(data.ingresos_usd)}</div></div>
+      <div class="card" style="margin-bottom:0;background:var(--chip)"><div class="sub">Gastos</div><div class="mid" style="margin-top:4px;color:var(--bad)">$ ${fmt(data.gastos_uyu)} · US$ ${fmt(data.gastos_usd)}</div></div>
+    </div>
+    <div class="sub" style="margin-top:8px;text-align:center">Total USD: US$ ${fmt(data.total_usd)}</div>`;
+  }catch(e){
+    box.innerHTML='';
+    toast('No se pudo completar la consulta');
   }
 }
 async function generarCodigoReset(){
