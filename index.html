@@ -208,7 +208,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.5.2';
+const APP_VERSION='1.6.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -270,7 +270,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,tab:'inicio',movs:[],cats:[],settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -449,9 +449,10 @@ async function startApp(user,isNew){
 }
 async function loadUserName(){
   try{
-    const{data,error}=await sb.from('profiles').select('display_name,is_admin').eq('id',S.uid).single();
+    const{data,error}=await sb.from('profiles').select('display_name,is_admin,phone').eq('id',S.uid).single();
     if(error){console.error('loadUserName error:',error);logSyncError('load_user_name',error.message);return}
     if(data){
+      if(data.phone)S.userPhone=data.phone;
       if(data.display_name){S.userName=data.display_name;S.settings.name=data.display_name;await kvSet('settings',S.settings)}
       S.isAdmin=!!data.is_admin;
       if(S.tab==='inicio'||S.tab==='ajustes')render();
@@ -549,7 +550,7 @@ function viewInicio(){
     </div>
     <div class="card row" style="gap:13px;min-width:0">
       <span class="iconbadge" style="width:44px;height:44px;background:rgba(23,136,255,.15);color:var(--pri);flex-shrink:0">${ic('wallet',20)}</span>
-      <div style="min-width:0;flex:1"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}" style="margin-top:2px;font-size:${autoFontSize(bal,1.15)};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${oculto?'••••':'$ '+cnum(bal,false)}</div></div>
+      <div style="min-width:0;flex:1"><div class="sub">Balance del mes</div><div class="mid ${bal>=0?'ok':'bad'}" style="margin-top:2px;font-size:${fitFont(bal,1.12,0.72,9)};line-height:1.2">${oculto?'••••':localFlag()+' '+cnum(bal,false)}</div></div>
     </div>
     <div class="card row" style="gap:13px;min-width:0">
       <span class="iconbadge" style="width:44px;height:44px;background:rgba(155,92,255,.15);color:var(--purple);flex-shrink:0">${ic('target',20)}</span>
@@ -694,37 +695,64 @@ function equivBoth(totalUYU){
   const tc=Number(S.settings.tc)||40;
   return `$ ${fmt(totalUYU)} · US$ ${fmt(totalUYU/tc)}`;
 }
-function autoFontSize(value,baseRem){
-  const len=Math.abs(Math.round(Number(value)||0)).toString().length;
-  let scale=1;
-  if(len>=11)scale=0.5;
-  else if(len===10)scale=0.58;
-  else if(len===9)scale=0.66;
-  else if(len===8)scale=0.76;
-  else if(len===7)scale=0.88;
-  return (baseRem*scale).toFixed(2)+'rem';
+const PAISES_INFO={
+  '598':{pais:'Uruguay',flag:'🇺🇾',cur:'UYU',api:'uy'},
+  '54':{pais:'Argentina',flag:'🇦🇷',cur:'ARS',api:'ar'},
+  '56':{pais:'Chile',flag:'🇨🇱',cur:'CLP',api:'cl'},
+  '57':{pais:'Colombia',flag:'🇨🇴',cur:'COP',api:'co'},
+  '58':{pais:'Venezuela',flag:'🇻🇪',cur:'VES',api:'ve'},
+  '52':{pais:'México',flag:'🇲🇽',cur:'MXN',api:'mx'},
+  '591':{pais:'Bolivia',flag:'🇧🇴',cur:'BOB',api:'bo'},
+  '55':{pais:'Brasil',flag:'🇧🇷',cur:'BRL',api:'br'},
+  '53':{pais:'Cuba',flag:'🇨🇺',cur:'CUP',api:null},
+  '51':{pais:'Perú',flag:'🇵🇪',cur:'PEN',api:null},
+  '593':{pais:'Ecuador',flag:'🇪🇨',cur:'USD',api:null},
+  '502':{pais:'Guatemala',flag:'🇬🇹',cur:'GTQ',api:null},
+  '503':{pais:'El Salvador',flag:'🇸🇻',cur:'USD',api:null},
+  '504':{pais:'Honduras',flag:'🇭🇳',cur:'HNL',api:null},
+  '505':{pais:'Nicaragua',flag:'🇳🇮',cur:'NIO',api:null},
+  '506':{pais:'Costa Rica',flag:'🇨🇷',cur:'CRC',api:null},
+  '507':{pais:'Panamá',flag:'🇵🇦',cur:'PAB',api:null},
+  '592':{pais:'Guyana',flag:'🇬🇾',cur:'GYD',api:null},
+  '595':{pais:'Paraguay',flag:'🇵🇾',cur:'PYG',api:null},
+  '34':{pais:'España',flag:'🇪🇸',cur:'EUR',api:null},
+  '39':{pais:'Italia',flag:'🇮🇹',cur:'EUR',api:null},
+  '7':{pais:'Rusia',flag:'🇷🇺',cur:'RUB',api:null},
+  '1':{pais:'EE.UU.',flag:'🇺🇸',cur:'USD',api:null}
+};
+function detectPais(){
+  const p=(S.userPhone||'').replace(/\D/g,'');
+  if(!p)return PAISES_INFO['598'];
+  const codes=Object.keys(PAISES_INFO).sort((a,b)=>b.length-a.length);
+  for(const c of codes){if(p.startsWith(c))return PAISES_INFO[c]}
+  return PAISES_INFO['598'];
+}
+function localFlag(){return detectPais().flag}
+function fitFont(value,maxRem,minRem,capChars){
+  const len=fmt(value).length;
+  if(len<=capChars)return maxRem.toFixed(2)+'rem';
+  const scaled=maxRem*(capChars/len);
+  return Math.max(minRem,scaled).toFixed(2)+'rem';
 }
 function splitMoney(uyu,usd,oculto){
-  const szUyu=autoFontSize(uyu,1.9);
-  const szUsd=autoFontSize(usd,1.9);
-  return `<div style="display:flex;align-items:stretch;margin-top:10px;gap:10px">
+  const flagLocal=localFlag();
+  return `<div style="display:flex;align-items:flex-end;margin-top:10px;gap:10px">
     <div style="flex:1;min-width:0">
-      <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">🇺🇾 Pesos</div>
-      <div class="big" style="color:#fff;font-size:${szUyu};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cnum(uyu,oculto)}</div>
+      <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">${flagLocal} Local</div>
+      <div style="color:#fff;font-weight:800;letter-spacing:-.5px;line-height:1.1;font-size:${fitFont(uyu,1.85,0.85,8)}">${cnum(uyu,oculto)}</div>
     </div>
-    <div style="width:1px;background:rgba(255,255,255,.3);flex-shrink:0"></div>
-    <div style="flex:1;min-width:0">
+    <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.3);flex-shrink:0"></div>
+    <div style="flex:1;min-width:0;text-align:right">
       <div style="opacity:.8;font-size:.72rem;font-weight:700;margin-bottom:2px">🇺🇸 Dólares</div>
-      <div class="big" style="color:#fff;font-size:${szUsd};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cnum(usd,oculto)}</div>
+      <div style="color:#fff;font-weight:800;letter-spacing:-.5px;line-height:1.1;font-size:${fitFont(usd,1.85,0.85,8)}">${cnum(usd,oculto)}</div>
     </div>
   </div>`;
 }
 function stackMoney(uyu,usd,cls,oculto){
-  const szUyu=autoFontSize(uyu,1.15);
-  const szUsd=autoFontSize(usd,1.15);
+  const flagLocal=localFlag();
   return `<div style="margin-top:6px">
-    <div class="row spread" style="margin-top:4px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">🇺🇾</span><span class="${cls}" style="font-size:${szUyu};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(uyu,oculto)}</span></div>
-    <div class="row spread" style="margin-top:3px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">🇺🇸</span><span class="${cls}" style="font-size:${szUsd};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${cnum(usd,oculto)}</span></div>
+    <div class="row spread" style="margin-top:4px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">${flagLocal}</span><span class="${cls}" style="font-size:${fitFont(uyu,1.12,0.72,9)};min-width:0;text-align:right;line-height:1.2">${cnum(uyu,oculto)}</span></div>
+    <div class="row spread" style="margin-top:3px;gap:6px;min-width:0"><span class="sub" style="font-weight:700;flex-shrink:0">🇺🇸</span><span class="${cls}" style="font-size:${fitFont(usd,1.12,0.72,9)};min-width:0;text-align:right;line-height:1.2">${cnum(usd,oculto)}</span></div>
   </div>`;
 }
 function toggleSaldo(){S.saldoOculto=!S.saldoOculto;render()}
@@ -819,13 +847,13 @@ function viewAjustes(){
       <div class="row spread" style="width:100%">
         <div class="row" style="gap:13px;flex:1">
           <div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('exchange',19)}</div>
-          <div class="mtxt"><div>Tipo de cambio USD</div><div class="sub">${S.settings.tcAuto?('Automático'+(S.settings.tcUpdated?' · actualizado '+new Date(S.settings.tcUpdated).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}):'')):'Manual'}</div></div>
+          <div class="mtxt"><div>Tipo de cambio USD</div><div class="sub">${S.settings.tcAuto?('🏛️ Oficial · '+detectPais().pais+(S.settings.tcUpdated?' · '+new Date(S.settings.tcUpdated).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}):'')):('Manual · '+detectPais().flag+' '+detectPais().cur+' por USD')}</div></div>
         </div>
         <label class="swtch"><input type="checkbox" ${S.settings.tcAuto?'checked':''} onchange="tcToggleAuto(this.checked)"><span class="trk"></span></label>
       </div>
       ${S.settings.tcAuto?`
       <div class="row spread" style="width:100%;padding-left:51px">
-        <div style="font-size:1.3rem;font-weight:800">$ ${(Number(S.settings.tc)||40).toFixed(2)}</div>
+        <div><div style="font-size:1.3rem;font-weight:800">${(Number(S.settings.tc)||40).toFixed(2)}</div><div class="sub" style="font-size:.68rem">${detectPais().cur} por 1 USD</div></div>
         <button class="link" onclick="tcAutoFetch()">Actualizar ahora</button>
       </div>`:`
       <div class="row" style="width:100%;padding-left:51px;gap:8px;align-items:center">
@@ -914,17 +942,27 @@ function tcToggleAuto(on){
 }
 async function tcAutoFetch(){
   if(!navigator.onLine)return toast('Necesitas Internet para actualizar el tipo de cambio');
-  try{
-    const res=await fetch('https://uy.dolarapi.com/v1/cotizaciones/usd');
-    const data=await res.json();
-    if(!data||!data.venta)throw new Error('Respuesta inválida');
-    S.settings.tc=Math.round(Number(data.venta)*100)/100;
-    S.settings.tcUpdated=new Date().toISOString();
+  const info=detectPais();
+  if(!info.api){
+    toast('Cotización automática no disponible para '+info.pais+'. Usa el modo manual.');
+    S.settings.tcAuto=false;
     await kvSet('settings',S.settings);
-    toast('Tipo de cambio actualizado: $'+S.settings.tc.toFixed(2));
+    render();
+    return;
+  }
+  try{
+    const res=await fetch('https://'+info.api+'.dolarapi.com/v1/cotizaciones/usd');
+    const data=await res.json();
+    const val=Number(data&&(data.venta||data.compra));
+    if(!val||!isFinite(val))throw new Error('Respuesta inválida');
+    S.settings.tc=Math.round(val*100)/100;
+    S.settings.tcUpdated=new Date().toISOString();
+    S.settings.tcFuente=data.nombre||'Oficial';
+    await kvSet('settings',S.settings);
+    toast('Tipo de cambio oficial actualizado');
     render();
   }catch(e){
-    toast('No se pudo obtener el tipo de cambio automático. Se mantiene el último valor.');
+    toast('No se pudo obtener la cotización. Se mantiene el último valor.');
     if(S.tab==='ajustes')render();
   }
 }
@@ -1006,8 +1044,8 @@ function drawMovSheet(){
       <div class="row">
         <input class="inp" id="mMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${e.monto}" style="font-size:1.3rem;font-weight:700">
         <div class="seg" style="width:130px">
-          <button class="${e.moneda==='UYU'?'on':''}" onclick="movMoneda('UYU')">$U</button>
-          <button class="${e.moneda==='USD'?'on':''}" onclick="movMoneda('USD')">US$</button>
+          <button class="${e.moneda==='UYU'?'on':''}" onclick="movMoneda('UYU')">${localFlag()} ${detectPais().cur}</button>
+          <button class="${e.moneda==='USD'?'on':''}" onclick="movMoneda('USD')">🇺🇸 USD</button>
         </div>
       </div>
     </div>
