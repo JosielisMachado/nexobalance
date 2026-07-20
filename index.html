@@ -168,7 +168,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.1.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -511,7 +511,10 @@ function viewInicio(){
       <div style="flex:1">
         <div style="font-weight:800;font-size:1.02rem;margin-bottom:3px">¿Necesitas enviar algo a Cuba?</div>
         <div style="opacity:.9;font-size:.82rem;margin-bottom:10px">Conoce NexoEnvíos</div>
-        <button onclick="toggleNexoInfo('nexoInfoHome')" class="pill" style="background:rgba(255,255,255,.22);color:#fff;padding:8px 14px;font-weight:700">Cómo funciona →</button>
+        <div class="row" style="gap:8px">
+          <button onclick="window.open('https://whatsapp.com/channel/0029VbCquWb7T8bd9kfuap3x','_blank')" class="pill" style="background:#fff;color:#5B2CD9;padding:8px 14px;font-weight:800">Hacer un envío →</button>
+          <button onclick="toggleNexoInfo('nexoInfoHome')" class="pill" style="background:rgba(255,255,255,.22);color:#fff;padding:8px 14px;font-weight:700">Cómo funciona</button>
+        </div>
       </div>
     </div>
     <div id="nexoInfoHome" class="hidden" style="margin-top:14px;background:rgba(255,255,255,.14);border-radius:var(--radius-sm);padding:12px 32px 12px 12px;font-size:.8rem;line-height:1.5;position:relative">
