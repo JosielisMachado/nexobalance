@@ -222,7 +222,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.9.0';
+const APP_VERSION='1.9.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1048,8 +1048,8 @@ function editarPresupuesto(catId){
     <div class="handle"></div><h2 style="margin-bottom:4px">${c.icon||'🏷️'} ${esc(c.name)}</h2>
     <p class="sub" style="margin-bottom:14px">Presupuesto para ${periodLabel(pk)}. Ya gastaste ${localFlag()} ${fmt(gastado)}.</p>
     <div class="field"><label>Monto asignado (moneda local)</label><input class="inp" id="budMonto" type="number" inputmode="decimal" step="0.01" value="${b?Number(b.monto):''}" placeholder="0.00"></div>
-    <label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer" onclick="this.querySelector('input').click()">
-      <input type="checkbox" id="budReserv" ${b&&b.reservado?'checked':''} style="width:20px;height:20px">
+    <label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="budReserv" ${b&&b.reservado?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
       <div><div style="font-weight:600">Obligación reservada</div><div class="sub" style="font-size:.75rem">Se aparta de tu dinero disponible (alquiler, remesas, servicios...)</div></div>
     </label>
     <button class="btn" onclick="guardarPresupuesto('${catId}')">Guardar</button>
