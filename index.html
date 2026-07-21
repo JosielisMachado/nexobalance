@@ -136,6 +136,7 @@ svg text{font-family:inherit}
   <div class="logo">N$</div>
   <h1 style="text-align:center;font-size:1.5rem">NexoBalance</h1>
   <p class="sub" style="text-align:center;margin:6px 0 14px">Tus finanzas personales, simples y privadas</p>
+  <button onclick="abrirBienvenida()" style="width:100%;margin-bottom:14px;background:rgba(23,136,255,.1);color:var(--pri);border:1px solid rgba(23,136,255,.3);border-radius:14px;padding:12px;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:8px">✨ ¿Por qué elegir NexoBalance?</button>
   <div class="card" style="margin-bottom:16px">
     <p style="font-size:.87rem;line-height:1.5">🇨🇺 Somos cubanos. Creamos NexoBalance porque sabemos lo importante que es aprender a organizar nuestras finanzas, más todavía lejos de casa. Nació pensando en ayudar a nuestros compatriotas — pero está abierta a cualquier hermano de cualquier nación.</p>
     <button class="link" style="padding:8px 0 0;font-size:.82rem" onclick="togglePaises()" id="paisesBtn">Ver países donde ya se usa ›</button>
@@ -222,7 +223,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.12.0';
+const APP_VERSION='1.13.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -384,6 +385,30 @@ async function init(){
 function showAuth(){document.getElementById('authView').classList.remove('hidden');document.getElementById('appView').classList.add('hidden')}
 function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg)}
 function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
+
+const BIENVENIDA=[
+  {icon:'💰',t:'Todo tu dinero en un lugar',d:'Controla tus ingresos y gastos en pesos y dólares, desde el celular, sin complicaciones.'},
+  {icon:'📊',t:'Organiza por categorías',d:'Sabe exactamente en qué se va tu dinero: comida, transporte, remesas, y lo que tú definas.'},
+  {icon:'🔒',t:'Reserva para tus obligaciones',d:'Aparta el dinero del alquiler, los servicios o las remesas antes de gastarlo por error.'},
+  {icon:'📅',t:'Llega tranquilo a fin de mes',d:'La app predice si te vas a exceder y te dice cuánto puedes gastar cada día.'},
+  {icon:'🔔',t:'Alertas inteligentes',d:'Te avisa cuando estás cerca de un límite o cuando un gasto rompería tu presupuesto.'},
+  {icon:'❤️',t:'Tu salud financiera',d:'Un índice claro de 0 a 100 y recomendaciones para mejorar mes a mes.'},
+  {icon:'📴',t:'Funciona sin Internet',d:'Registra tus gastos donde estés; se guardan solos y se sincronizan al reconectar.'},
+  {icon:'🛡️',t:'Privado de verdad',d:'Solo tú accedes a tus datos con tu teléfono y contraseña. Nadie más los ve.'}
+];
+function abrirBienvenida(){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <h2 style="margin-bottom:4px">¿Por qué elegir NexoBalance?</h2>
+    <p class="sub" style="margin-bottom:16px;font-size:.85rem">Más que registrar gastos: tu copiloto financiero personal.</p>
+    ${BIENVENIDA.map(b=>`<div class="row" style="gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)">
+      <span style="font-size:1.5rem;flex-shrink:0">${b.icon}</span>
+      <div style="flex:1"><div style="font-weight:700;font-size:.92rem">${b.t}</div><div class="sub" style="font-size:.8rem;line-height:1.45;margin-top:2px">${b.d}</div></div>
+    </div>`).join('')}
+    <button class="btn" style="margin-top:16px" onclick="closeSheet()">Empezar ahora</button>
+  </div></div>`;
+}
 function onCountryChange(){
   const sel=document.getElementById('regCode');
   const digits=Number(sel.selectedOptions[0].dataset.digits)||8;
@@ -590,6 +615,7 @@ function viewInicio(){
       <div style="min-width:0;flex:1"><div class="sub">Ahorro del mes</div><div class="mid" style="margin-top:2px;color:var(--purple);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cpct(tasa,oculto)}</div></div>
     </div>
   </div>
+  ${alertasCard()}
   ${tarjetaPresupuestoInicio(oculto)}
 
   <div class="card">
@@ -1228,6 +1254,56 @@ function generarRecomendaciones(pk){
   return recs;
 }
 
+function generarAlertas(){
+  const alertas=[];
+  const pk=periodKey(new Date());
+  const plan=planMes(pk);
+  const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
+  const buds=budgetsMes(pk);
+  if(!ingresoEsp&&buds.length===0)return alertas;
+
+  const hoy=new Date();
+  const[,d2]=periodRange(pk);
+  const diasMes=Number(d2.split('-')[2]);
+  const diaHoy=hoy.getDate();
+  const diasRest=Math.max(0,diasMes-diaHoy);
+
+  for(const b of buds){
+    if(Number(b.monto)<=0)continue;
+    const cat=catById(b.categoria_id);
+    if(!cat)continue;
+    const gastado=gastadoEnCat(b.categoria_id,pk);
+    const pct=gastado/Number(b.monto);
+    if(pct>1){
+      alertas.push({nivel:'alto',icon:'🔴',txt:`Excediste el presupuesto de ${esc(cat.name)} en ${localFlag()} ${fmt(gastado-Number(b.monto))}.`});
+    }else if(pct>=0.9){
+      alertas.push({nivel:'alto',icon:'🟠',txt:`Has usado el ${Math.round(pct*100)}% del presupuesto de ${esc(cat.name)}.`});
+    }else if(pct>=0.75){
+      alertas.push({nivel:'medio',icon:'🟡',txt:`Vas por el ${Math.round(pct*100)}% de ${esc(cat.name)}. Quedan ${localFlag()} ${fmt(Number(b.monto)-gastado)}.`});
+    }
+  }
+
+  if(ingresoEsp>0&&diaHoy>=5&&diasRest>0){
+    let reservado=0;for(const b of buds)if(b.reservado)reservado+=Number(b.monto);
+    const[a,z]=periodRange(pk);
+    const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=a&&m.fecha<=z).reduce((s,m)=>s+toUYU(m),0);
+    const proyeccion=(gastoTotal/diaHoy)*diasMes;
+    const limite=ingresoEsp-reservado;
+    if(proyeccion>limite*1.05){
+      alertas.push({nivel:'alto',icon:'⚠️',txt:`Al ritmo actual no llegarás a fin de mes con tu presupuesto. Proyección: ${localFlag()} ${fmt(proyeccion)} de ${localFlag()} ${fmt(limite)} disponibles.`});
+    }
+  }
+
+  return alertas.sort((a,b)=>(a.nivel==='alto'?0:1)-(b.nivel==='alto'?0:1)).slice(0,4);
+}
+function alertasCard(){
+  const al=generarAlertas();
+  if(!al.length)return '';
+  return `<div class="card" style="border:1px solid rgba(234,88,12,.3);background:rgba(234,88,12,.05)">
+    <div class="row spread" style="margin-bottom:8px"><h2 style="font-size:1rem">${ic('bell',17)} Alertas</h2><span class="pill" style="background:rgba(234,88,12,.15);color:#ea580c">${al.length}</span></div>
+    ${al.map(a=>`<div class="row" style="gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)"><span style="font-size:1rem;flex-shrink:0">${a.icon}</span><span style="font-size:.83rem;line-height:1.4;flex:1">${a.txt}</span></div>`).join('')}
+  </div>`;
+}
 function tarjetaPresupuestoInicio(oculto){
   const pk=periodKey(new Date());
   const plan=planMes(pk);
@@ -1265,9 +1341,9 @@ function tarjetaPresupuestoInicio(oculto){
 const AYUDA={
   inicio:{
     titulo:'Inicio',
-    que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total, cuánto entró y salió este mes, y tu disponible según el presupuesto.',
-    ejemplo:'Ejemplo: abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y que te quedan $7.200 disponibles para el resto del mes.',
-    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','Revisa "Ingresos" y "Gastos" del mes en curso.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
+    que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total, cuánto entró y salió este mes, tu disponible según el presupuesto, y las alertas importantes del momento.',
+    ejemplo:'Ejemplo: abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y una alerta te avisa que ya usaste el 90% de tu presupuesto de comida.',
+    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','Revisa las "Alertas" si aparecen: te avisan de límites y riesgos.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
   },
   movs:{
     titulo:'Movimientos',
