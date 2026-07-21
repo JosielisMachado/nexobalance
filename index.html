@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.24.1';
+const APP_VERSION='1.26.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -597,12 +597,12 @@ function viewInicio(){
   return `
   <div class="row spread" style="margin-bottom:20px">
     <div class="row" style="gap:10px">
-      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--pri),var(--pri2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.05rem;flex-shrink:0">JT</div>
+      <div onclick="abrirJosmaTech()" style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--pri),var(--pri2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.05rem;flex-shrink:0;cursor:pointer">JT</div>
       <div><div style="font-weight:800;font-size:1.05rem;line-height:1.15">NexoBalance</div><div class="sub" style="font-size:.6rem;letter-spacing:.07em;font-weight:700">POR JOSMATECH</div></div>
     </div>
     <div class="row" style="gap:16px">
       <span onclick="irAAlertas()" style="position:relative;color:var(--sub);cursor:pointer">${ic('bell',21)}${generarAlertas().length?'<span style="position:absolute;top:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:var(--pri);border:2px solid var(--bg)"></span>':''}</span>
-      <div style="width:34px;height:34px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;border:2px solid var(--pri);color:var(--pri)">${esc((S.userName||'U').charAt(0).toUpperCase())}</div>
+      <div onclick="abrirCuenta()" style="width:34px;height:34px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;border:2px solid var(--pri);color:var(--pri);cursor:pointer">${esc((S.userName||'U').charAt(0).toUpperCase())}</div>
     </div>
   </div>
   <div class="row spread" style="margin-bottom:6px;align-items:flex-start">
@@ -952,6 +952,7 @@ function viewCats(){
   <div class="card"><h2 class="bad" style="margin-bottom:6px">Gastos</h2>${seccion('gasto')||'<div class="sub">Sin categorías</div>'}</div>`;
 }
 
+function badgeIA(){return `<span onclick="event.stopPropagation();abrirInteligencia()" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:20px;background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri);border:1px solid rgba(23,136,255,.25);cursor:pointer;letter-spacing:.03em">✨ ANÁLISIS</span>`}
 function periodKey(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)}
 function periodLabel(pk){const[y,m]=pk.split('-').map(Number);const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];return meses[m-1]+' '+y}
 function periodShift(pk,delta){const[y,m]=pk.split('-').map(Number);const d=new Date(y,m-1+delta,1);return periodKey(d)}
@@ -1038,6 +1039,7 @@ function viewPresu(){
     const exceso=proyeccion-limite;
     prediccion=`
     <div class="card">
+      <div class="row spread" style="margin-bottom:10px"><h2 style="font-size:1rem">Predicción del mes</h2>${badgeIA()}</div>
       <div class="row" style="gap:10px;align-items:flex-start">
         <div style="font-size:1.5rem">${estado}</div>
         <div style="flex:1">
@@ -1090,7 +1092,7 @@ function viewPresu(){
     const etq=sd.score>=70?'Saludable':sd.score>=45?'Requiere atención':'En riesgo';
     saludCard=`
     <div class="card">
-      <h2 style="margin-bottom:12px">Salud financiera</h2>
+      <div class="row spread" style="margin-bottom:12px"><h2>Salud financiera</h2>${badgeIA()}</div>
       <div class="row" style="gap:16px;align-items:center;margin-bottom:14px">
         <div style="position:relative;width:76px;height:76px;flex-shrink:0">
           <svg width="76" height="76" viewBox="0 0 76 76" style="transform:rotate(-90deg)">
@@ -1111,7 +1113,7 @@ function viewPresu(){
   const recs=generarRecomendaciones(pk);
   let recsCard='';
   if(recs.length){
-    recsCard=`<div class="card"><h2 style="margin-bottom:10px">Recomendaciones</h2>
+    recsCard=`<div class="card"><div class="row spread" style="margin-bottom:10px"><h2>Recomendaciones</h2>${badgeIA()}</div>
       ${recs.map(r=>`<div class="row" style="gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)"><span style="font-size:1.1rem;flex-shrink:0">${r.icon}</span><span style="font-size:.84rem;line-height:1.45;flex:1">${r.txt}</span></div>`).join('')}
     </div>`;
   }
@@ -1516,6 +1518,7 @@ function viewAjustes(){
     </div>
     <div class="item" onclick="shareApp()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('share',19)}</div><div class="mtxt"><div>Compartir aplicación</div><div class="sub">Invita a otros a usar NexoBalance gratis</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="triggerInstall()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('phone',19)}</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     ${S.isAdmin?`<div class="item" onclick="openAdminSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--purple)">${ic('users',19)}</div><div class="mtxt"><div>Panel de administrador</div><div class="sub">Cuentas registradas en NexoBalance</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>`:''}
@@ -1617,6 +1620,81 @@ function donRow(label,value){
     <span class="link" style="font-size:.8rem;font-weight:700">Copiar</span>
   </div>`;
 }
+async function abrirCuenta(){
+  const online=navigator.onLine;
+  let ultSync='—';
+  try{
+    const lp=await kvGet('lastPull');
+    if(lp&&lp!=='1970-01-01T00:00:00Z'){
+      const d=new Date(lp);
+      ultSync=d.toLocaleDateString('es-UY')+' '+d.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
+    }
+  }catch(e){}
+  const pendientes=(await idbAll('outbox')).length;
+  const phone=S.userPhone||'—';
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row" style="gap:12px;align-items:center;margin-bottom:16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;border:2px solid var(--pri);color:var(--pri);flex-shrink:0">${esc((S.userName||'U').charAt(0).toUpperCase())}</div>
+      <div style="min-width:0"><div style="font-weight:800;font-size:1.1rem">${esc(S.userName||'Mi cuenta')}</div><div class="sub" style="font-size:.82rem">${esc(phone)}</div></div>
+    </div>
+    <div style="background:var(--chip);border-radius:14px;padding:4px 14px;margin-bottom:14px">
+      <div class="row spread" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="sub" style="font-size:.85rem">Estado</span><span style="font-weight:700;font-size:.85rem;color:${online?'var(--ok)':'#d97706'}">${online?'● En línea':'○ Sin conexión'}</span></div>
+      <div class="row spread" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="sub" style="font-size:.85rem">Última sincronización</span><span style="font-weight:600;font-size:.85rem">${ultSync}</span></div>
+      <div class="row spread" style="padding:10px 0${pendientes?'':';border-bottom:none'}"><span class="sub" style="font-size:.85rem">Cambios sin sincronizar</span><span style="font-weight:700;font-size:.85rem;color:${pendientes?'#d97706':'var(--ok)'}">${pendientes}</span></div>
+      ${S.isAdmin?`<div class="row spread" style="padding:10px 0;border-top:1px solid var(--line)"><span class="sub" style="font-size:.85rem">Rol</span><span style="font-weight:700;font-size:.85rem;color:var(--purple)">Administrador</span></div>`:''}
+    </div>
+    <button class="btn" onclick="closeSheet()">Cerrar</button>
+    <button class="link" style="width:100%;margin-top:8px;color:var(--bad)" onclick="closeSheet();doLogout()">Cerrar sesión</button>
+  </div></div>`;
+}
+
+function abrirJosmaTech(){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div style="text-align:center;margin-bottom:6px">
+      <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--pri),var(--pri2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.7rem;margin:0 auto 12px">JT</div>
+      <h2 style="font-size:1.3rem">JosmaTech</h2>
+      <div class="sub" style="font-size:.72rem;letter-spacing:.1em;font-weight:700;margin-top:2px">TECNOLOGÍA · SOLUCIONES · CRECIMIENTO</div>
+    </div>
+    <p style="font-size:.88rem;line-height:1.55;margin:14px 0;text-align:center">Empresa de tecnología enfocada en crear soluciones que aportan valor a la comunidad. NexoBalance es uno de nuestros proyectos.</p>
+    <div style="background:var(--chip);border-radius:14px;padding:12px 14px;margin-bottom:14px;text-align:center">
+      <div class="sub" style="font-size:.72rem">CEO / Fundador</div>
+      <div style="font-weight:800;margin-top:2px">Lic. Josielis Machado Fajardo</div>
+    </div>
+    <button class="btn" style="background:#25D366" onclick="window.open('https://wa.me/59898308375?text='+encodeURIComponent('Hola JosmaTech 👋 Vi NexoBalance y quisiera más información.'),'_blank')">Contactar por WhatsApp</button>
+    <button class="link" style="width:100%;margin-top:8px" onclick="closeSheet()">Cerrar</button>
+  </div></div>`;
+}
+
+function abrirInteligencia(){
+  const items=[
+    {icon:'🔮',t:'Predicción del mes',d:'Analiza tu ritmo de gasto diario y proyecta cómo cerrarás el mes, con un semáforo que te avisa si vas por buen camino o hacia un exceso.'},
+    {icon:'📅',t:'Gasto diario recomendado',d:'Calcula en tiempo real cuánto puedes gastar cada día con el dinero que te queda, para que llegues tranquilo a fin de mes.'},
+    {icon:'❤️',t:'Salud financiera',d:'Combina tu cumplimiento de presupuestos, tu ahorro y tus excesos en un índice claro de 0 a 100 que resume tu mes.'},
+    {icon:'💡',t:'Recomendaciones',d:'Detecta patrones en tu historial: categorías donde gastas de más varios meses seguidos, mejoras que lograste, y proyecciones de ahorro.'},
+    {icon:'🧮',t:'Simulador de compras',d:'Antes de registrar un gasto, te muestra cómo afectará tu presupuesto de esa categoría, para que decidas con la información delante.'},
+    {icon:'🔔',t:'Alertas anticipadas',d:'Te avisa cuando te acercas a un límite o cuando tu ritmo pone en riesgo tu presupuesto, antes de que sea tarde.'},
+    {icon:'💰',t:'Detección de ingresos',d:'Si cobras más de lo que esperabas, lo detecta y te ofrece ajustar tu plan con un toque.'}
+  ];
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row" style="gap:10px;align-items:center;margin-bottom:6px">
+      <span style="font-size:1.5rem">✨</span>
+      <h2>Análisis inteligente</h2>
+    </div>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:16px">NexoBalance no solo registra tu dinero: lo analiza para ayudarte a tomar mejores decisiones. Esto es lo que hace por ti:</p>
+    ${items.map(i=>`<div class="row" style="gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)">
+      <span style="font-size:1.4rem;flex-shrink:0">${i.icon}</span>
+      <div style="flex:1"><div style="font-weight:700;font-size:.9rem">${i.t}</div><div class="sub" style="font-size:.8rem;line-height:1.45;margin-top:2px">${i.d}</div></div>
+    </div>`).join('')}
+    <button class="btn" style="margin-top:16px" onclick="closeSheet()">Entendido</button>
+  </div></div>`;
+}
+
 function toggleApoyo(){const b=document.getElementById('apoyoBlock');if(b)b.classList.toggle('hidden')}
 
 function zonaRojaPaso1(){
@@ -2299,7 +2377,7 @@ function showExitConfirm(){
   document.getElementById('exitStay').onclick=()=>{document.getElementById('sheetHost').innerHTML='';_exitGuardArmed=false;armExitGuard()};
   document.getElementById('exitGo').onclick=()=>{document.getElementById('sheetHost').innerHTML='';try{window.close()}catch(e){}};
 }
-window.addEventListener('beforeunload',e=>{if(S.uid){e.preventDefault();e.returnValue=''}});
+// beforeunload eliminado: los datos se guardan localmente al instante, no hace falta advertir al recargar
 let deferredInstall=null,installTimer=null;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
