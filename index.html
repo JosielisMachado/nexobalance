@@ -222,7 +222,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.11.0';
+const APP_VERSION='1.12.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1007,9 +1007,43 @@ function viewPresu(){
   const copiar=budgetsMes(periodShift(pk,-1)).length>0&&buds.length===0?
     `<button class="btn ghost" style="width:100%;margin-bottom:12px" onclick="copiarPresupuestoAnterior()">Copiar presupuesto del mes anterior</button>`:'';
 
+  // Salud financiera + recomendaciones
+  const sd=saludDetalle(pk);
+  let saludCard='';
+  if(sd){
+    const col=sd.score>=70?'var(--ok)':sd.score>=45?'#d97706':'var(--bad)';
+    const etq=sd.score>=70?'Saludable':sd.score>=45?'Requiere atención':'En riesgo';
+    saludCard=`
+    <div class="card">
+      <h2 style="margin-bottom:12px">Salud financiera</h2>
+      <div class="row" style="gap:16px;align-items:center;margin-bottom:14px">
+        <div style="position:relative;width:76px;height:76px;flex-shrink:0">
+          <svg width="76" height="76" viewBox="0 0 76 76" style="transform:rotate(-90deg)">
+            <circle cx="38" cy="38" r="32" fill="none" stroke="var(--line)" stroke-width="8"/>
+            <circle cx="38" cy="38" r="32" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${2*Math.PI*32}" stroke-dashoffset="${2*Math.PI*32*(1-sd.score/100)}" style="transition:stroke-dashoffset .6s"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-size:1.3rem;font-weight:800;color:${col}">${sd.score}</span></div>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:800;color:${col};font-size:1.05rem">${etq}</div>
+          <div class="sub" style="font-size:.78rem;margin-top:2px">Índice sobre 100, según tu control del mes.</div>
+        </div>
+      </div>
+      ${sd.factores.map(f=>`<div class="row spread" style="padding:7px 0;border-top:1px solid var(--line)"><span class="sub" style="font-size:.82rem">${f.label}</span><span style="font-weight:700;font-size:.82rem;color:${f.bien?'var(--ok)':'var(--sub)'}">${f.valor}</span></div>`).join('')}
+    </div>`;
+  }
+
+  const recs=generarRecomendaciones(pk);
+  let recsCard='';
+  if(recs.length){
+    recsCard=`<div class="card"><h2 style="margin-bottom:10px">Recomendaciones</h2>
+      ${recs.map(r=>`<div class="row" style="gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)"><span style="font-size:1.1rem;flex-shrink:0">${r.icon}</span><span style="font-size:.84rem;line-height:1.45;flex:1">${r.txt}</span></div>`).join('')}
+    </div>`;
+  }
+
   return `<div class="wrap">
     <div class="row spread" style="margin-bottom:6px"><h1 style="font-size:1.4rem">Presupuesto</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('presu')}<span class="pill" id="syncPill">Al día</span></div></div>
-    ${selector}${resumen}${prediccion}${copiar}${lista}
+    ${selector}${resumen}${prediccion}${saludCard}${recsCard}${copiar}${lista}
     <div style="height:20px"></div>
   </div>`;
 }
@@ -1087,27 +1121,111 @@ async function copiarPresupuestoAnterior(){
 }
 
 function saludFinancieraMes(pk){
-  // Índice 0-100 basado en cumplimiento de presupuesto y ahorro del mes
+  const d=saludDetalle(pk);
+  return d?d.score:null;
+}
+function saludDetalle(pk){
+  // Índice 0-100 con desglose de factores. Devuelve null si no hay nada configurado.
   const plan=planMes(pk);
   const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
   const buds=budgetsMes(pk);
   if(ingresoEsp<=0&&buds.length===0)return null;
-  let score=70;
-  // Componente 1: cumplimiento de presupuestos (categorías dentro de lo asignado)
-  if(buds.length){
+
+  const[d1,d2]=periodRange(pk);
+  const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+
+  const factores=[];
+  let score=0,pesoTotal=0;
+
+  // Factor 1: cumplimiento de presupuestos (peso 45)
+  const conMonto=buds.filter(b=>Number(b.monto)>0);
+  if(conMonto.length){
     let ok=0;
-    for(const b of buds){if(Number(b.monto)>0){const g=gastadoEnCat(b.categoria_id,pk);if(g<=Number(b.monto))ok++}}
-    const conMonto=buds.filter(b=>Number(b.monto)>0).length;
-    if(conMonto)score=Math.round((ok/conMonto)*60)+20; // 20-80 según cumplimiento
+    for(const b of conMonto){if(gastadoEnCat(b.categoria_id,pk)<=Number(b.monto))ok++}
+    const ratio=ok/conMonto.length;
+    score+=ratio*45;pesoTotal+=45;
+    factores.push({label:'Cumplimiento de presupuestos',valor:Math.round(ratio*100)+'%',bien:ratio>=0.7});
   }
-  // Componente 2: ahorro (si gasta menos que el ingreso esperado)
+
+  // Factor 2: tasa de ahorro sobre ingreso esperado (peso 35)
   if(ingresoEsp>0){
-    const[d1,d2]=periodRange(pk);
-    const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
-    const ratio=gastoTotal/ingresoEsp;
-    if(ratio<=0.7)score+=20;else if(ratio<=0.9)score+=10;else if(ratio>1)score-=15;
+    const ahorro=(ingresoEsp-gastoTotal)/ingresoEsp;
+    let p;
+    if(ahorro>=0.2)p=1;else if(ahorro>=0.1)p=0.75;else if(ahorro>=0)p=0.5;else p=0.15;
+    score+=p*35;pesoTotal+=35;
+    factores.push({label:'Tasa de ahorro',valor:Math.round(ahorro*100)+'%',bien:ahorro>=0.1});
   }
-  return Math.max(0,Math.min(100,score));
+
+  // Factor 3: categorías excedidas (peso 20)
+  if(conMonto.length){
+    let excedidas=0;
+    for(const b of conMonto){if(gastadoEnCat(b.categoria_id,pk)>Number(b.monto))excedidas++}
+    const p=1-(excedidas/conMonto.length);
+    score+=p*20;pesoTotal+=20;
+    factores.push({label:'Categorías sin excederse',valor:(conMonto.length-excedidas)+'/'+conMonto.length,bien:excedidas===0});
+  }
+
+  const final=pesoTotal>0?Math.round(score/pesoTotal*100):50;
+  return {score:Math.max(0,Math.min(100,final)),factores,gastoTotal,ingresoEsp};
+}
+
+function generarRecomendaciones(pk){
+  const recs=[];
+  const plan=planMes(pk);
+  const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
+  const buds=budgetsMes(pk);
+  const[d1,d2]=periodRange(pk);
+  const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+
+  // Tendencia multi-mes: categorías excedidas 2-3 meses seguidos
+  const catsGasto=S.cats.filter(c=>!c.deleted&&c.tipo==='gasto');
+  for(const c of catsGasto){
+    let seguidos=0;
+    for(let i=0;i<3;i++){
+      const p=periodShift(pk,-i);
+      const b=budgetFor(c.id,p);
+      if(b&&Number(b.monto)>0&&gastadoEnCat(c.id,p)>Number(b.monto))seguidos++;
+      else break;
+    }
+    if(seguidos>=2)recs.push({icon:'📈',txt:`Llevas ${seguidos} mes${seguidos>1?'es':''} gastando más de lo presupuestado en ${esc(c.name)}. Quizás debas aumentar ese presupuesto o revisar esos gastos.`});
+  }
+
+  // Reducción respecto al mes anterior
+  for(const c of catsGasto){
+    const actual=gastadoEnCat(c.id,pk);
+    const prev=gastadoEnCat(c.id,periodShift(pk,-1));
+    if(prev>0&&actual>0&&actual<prev*0.85){
+      const baja=Math.round((1-actual/prev)*100);
+      recs.push({icon:'✅',txt:`Este mes redujiste un ${baja}% tus gastos en ${esc(c.name)}. ¡Buen control!`});
+    }
+  }
+
+  // Proyección de ahorro anual
+  if(ingresoEsp>0&&gastoTotal<ingresoEsp){
+    const ahorroMes=ingresoEsp-gastoTotal;
+    const[,d2b]=periodRange(pk);
+    const diaHoy=pk===periodKey(new Date())?new Date().getDate():Number(d2b.split('-')[2]);
+    if(diaHoy>=20){ // solo si el mes está avanzado, para que la cifra sea creíble
+      const anual=ahorroMes*12;
+      recs.push({icon:'🏦',txt:`Si mantienes este ritmo de ahorro (${localFlag()} ${fmt(ahorroMes)}/mes) durante un año, acumularás aproximadamente ${localFlag()} ${fmt(anual)}.`});
+    }
+  }
+
+  // Sin presupuestos aún
+  if(buds.length===0&&ingresoEsp>0){
+    recs.push({icon:'💡',txt:'Ya declaraste tu ingreso. Asigna presupuestos a tus categorías para que la app te ayude a controlar cada gasto.'});
+  }
+
+  // Categoría más pesada del mes
+  if(gastoTotal>0){
+    let mayor=null,mayorVal=0;
+    for(const c of catsGasto){const g=gastadoEnCat(c.id,pk);if(g>mayorVal){mayorVal=g;mayor=c}}
+    if(mayor&&mayorVal/gastoTotal>=0.4){
+      recs.push({icon:'🔍',txt:`${esc(mayor.name)} representa el ${Math.round(mayorVal/gastoTotal*100)}% de tus gastos este mes. Vigila esa categoría de cerca.`});
+    }
+  }
+
+  return recs;
 }
 
 function tarjetaPresupuestoInicio(oculto){
@@ -1165,9 +1283,9 @@ const AYUDA={
   },
   presu:{
     titulo:'Presupuesto',
-    que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, y proteges el dinero de tus obligaciones. La app te avisa si vas a excederte.',
-    ejemplo:'Ejemplo: declaras un ingreso de $44.000, reservas $3.000 para transporte (obligación fija), y pones un límite de $8.000 para comida. Si a mitad de mes ya gastaste $7.000 en comida, la app te avisa que estás cerca del límite.',
-    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 que predice cómo cerrarás el mes.','Usa "Copiar del mes anterior" para no empezar de cero cada mes.']
+    que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, y proteges el dinero de tus obligaciones. La app predice si te excederás, calcula tu salud financiera y te da recomendaciones.',
+    ejemplo:'Ejemplo: declaras un ingreso de $44.000, reservas $3.000 para transporte (obligación fija), y pones un límite de $8.000 para comida. Si a mitad de mes ya gastaste $7.000 en comida, la app te avisa que estás cerca del límite y baja tu índice de salud.',
+    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 y tu índice de salud financiera.','Lee las recomendaciones: mejoran cuantos más meses uses la app.']
   },
   ajustes:{
     titulo:'Ajustes',
