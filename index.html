@@ -223,7 +223,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.14.1';
+const APP_VERSION='1.15.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1922,8 +1922,9 @@ function openResetSheet(){
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div><h2 style="margin-bottom:6px">Recuperar contraseña</h2>
-    <p class="sub" style="margin-bottom:14px">Pídele a JosmaTech un código por WhatsApp e ingrésalo aquí junto a tu nueva contraseña.</p>
+    <p class="sub" style="margin-bottom:14px">Solicita tu código por WhatsApp, ingrésalo aquí junto a tu nueva contraseña.</p>
     <div class="field"><label>Número de teléfono</label><input class="inp" id="rsPhone" type="tel" inputmode="tel" placeholder="098308375"></div>
+    <button type="button" class="btn" style="width:100%;background:#25D366;margin-bottom:14px" onclick="solicitarCodigoWA()">Solicitar código por WhatsApp</button>
     <div class="field"><label>Código recibido</label><input class="inp" id="rsCodigo" type="text" inputmode="numeric" maxlength="6" placeholder="123456"></div>
     <div class="field"><label>Nueva contraseña (mínimo 8 caracteres)</label><div style="position:relative">
       <input class="inp" id="rsPass1" type="password" style="padding-right:46px">
@@ -1935,6 +1936,14 @@ function openResetSheet(){
     </div></div>
     <button class="btn" onclick="doResetPassword()">Actualizar contraseña</button>
   </div></div>`;
+}
+
+function solicitarCodigoWA(){
+  const phoneRaw=document.getElementById('rsPhone').value.trim();
+  const digits=phoneRaw.replace(/\D/g,'');
+  if(digits.length<6)return toast('Escribe primero tu número de teléfono');
+  const msg=`Hola JosmaTech 👋 Necesito recuperar mi contraseña de NexoBalance. Mi número registrado es: ${phoneRaw}`;
+  window.open('https://wa.me/59898308375?text='+encodeURIComponent(msg),'_blank');
 }
 
 async function doResetPassword(){
