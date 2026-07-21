@@ -223,7 +223,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.13.2';
+const APP_VERSION='1.14.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1363,7 +1363,7 @@ const AYUDA={
     titulo:'Ajustes',
     que:'Configuras la app a tu gusto: tema claro u oscuro, tipo de cambio del dólar, tu contraseña, y puedes descargar una copia de tus datos.',
     ejemplo:'Ejemplo: activas el tipo de cambio automático para que el valor del dólar se actualice solo, y cambias al tema oscuro para usar la app de noche.',
-    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.']
+    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
   }
 };
 function ayudaBtn(tab){
@@ -1441,6 +1441,11 @@ function viewAjustes(){
   <div class="card">
     <h2 style="margin-bottom:8px">🔒 Privacidad</h2>
     <p class="sub" style="font-size:.85rem;line-height:1.5">Tus datos financieros son privados. Toda tu información está protegida con seguridad a nivel de fila: cada registro solo es accesible desde tu cuenta. JosmaTech no revisa, comparte ni utiliza el contenido de tus registros personales. Solo tú puedes acceder utilizando tu número de teléfono y contraseña. También puedes utilizar NexoBalance completamente sin conexión a Internet.</p>
+  </div>
+  <div class="card" style="border:1.5px solid var(--bad);background:rgba(255,75,85,.04)">
+    <h2 style="color:var(--bad);margin-bottom:8px">🚨 Zona Roja de Peligro</h2>
+    <p class="sub" style="font-size:.82rem;line-height:1.5;margin-bottom:12px">Acciones permanentes que no se pueden deshacer. Procede con cuidado.</p>
+    <button class="btn" style="background:var(--bad);width:100%" onclick="zonaRojaPaso1()">Eliminar todos mis datos</button>
   </div>
   <div class="card" style="text-align:center">
     <div class="sub">NexoBalance v${APP_VERSION}</div>
@@ -1526,6 +1531,71 @@ function donRow(label,value){
   </div>`;
 }
 function toggleApoyo(){const b=document.getElementById('apoyoBlock');if(b)b.classList.toggle('hidden')}
+
+function zonaRojaPaso1(){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div style="text-align:center;font-size:2.5rem;margin-bottom:8px">🚨</div>
+    <h2 style="text-align:center;color:var(--bad);margin-bottom:12px">Primera advertencia</h2>
+    <p style="font-size:.9rem;line-height:1.55;margin-bottom:16px">Esta acción eliminará <b>permanentemente</b> todos tus registros financieros: ingresos, gastos, presupuestos, reservas, historial y estadísticas.</p>
+    <p class="sub" style="font-size:.82rem;line-height:1.5;margin-bottom:18px">Tu cuenta seguirá activa y podrás empezar de cero, pero los datos borrados no se podrán recuperar.</p>
+    <button class="btn" style="background:var(--bad);width:100%;margin-bottom:8px" onclick="zonaRojaPaso2()">Entiendo, continuar</button>
+    <button class="link" style="width:100%" onclick="closeSheet()">Cancelar</button>
+  </div></div>`;
+}
+function zonaRojaPaso2(){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div style="text-align:center;font-size:2.5rem;margin-bottom:8px">⚠️</div>
+    <h2 style="text-align:center;color:var(--bad);margin-bottom:12px">Segunda advertencia</h2>
+    <p style="font-size:.9rem;line-height:1.55;margin-bottom:16px"><b>Esta operación no puede deshacerse.</b> Una vez confirmada, tus datos se borrarán para siempre.</p>
+    <p class="sub" style="font-size:.82rem;line-height:1.5;margin-bottom:8px">Si quieres conservar una copia antes de borrar, cancela y usa primero "Descargar mis datos".</p>
+    <div style="height:8px"></div>
+    <button class="btn" style="background:var(--bad);width:100%;margin-bottom:8px" onclick="zonaRojaPaso3()">Continuar de todos modos</button>
+    <button class="link" style="width:100%" onclick="closeSheet()">Cancelar</button>
+  </div></div>`;
+}
+function zonaRojaPaso3(){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <h2 style="color:var(--bad);margin-bottom:12px">Confirmación final</h2>
+    <p style="font-size:.88rem;line-height:1.5;margin-bottom:14px">Para confirmar, escribe la palabra <b>ELIMINAR</b> y tu contraseña.</p>
+    <div class="field"><label>Escribe: ELIMINAR</label><input class="inp" id="zrPalabra" placeholder="ELIMINAR" autocomplete="off" autocapitalize="characters"></div>
+    <div class="field"><label>Tu contraseña</label><input class="inp" id="zrPass" type="password" placeholder="Contraseña de tu cuenta"></div>
+    <button class="btn" style="background:var(--bad);width:100%;margin-top:4px" onclick="zonaRojaEjecutar()">Eliminar todo permanentemente</button>
+    <button class="link" style="width:100%;margin-top:8px" onclick="closeSheet()">Cancelar</button>
+  </div></div>`;
+}
+async function zonaRojaEjecutar(){
+  const palabra=document.getElementById('zrPalabra').value.trim();
+  const pass=document.getElementById('zrPass').value;
+  if(palabra!=='ELIMINAR')return toast('Escribe ELIMINAR en mayúsculas para confirmar');
+  if(!pass)return toast('Ingresa tu contraseña');
+  if(!navigator.onLine)return toast('Necesitas Internet para esta acción');
+  // Verificar contraseña reautenticando
+  const email=(S.userPhone?S.userPhone.replace(/\D/g,''):'')+EMAIL_DOMAIN;
+  try{
+    const{error:authErr}=await sb.auth.signInWithPassword({email,password:pass});
+    if(authErr){toast('Contraseña incorrecta');return}
+  }catch(e){toast('No se pudo verificar la contraseña');return}
+  // Ejecutar borrado en servidor
+  try{
+    const{data,error}=await sb.rpc('borrar_mis_datos');
+    if(error)throw error;
+    // Limpiar local
+    S.movs=[];S.cats=[];S.budgets=[];S.plan=[];
+    await idbClear('movs');await idbClear('cats');await idbClear('budgets');await idbClear('plan');await idbClear('outbox');
+    await kvSet('lastPull','1970-01-01T00:00:00Z');
+    closeSheet();
+    toast('Todos tus datos fueron eliminados');
+    S.tab='inicio';render();
+  }catch(e){
+    toast('No se pudieron eliminar los datos. Intenta de nuevo.');
+  }
+}
 function csvEscape(v){
   const s=(v===null||v===undefined)?'':String(v);
   return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
