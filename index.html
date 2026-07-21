@@ -44,7 +44,7 @@ h1{font-size:1.3rem;font-weight:800;letter-spacing:-.3px}h2{font-size:1.02rem;fo
   position:relative;
 }
 body:has(#appView:not(.hidden)){background:var(--panel-out)}
-:root{--panel-out:#E7EBF2}
+:root{--panel-out:#000000}
 [data-theme="dark"]{--panel-out:#03060D}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:var(--pad);box-shadow:var(--shadow);margin-bottom:var(--gap);animation:cardIn .35s ease-out backwards}
 .card:nth-of-type(1){animation-delay:.02s}.card:nth-of-type(2){animation-delay:.06s}.card:nth-of-type(3){animation-delay:.1s}.card:nth-of-type(4){animation-delay:.14s}.card:nth-of-type(5){animation-delay:.18s}
@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.24.0';
+const APP_VERSION='1.24.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
