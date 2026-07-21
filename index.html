@@ -222,7 +222,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.9.1';
+const APP_VERSION='1.10.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -590,6 +590,7 @@ function viewInicio(){
       <div style="min-width:0;flex:1"><div class="sub">Ahorro del mes</div><div class="mid" style="margin-top:2px;color:var(--purple);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cpct(tasa,oculto)}</div></div>
     </div>
   </div>
+  ${tarjetaPresupuestoInicio(oculto)}
 
   <div class="card">
     <div class="row spread" style="margin-bottom:14px">
@@ -931,9 +932,9 @@ function viewPresu(){
 
   const selector=`
     <div class="row spread" style="margin-bottom:14px">
-      <button onclick="cambiarMesPresu(-1)" class="iconbadge" style="background:var(--chip);color:var(--txt)">${ic('chevron',18)}<span style="display:none"></span></button>
+      <button onclick="cambiarMesPresu(-1)" class="iconbadge" style="background:var(--chip);color:var(--txt);transform:rotate(180deg)">${ic('chevron',18)}</button>
       <div style="font-weight:800;font-size:1.05rem;text-transform:capitalize">${periodLabel(pk)}</div>
-      <button onclick="cambiarMesPresu(1)" class="iconbadge" style="background:var(--chip);color:var(--txt);transform:rotate(180deg)">${ic('chevron',18)}</button>
+      <button onclick="cambiarMesPresu(1)" class="iconbadge" style="background:var(--chip);color:var(--txt)">${ic('chevron',18)}</button>
     </div>`;
 
   const resumen=`
@@ -1083,6 +1084,64 @@ async function copiarPresupuestoAnterior(){
     await enqueue('plan',{id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:prevPlan.ingreso_esperado,created_at:t,updated_at:t});
   }
   toast('Presupuesto copiado del mes anterior');
+}
+
+function saludFinancieraMes(pk){
+  // Índice 0-100 basado en cumplimiento de presupuesto y ahorro del mes
+  const plan=planMes(pk);
+  const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
+  const buds=budgetsMes(pk);
+  if(ingresoEsp<=0&&buds.length===0)return null;
+  let score=70;
+  // Componente 1: cumplimiento de presupuestos (categorías dentro de lo asignado)
+  if(buds.length){
+    let ok=0;
+    for(const b of buds){if(Number(b.monto)>0){const g=gastadoEnCat(b.categoria_id,pk);if(g<=Number(b.monto))ok++}}
+    const conMonto=buds.filter(b=>Number(b.monto)>0).length;
+    if(conMonto)score=Math.round((ok/conMonto)*60)+20; // 20-80 según cumplimiento
+  }
+  // Componente 2: ahorro (si gasta menos que el ingreso esperado)
+  if(ingresoEsp>0){
+    const[d1,d2]=periodRange(pk);
+    const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+    const ratio=gastoTotal/ingresoEsp;
+    if(ratio<=0.7)score+=20;else if(ratio<=0.9)score+=10;else if(ratio>1)score-=15;
+  }
+  return Math.max(0,Math.min(100,score));
+}
+
+function tarjetaPresupuestoInicio(oculto){
+  const pk=periodKey(new Date());
+  const plan=planMes(pk);
+  const buds=budgetsMes(pk);
+  // Si no hay nada configurado, invitar a configurar
+  if((!plan||Number(plan.ingreso_esperado)<=0)&&buds.length===0){
+    return `<div class="card" onclick="go('presu')" style="cursor:pointer;border:1px dashed var(--line)">
+      <div class="row" style="gap:12px;align-items:center">
+        <div class="iconbadge" style="width:40px;height:40px;background:var(--chip);color:var(--pri)">${ic('wallet',20)}</div>
+        <div style="flex:1"><div style="font-weight:700">Planifica tu mes</div><div class="sub" style="font-size:.8rem">Define tu presupuesto y controla tus gastos</div></div>
+        <span style="color:var(--sub)">${ic('chevron',18)}</span>
+      </div>
+    </div>`;
+  }
+  const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
+  let reservado=0;
+  for(const b of buds)if(b.reservado)reservado+=Number(b.monto);
+  const[d1,d2]=periodRange(pk);
+  const gastoMes=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const disponible=ingresoEsp-reservado-gastoMes;
+  const salud=saludFinancieraMes(pk);
+  const saludColor=salud===null?'var(--sub)':salud>=70?'var(--ok)':salud>=45?'#d97706':'var(--bad)';
+  const saludTxt=salud===null?'':salud>=70?'Saludable':salud>=45?'Atención':'En riesgo';
+
+  return `<div class="card" onclick="go('presu')" style="cursor:pointer">
+    <div class="row spread" style="margin-bottom:8px">
+      <h2 style="font-size:1rem">Disponible este mes</h2>
+      ${salud!==null?`<span class="pill" style="background:${saludColor}1a;color:${saludColor}">${saludTxt} ${salud}</span>`:''}
+    </div>
+    <div class="mid ${disponible>=0?'ok':'bad'}" style="font-size:${fitFont(disponible,1.5,0.9,9)}">${oculto?'••••':localFlag()+' '+fmt(disponible)}</div>
+    <div class="sub" style="font-size:.75rem;margin-top:4px">Ingreso ${localFlag()} ${fmt(ingresoEsp)} · Reservado ${fmt(reservado)} · Gastado ${fmt(gastoMes)}</div>
+  </div>`;
 }
 
 function viewAjustes(){
@@ -1350,12 +1409,13 @@ function drawMovSheet(){
     </div>
     <div class="field"><label>Monto</label>
       <div class="row">
-        <input class="inp" id="mMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${e.monto}" style="font-size:1.3rem;font-weight:700">
+        <input class="inp" id="mMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${e.monto}" style="font-size:1.3rem;font-weight:700" oninput="actualizarSimulador()">
         <div class="seg" style="width:130px">
           <button class="${e.moneda==='UYU'?'on':''}" onclick="movMoneda('UYU')">${localFlag()} ${detectPais().cur}</button>
           <button class="${e.moneda==='USD'?'on':''}" onclick="movMoneda('USD')">${usdFlag()} USD</button>
         </div>
       </div>
+      <div id="simuladorBox" style="margin-top:8px"></div>
     </div>
     <div class="field"><label>Categoría</label><div class="chips">
       ${cats.map(c=>`<button class="chip ${e.categoria_id===c.id?'on':''}" onclick="pickCat('${c.id}')">${c.icon} ${esc(c.name)}</button>`).join('')||'<span class="sub">Crea categorías en la pestaña Categorías</span>'}
@@ -1387,9 +1447,48 @@ function stageMov(){
   e.etiquetas=g('mTags').value.split(',').map(t=>t.trim()).filter(Boolean);
 }
 function movTipo(t){stageMov();S.editingMov.tipo=t;S.editingMov.categoria_id='';S.editingMov.subcategoria_id='';drawMovSheet()}
-function movMoneda(m){stageMov();S.editingMov.moneda=m;drawMovSheet()}
-function pickCat(id){stageMov();S.editingMov.categoria_id=id;S.editingMov.subcategoria_id='';drawMovSheet()}
+function movMoneda(m){stageMov();S.editingMov.moneda=m;drawMovSheet();setTimeout(actualizarSimulador,50)}
+function pickCat(id){stageMov();S.editingMov.categoria_id=id;S.editingMov.subcategoria_id='';drawMovSheet();setTimeout(actualizarSimulador,50)}
 function pickSub(id){stageMov();S.editingMov.subcategoria_id=id;drawMovSheet()}
+
+function actualizarSimulador(){
+  const box=document.getElementById('simuladorBox');
+  if(!box)return;
+  const e=S.editingMov;
+  const montoEl=document.getElementById('mMonto');
+  const monto=Number(montoEl?montoEl.value:0);
+  // Solo para gastos con categoría y monto válido
+  if(!e||e.tipo!=='gasto'||!e.categoria_id||!monto||monto<=0){box.innerHTML='';return}
+  // Convertir a moneda local para comparar con presupuesto (que está en local)
+  const montoLocal=e.moneda==='USD'?monto*(Number(S.settings.tc)||40):monto;
+  const pk=periodKey(new Date());
+  const b=budgetFor(e.categoria_id,pk);
+  const cat=catById(e.categoria_id);
+  const nombreCat=cat?cat.name:'esta categoría';
+  const yaGastado=gastadoEnCat(e.categoria_id,pk);
+
+  if(b&&Number(b.monto)>0){
+    const asignado=Number(b.monto);
+    const nuevoGastado=yaGastado+montoLocal;
+    const restante=asignado-nuevoGastado;
+    const pct=Math.min(999,Math.round(nuevoGastado/asignado*100));
+    if(restante<0){
+      box.innerHTML=`<div style="background:rgba(255,75,85,.1);border:1px solid var(--bad);border-radius:12px;padding:10px 12px;font-size:.8rem;color:var(--bad);font-weight:600">⚠️ Superarás el presupuesto de ${esc(nombreCat)} en ${localFlag()} ${fmt(-restante)}.</div>`;
+    }else{
+      const color=pct>=90?'#ea580c':pct>=70?'#d97706':'var(--ok)';
+      box.innerHTML=`<div style="background:var(--chip);border-radius:12px;padding:10px 12px;font-size:.8rem"><span style="color:${color};font-weight:700">Después: ${localFlag()} ${fmt(restante)} disponible en ${esc(nombreCat)} (${pct}%)</span></div>`;
+    }
+  }else{
+    // Sin presupuesto: comparar con mes anterior
+    const gastadoPrev=gastadoEnCat(e.categoria_id,periodShift(pk,-1));
+    if(gastadoPrev>0){
+      const nuevoGastado=yaGastado+montoLocal;
+      box.innerHTML=`<div style="background:var(--chip);border-radius:12px;padding:10px 12px;font-size:.8rem;color:var(--sub)">El mes pasado gastaste ${localFlag()} ${fmt(gastadoPrev)} en ${esc(nombreCat)}; con esto vas por ${localFlag()} ${fmt(nuevoGastado)}.</div>`;
+    }else{
+      box.innerHTML='';
+    }
+  }
+}
 
 async function saveMov(){
   const e=S.editingMov;
