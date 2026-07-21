@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.23.0';
+const APP_VERSION='1.24.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1001,7 +1001,7 @@ function viewPresu(){
     </div>`;
 
   const resumen=`
-    <div class="card" style="background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff">
+    <div class="card" id="ingresoEsperadoCard" style="background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff">
       <div class="row spread" style="align-items:center">
         <div style="opacity:.85;font-size:.8rem;font-weight:600">Ingreso esperado</div>
         <button onclick="editarIngresoEsperado()" style="color:#fff;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700">${ingresoEsperado>0?'Editar':'Definir'}</button>
@@ -1125,27 +1125,32 @@ function viewPresu(){
 
 function cambiarMesPresu(delta){S.presuMes=periodShift(S.presuMes||periodKey(new Date()),delta);render()}
 
+function irAAjustarIngreso(){
+  if(S.tab!=='presu')go('presu');
+  setTimeout(()=>{
+    const el=document.getElementById('ingresoEsperadoCard');
+    if(el){
+      el.scrollIntoView({behavior:'smooth',block:'center'});
+      el.style.transition='box-shadow .3s';el.style.boxShadow='0 0 0 3px var(--pri)';
+      setTimeout(()=>{el.style.boxShadow=''},1600);
+    }
+  },S.tab==='presu'?0:100);
+}
 function editarIngresoEsperado(){
   const pk=S.presuMes;
   const plan=planMes(pk);
   const actual=plan?Number(plan.ingreso_esperado):'';
   const ingresoAnterior=ingresoRealMes(periodShift(pk,-1));
+  const registrado=ingresoRealMes(pk);
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div><h2 style="margin-bottom:4px">Ingreso esperado</h2>
     <p class="sub" style="margin-bottom:14px">Cuánto esperas ingresar en ${periodLabel(pk)}, aunque aún no lo hayas cobrado.</p>
     <div class="field"><label>Monto en moneda local</label><input class="inp" id="ingEsp" type="number" inputmode="decimal" step="0.01" value="${actual}" placeholder="0.00"></div>
+    ${registrado>0&&Math.round(registrado*100)!==Math.round(Number(actual||0)*100)?`<button class="btn ghost" style="width:100%;margin-bottom:10px" onclick="document.getElementById('ingEsp').value='${registrado.toFixed(2)}'">Usar lo registrado este mes: ${fmt(registrado)}</button>`:''}
     ${ingresoAnterior>0?`<button class="btn ghost" style="width:100%;margin-bottom:10px" onclick="document.getElementById('ingEsp').value='${ingresoAnterior.toFixed(2)}'">Usar el del mes pasado: ${fmt(ingresoAnterior)}</button>`:''}
     <button class="btn" onclick="guardarIngresoEsperado()">Guardar</button>
   </div></div>`;
-}
-async function sincronizarIngresoReal(monto){
-  const pk=periodKey(new Date());
-  const existing=planMes(pk);
-  const t=nowISO();
-  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(Number(monto)*100)/100,created_at:existing?existing.created_at:t,updated_at:t});
-  toast('Ingreso esperado actualizado a '+localFlag()+' '+fmt(monto));
-  render();
 }
 async function guardarIngresoEsperado(){
   const v=Number(document.getElementById('ingEsp').value);
@@ -1356,7 +1361,7 @@ function generarAlertas(){
     const ingresoReal=ingresoRealMes(pk);
     const dif=ingresoReal-ingresoEsp;
     if(dif>ingresoEsp*0.05){
-      alertas.push({nivel:'medio',icon:'💰',txt:`Registraste ${localFlag()} ${fmt(ingresoReal)}, más de lo que esperabas (${fmt(ingresoEsp)}).`,accion:{label:'Actualizar ingreso esperado',fn:'sincronizarIngresoReal('+ingresoReal+')'}});
+      alertas.push({nivel:'medio',icon:'💰',txt:`Registraste ${localFlag()} ${fmt(ingresoReal)}, más de lo que esperabas (${fmt(ingresoEsp)}).`,accion:{label:'Ver panorama y actualizar',fn:'irAAjustarIngreso()'}});
     }
   }
 
