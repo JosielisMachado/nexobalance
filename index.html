@@ -223,7 +223,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.13.0';
+const APP_VERSION='1.13.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -386,27 +386,23 @@ function showAuth(){document.getElementById('authView').classList.remove('hidden
 function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg)}
 function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
 
-const BIENVENIDA=[
-  {icon:'💰',t:'Todo tu dinero en un lugar',d:'Controla tus ingresos y gastos en pesos y dólares, desde el celular, sin complicaciones.'},
-  {icon:'📊',t:'Organiza por categorías',d:'Sabe exactamente en qué se va tu dinero: comida, transporte, remesas, y lo que tú definas.'},
-  {icon:'🔒',t:'Reserva para tus obligaciones',d:'Aparta el dinero del alquiler, los servicios o las remesas antes de gastarlo por error.'},
-  {icon:'📅',t:'Llega tranquilo a fin de mes',d:'La app predice si te vas a exceder y te dice cuánto puedes gastar cada día.'},
-  {icon:'🔔',t:'Alertas inteligentes',d:'Te avisa cuando estás cerca de un límite o cuando un gasto rompería tu presupuesto.'},
-  {icon:'❤️',t:'Tu salud financiera',d:'Un índice claro de 0 a 100 y recomendaciones para mejorar mes a mes.'},
-  {icon:'📴',t:'Funciona sin Internet',d:'Registra tus gastos donde estés; se guardan solos y se sincronizan al reconectar.'},
-  {icon:'🛡️',t:'Privado de verdad',d:'Solo tú accedes a tus datos con tu teléfono y contraseña. Nadie más los ve.'}
-];
 function abrirBienvenida(){
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
-    <h2 style="margin-bottom:4px">¿Por qué elegir NexoBalance?</h2>
-    <p class="sub" style="margin-bottom:16px;font-size:.85rem">Más que registrar gastos: tu copiloto financiero personal.</p>
-    ${BIENVENIDA.map(b=>`<div class="row" style="gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)">
-      <span style="font-size:1.5rem;flex-shrink:0">${b.icon}</span>
-      <div style="flex:1"><div style="font-weight:700;font-size:.92rem">${b.t}</div><div class="sub" style="font-size:.8rem;line-height:1.45;margin-top:2px">${b.d}</div></div>
-    </div>`).join('')}
-    <button class="btn" style="margin-top:16px" onclick="closeSheet()">Empezar ahora</button>
+    <h2 style="margin-bottom:12px">💰 ¿Se te va el dinero y no sabes en qué?</h2>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:12px">Te comparto <b>NexoBalance</b>, una aplicación gratuita creada por cubanos como una forma de aportar valor y agradecer el apoyo que tantos hermanos nos han brindado al abrirnos las puertas de su hogar.</p>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px">Está pensada especialmente para nuestra comunidad, pero puede ser utilizada por cualquier persona que desee administrar mejor su dinero.</p>
+    <div style="background:var(--chip);border-radius:14px;padding:14px;margin-bottom:16px">
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📊</span><span style="font-size:.86rem;line-height:1.45;flex:1">Registra tus ingresos y gastos.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">💵</span><span style="font-size:.86rem;line-height:1.45;flex:1">Reserva dinero para el alquiler, remesas, servicios o cualquier otro compromiso importante.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📅</span><span style="font-size:.86rem;line-height:1.45;flex:1">Descubre cuánto puedes gastar cada día para llegar tranquilo a fin de mes.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start"><span style="font-size:1.3rem;flex-shrink:0">🔔</span><span style="font-size:.86rem;line-height:1.45;flex:1">Recibe alertas antes de exceder tu presupuesto.</span></div>
+    </div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="font-size:1.2rem;flex-shrink:0">✅</span><span style="font-size:.85rem;line-height:1.45;flex:1">Funciona incluso sin conexión a Internet y sincroniza automáticamente tus datos cuando vuelves a conectarte.</span></div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:18px"><span style="font-size:1.2rem;flex-shrink:0">🔒</span><span style="font-size:.85rem;line-height:1.45;flex:1">Tu información es privada y segura.</span></div>
+    <p style="font-weight:700;text-align:center;font-size:.95rem;margin-bottom:14px">¡Pruébala y empieza hoy a tomar el control de tus finanzas!</p>
+    <button class="btn" onclick="closeSheet()">Empezar ahora</button>
   </div></div>`;
 }
 function onCountryChange(){
