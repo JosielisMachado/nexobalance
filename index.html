@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.22.0';
+const APP_VERSION='1.22.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1338,14 +1338,12 @@ function generarAlertas(){
     }
   }
 
-  // Desajuste entre ingreso declarado y lo realmente registrado este mes
+  // Ingreso real superó lo declarado — esto sí es señal confiable
   if(ingresoEsp>0){
     const ingresoReal=ingresoRealMes(pk);
     const dif=ingresoReal-ingresoEsp;
     if(dif>ingresoEsp*0.05){
       alertas.push({nivel:'medio',icon:'💰',txt:`Registraste ${localFlag()} ${fmt(ingresoReal)}, más de lo que esperabas (${fmt(ingresoEsp)}).`,accion:{label:'Actualizar ingreso esperado',fn:'sincronizarIngresoReal('+ingresoReal+')'}});
-    }else if(dif<-ingresoEsp*0.05&&diaHoy>=15){
-      alertas.push({nivel:'medio',icon:'📉',txt:`Llevas ${localFlag()} ${fmt(ingresoReal)} registrado, menos de lo esperado (${fmt(ingresoEsp)}). Revisa tu presupuesto si tu ingreso real cambió.`,accion:{label:'Ajustar ingreso esperado',fn:'sincronizarIngresoReal('+ingresoReal+')'}});
     }
   }
 
@@ -1428,7 +1426,7 @@ const AYUDA={
     titulo:'Presupuesto',
     que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, y proteges el dinero de tus obligaciones. La app predice si te excederás, calcula tu salud financiera y te da recomendaciones.',
     ejemplo:'Ejemplo: declaras un ingreso de $44.000, reservas $3.000 para transporte (obligación fija), y pones un límite de $8.000 para comida. Si a mitad de mes ya gastaste $7.000 en comida, la app te avisa que estás cerca del límite y baja tu índice de salud.',
-    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 y tu índice de salud financiera.','Lee las recomendaciones: mejoran cuantos más meses uses la app.','Si cobras más o menos de lo declarado, la app te avisa y puedes actualizarlo con un toque.']
+    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 y tu índice de salud financiera.','Lee las recomendaciones: mejoran cuantos más meses uses la app.','Si cobras más de lo declarado, la app te avisa y puedes actualizarlo con un toque.']
   },
   ajustes:{
     titulo:'Ajustes',
