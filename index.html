@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.21.0';
+const APP_VERSION='1.22.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1126,6 +1126,14 @@ function editarIngresoEsperado(){
     <button class="btn" onclick="guardarIngresoEsperado()">Guardar</button>
   </div></div>`;
 }
+async function sincronizarIngresoReal(monto){
+  const pk=periodKey(new Date());
+  const existing=planMes(pk);
+  const t=nowISO();
+  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(Number(monto)*100)/100,created_at:existing?existing.created_at:t,updated_at:t});
+  toast('Ingreso esperado actualizado a '+localFlag()+' '+fmt(monto));
+  render();
+}
 async function guardarIngresoEsperado(){
   const v=Number(document.getElementById('ingEsp').value);
   if(isNaN(v)||v<0)return toast('Ingresa un monto válido');
@@ -1330,6 +1338,17 @@ function generarAlertas(){
     }
   }
 
+  // Desajuste entre ingreso declarado y lo realmente registrado este mes
+  if(ingresoEsp>0){
+    const ingresoReal=ingresoRealMes(pk);
+    const dif=ingresoReal-ingresoEsp;
+    if(dif>ingresoEsp*0.05){
+      alertas.push({nivel:'medio',icon:'💰',txt:`Registraste ${localFlag()} ${fmt(ingresoReal)}, más de lo que esperabas (${fmt(ingresoEsp)}).`,accion:{label:'Actualizar ingreso esperado',fn:'sincronizarIngresoReal('+ingresoReal+')'}});
+    }else if(dif<-ingresoEsp*0.05&&diaHoy>=15){
+      alertas.push({nivel:'medio',icon:'📉',txt:`Llevas ${localFlag()} ${fmt(ingresoReal)} registrado, menos de lo esperado (${fmt(ingresoEsp)}). Revisa tu presupuesto si tu ingreso real cambió.`,accion:{label:'Ajustar ingreso esperado',fn:'sincronizarIngresoReal('+ingresoReal+')'}});
+    }
+  }
+
   return alertas.sort((a,b)=>(a.nivel==='alto'?0:1)-(b.nivel==='alto'?0:1)).slice(0,4);
 }
 function irAAlertas(){
@@ -1346,7 +1365,10 @@ function alertasCard(){
   if(!al.length)return '';
   return `<div class="card" id="alertasCardEl" style="border:1px solid rgba(234,88,12,.3);background:rgba(234,88,12,.05)">
     <div class="row spread" style="margin-bottom:8px"><h2 style="font-size:1rem">${ic('bell',17)} Alertas</h2><span class="pill" style="background:rgba(234,88,12,.15);color:#ea580c">${al.length}</span></div>
-    ${al.map(a=>`<div class="row" style="gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)"><span style="font-size:1rem;flex-shrink:0">${a.icon}</span><span style="font-size:.83rem;line-height:1.4;flex:1">${a.txt}</span></div>`).join('')}
+    ${al.map(a=>`<div style="padding:8px 0;border-top:1px solid var(--line)">
+      <div class="row" style="gap:10px;align-items:flex-start"><span style="font-size:1rem;flex-shrink:0">${a.icon}</span><span style="font-size:.83rem;line-height:1.4;flex:1">${a.txt}</span></div>
+      ${a.accion?`<button class="link" style="margin-top:6px;margin-left:26px;font-size:.8rem" onclick="${a.accion.fn}">${esc(a.accion.label)} →</button>`:''}
+    </div>`).join('')}
   </div>`;
 }
 function tarjetaPresupuestoInicio(oculto){
@@ -1406,7 +1428,7 @@ const AYUDA={
     titulo:'Presupuesto',
     que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, y proteges el dinero de tus obligaciones. La app predice si te excederás, calcula tu salud financiera y te da recomendaciones.',
     ejemplo:'Ejemplo: declaras un ingreso de $44.000, reservas $3.000 para transporte (obligación fija), y pones un límite de $8.000 para comida. Si a mitad de mes ya gastaste $7.000 en comida, la app te avisa que estás cerca del límite y baja tu índice de salud.',
-    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 y tu índice de salud financiera.','Lee las recomendaciones: mejoran cuantos más meses uses la app.']
+    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 y tu índice de salud financiera.','Lee las recomendaciones: mejoran cuantos más meses uses la app.','Si cobras más o menos de lo declarado, la app te avisa y puedes actualizarlo con un toque.']
   },
   ajustes:{
     titulo:'Ajustes',
