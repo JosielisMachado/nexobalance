@@ -222,7 +222,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.10.0';
+const APP_VERSION='1.11.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -548,7 +548,7 @@ function viewInicio(){
     <div><div class="sub" style="font-weight:600;margin-bottom:3px">¡Hola${S.userName?', '+esc(S.userName):''}!</div><h1>Resumen de hoy</h1></div>
     <div class="pill" style="background:rgba(23,136,255,.13);color:var(--pri);display:flex;align-items:center;gap:5px;padding:7px 12px;white-space:nowrap">${ic('calendar',14)}${esc(hoyStr)}</div>
   </div>
-  <div style="text-align:right;margin-bottom:16px"><span class="pill" id="syncPill">…</span></div>
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:16px">${ayudaBtn('inicio')}<span class="pill" id="syncPill">…</span></div>
 
   <div class="card" style="position:relative;overflow:hidden;background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff">
     ${waveDecor()}
@@ -837,7 +837,7 @@ function viewMovs(){
   const cats=activeCats().filter(c=>!c.parent_id);
   const hayFiltro=f.q||f.tipo||f.desde||f.hasta||(f.cats&&f.cats.length);
   return `
-  <div class="row spread" style="margin-bottom:18px"><h1>Movimientos</h1><span class="pill" id="syncPill">…</span></div>
+  <div class="row spread" style="margin-bottom:18px"><h1>Movimientos</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('movs')}<span class="pill" id="syncPill">…</span></div></div>
   <div class="card">
     <input class="inp" placeholder="🔍 Buscar por texto, monto o etiqueta" value="${esc(f.q)}" oninput="S.filtro.q=this.value;renderSoon()">
     <div class="chips" style="margin-top:10px">
@@ -884,7 +884,7 @@ function viewCats(){
       <div class="mtxt"><div>${esc(c.name)}</div>${subs.length?`<div class="sub">${subs.map(s=>esc(s.name)).join(' · ')}</div>`:''}</div>
       <span style="color:var(--sub)">${ic('chevron',18)}</span></div>`}).join('');
   return `
-  <div class="row spread" style="margin-bottom:18px"><h1>Categorías</h1><span class="pill" id="syncPill">…</span></div>
+  <div class="row spread" style="margin-bottom:18px"><h1>Categorías</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('cats')}<span class="pill" id="syncPill">…</span></div></div>
   <button class="btn" style="margin-bottom:12px" onclick="openCatSheet()">＋ Nueva categoría</button>
   <div class="card"><h2 class="ok" style="margin-bottom:6px">Ingresos</h2>${seccion('ingreso')||'<div class="sub">Sin categorías</div>'}</div>
   <div class="card"><h2 class="bad" style="margin-bottom:6px">Gastos</h2>${seccion('gasto')||'<div class="sub">Sin categorías</div>'}</div>`;
@@ -1008,7 +1008,7 @@ function viewPresu(){
     `<button class="btn ghost" style="width:100%;margin-bottom:12px" onclick="copiarPresupuestoAnterior()">Copiar presupuesto del mes anterior</button>`:'';
 
   return `<div class="wrap">
-    <div class="row spread" style="margin-bottom:6px"><h1 style="font-size:1.4rem">Presupuesto</h1><span class="pill" id="syncPill">Al día</span></div>
+    <div class="row spread" style="margin-bottom:6px"><h1 style="font-size:1.4rem">Presupuesto</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('presu')}<span class="pill" id="syncPill">Al día</span></div></div>
     ${selector}${resumen}${prediccion}${copiar}${lista}
     <div style="height:20px"></div>
   </div>`;
@@ -1144,10 +1144,64 @@ function tarjetaPresupuestoInicio(oculto){
   </div>`;
 }
 
+const AYUDA={
+  inicio:{
+    titulo:'Inicio',
+    que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total, cuánto entró y salió este mes, y tu disponible según el presupuesto.',
+    ejemplo:'Ejemplo: abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y que te quedan $7.200 disponibles para el resto del mes.',
+    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','Revisa "Ingresos" y "Gastos" del mes en curso.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
+  },
+  movs:{
+    titulo:'Movimientos',
+    que:'Es el historial de todo tu dinero. Cada ingreso y gasto que registras queda aquí, y puedes buscarlos, filtrarlos y editarlos.',
+    ejemplo:'Ejemplo: quieres ver cuánto gastaste en comida esta semana. Filtras por la categoría "Comida" y ves todos esos gastos sumados.',
+    pasos:['Toca el botón azul + para registrar un ingreso o gasto.','Escribe el monto, elige la categoría y guarda.','Usa el buscador para encontrar un movimiento por texto o monto.','Toca cualquier movimiento para editarlo o eliminarlo.']
+  },
+  cats:{
+    titulo:'Categorías',
+    que:'Las categorías organizan tu dinero: comida, transporte, salario, etc. Cada movimiento se asigna a una, y así sabes en qué se va tu dinero.',
+    ejemplo:'Ejemplo: creas la categoría "Farmacia" con un ícono 💊. A partir de ahí, cada gasto de medicinas lo clasificas ahí y ves cuánto sumas al mes.',
+    pasos:['Toca "Nueva categoría" para crear una.','Elige si es de ingreso o de gasto, ponle nombre e ícono.','Puedes crear subcategorías dentro de una categoría.','Las categorías que ya usaste no se pueden borrar, para no perder el historial.']
+  },
+  presu:{
+    titulo:'Presupuesto',
+    que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, y proteges el dinero de tus obligaciones. La app te avisa si vas a excederte.',
+    ejemplo:'Ejemplo: declaras un ingreso de $44.000, reservas $3.000 para transporte (obligación fija), y pones un límite de $8.000 para comida. Si a mitad de mes ya gastaste $7.000 en comida, la app te avisa que estás cerca del límite.',
+    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler o remesas.','Revisa el semáforo 🟢🟡🔴 que predice cómo cerrarás el mes.','Usa "Copiar del mes anterior" para no empezar de cero cada mes.']
+  },
+  ajustes:{
+    titulo:'Ajustes',
+    que:'Configuras la app a tu gusto: tema claro u oscuro, tipo de cambio del dólar, tu contraseña, y puedes descargar una copia de tus datos.',
+    ejemplo:'Ejemplo: activas el tipo de cambio automático para que el valor del dólar se actualice solo, y cambias al tema oscuro para usar la app de noche.',
+    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.']
+  }
+};
+function ayudaBtn(tab){
+  return `<button onclick="abrirAyuda('${tab}')" aria-label="Ayuda" style="width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--sub);font-weight:800;font-size:.9rem;flex-shrink:0;display:flex;align-items:center;justify-content:center">?</button>`;
+}
+function abrirAyuda(tab){
+  const a=AYUDA[tab];if(!a)return;
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row" style="gap:10px;align-items:center;margin-bottom:12px">
+      <div class="iconbadge" style="width:40px;height:40px;background:rgba(23,136,255,.13);color:var(--pri);font-weight:800;font-size:1.1rem">?</div>
+      <h2>${a.titulo}</h2>
+    </div>
+    <p style="font-size:.9rem;line-height:1.55;margin-bottom:14px">${a.que}</p>
+    <div style="background:var(--chip);border-radius:14px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:.8rem;line-height:1.5;color:var(--sub)">${a.ejemplo}</div>
+    </div>
+    <div style="font-weight:700;margin-bottom:8px;font-size:.9rem">Cómo proceder</div>
+    ${a.pasos.map((p,i)=>`<div class="row" style="gap:10px;align-items:flex-start;margin-bottom:9px"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--pri);color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</span><span style="font-size:.85rem;line-height:1.45;flex:1">${p}</span></div>`).join('')}
+    <button class="btn" style="margin-top:12px" onclick="closeSheet()">Entendido</button>
+  </div></div>`;
+}
+
 function viewAjustes(){
   const dark=(S.settings.theme==='dark');
   return `
-  <div class="row spread" style="margin-bottom:18px"><h1>Ajustes</h1><span class="pill" id="syncPill">…</span></div>
+  <div class="row spread" style="margin-bottom:18px"><h1>Ajustes</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('ajustes')}<span class="pill" id="syncPill">…</span></div></div>
   <div class="card">
     <div class="item" onclick="setTheme('${dark?'light':'dark'}')"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic(dark?'sun':'moon',19)}</div><div class="mtxt"><div>Tema ${dark?'claro':'oscuro'}</div><div class="sub">Actual: ${dark?'oscuro':'claro'}</div></div></div>
     <div class="item" style="flex-direction:column;align-items:stretch;gap:10px">
