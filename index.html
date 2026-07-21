@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.26.0';
+const APP_VERSION='1.26.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -532,8 +532,8 @@ async function startApp(user,isNew){
   armExitGuard();
   if(navigator.onLine){await trySync();await loadUserName()}
   if(S.settings.tcAuto&&navigator.onLine){
-    const stale=!S.settings.tcUpdated||(Date.now()-new Date(S.settings.tcUpdated).getTime())>12*3600*1000;
-    if(stale)tcAutoFetch();
+    // Cada arranque (incluido el refresh manual) actualiza el tipo de cambio y su hora
+    tcAutoFetch(true);
   }
   if(isNew&&!activeCats().length){await seedCats();toast('¡Bienvenido! Creamos tus categorías iniciales')}
   else if(!S.movs.length&&!activeCats().length&&navigator.onLine){await pullAll();if(!activeCats().length)await seedCats()}
@@ -1587,14 +1587,16 @@ function tcToggleAuto(on){
   kvSet('settings',S.settings);
   if(on)tcAutoFetch();else render();
 }
-async function tcAutoFetch(){
-  if(!navigator.onLine)return toast('Necesitas Internet para actualizar el tipo de cambio');
+async function tcAutoFetch(silencioso){
+  if(!navigator.onLine){if(!silencioso)toast('Necesitas Internet para actualizar el tipo de cambio');return}
   const info=detectPais();
   if(!info.api){
-    toast('Cotización automática no disponible para '+info.pais+'. Usa el modo manual.');
-    S.settings.tcAuto=false;
-    await kvSet('settings',S.settings);
-    render();
+    if(!silencioso){
+      toast('Cotización automática no disponible para '+info.pais+'. Usa el modo manual.');
+      S.settings.tcAuto=false;
+      await kvSet('settings',S.settings);
+      render();
+    }
     return;
   }
   try{
@@ -1606,10 +1608,10 @@ async function tcAutoFetch(){
     S.settings.tcUpdated=new Date().toISOString();
     S.settings.tcFuente=data.nombre||'Oficial';
     await kvSet('settings',S.settings);
-    toast('Tipo de cambio oficial actualizado');
+    if(!silencioso)toast('Tipo de cambio oficial actualizado');
     render();
   }catch(e){
-    toast('No se pudo obtener la cotización. Se mantiene el último valor.');
+    if(!silencioso)toast('No se pudo obtener la cotización. Se mantiene el último valor.');
     if(S.tab==='ajustes')render();
   }
 }
