@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.20.0';
+const APP_VERSION='1.21.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -601,7 +601,7 @@ function viewInicio(){
       <div><div style="font-weight:800;font-size:1.05rem;line-height:1.15">NexoBalance</div><div class="sub" style="font-size:.6rem;letter-spacing:.07em;font-weight:700">POR JOSMATECH</div></div>
     </div>
     <div class="row" style="gap:16px">
-      <span style="position:relative;color:var(--sub)">${ic('bell',21)}<span style="position:absolute;top:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:var(--pri);border:2px solid var(--bg)"></span></span>
+      <span onclick="irAAlertas()" style="position:relative;color:var(--sub);cursor:pointer">${ic('bell',21)}${generarAlertas().length?'<span style="position:absolute;top:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:var(--pri);border:2px solid var(--bg)"></span>':''}</span>
       <div style="width:34px;height:34px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;border:2px solid var(--pri);color:var(--pri)">${esc((S.userName||'U').charAt(0).toUpperCase())}</div>
     </div>
   </div>
@@ -1332,10 +1332,19 @@ function generarAlertas(){
 
   return alertas.sort((a,b)=>(a.nivel==='alto'?0:1)-(b.nivel==='alto'?0:1)).slice(0,4);
 }
+function irAAlertas(){
+  const al=generarAlertas();
+  if(!al.length){toast('No tienes alertas por ahora 👍');return}
+  if(S.tab!=='inicio')go('inicio');
+  setTimeout(()=>{
+    const el=document.getElementById('alertasCardEl');
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  },S.tab==='inicio'?0:80);
+}
 function alertasCard(){
   const al=generarAlertas();
   if(!al.length)return '';
-  return `<div class="card" style="border:1px solid rgba(234,88,12,.3);background:rgba(234,88,12,.05)">
+  return `<div class="card" id="alertasCardEl" style="border:1px solid rgba(234,88,12,.3);background:rgba(234,88,12,.05)">
     <div class="row spread" style="margin-bottom:8px"><h2 style="font-size:1rem">${ic('bell',17)} Alertas</h2><span class="pill" style="background:rgba(234,88,12,.15);color:#ea580c">${al.length}</span></div>
     ${al.map(a=>`<div class="row" style="gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)"><span style="font-size:1rem;flex-shrink:0">${a.icon}</span><span style="font-size:.83rem;line-height:1.4;flex:1">${a.txt}</span></div>`).join('')}
   </div>`;
@@ -1379,7 +1388,7 @@ const AYUDA={
     titulo:'Inicio',
     que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total, cuánto entró y salió este mes, tu disponible según el presupuesto, y las alertas importantes del momento.',
     ejemplo:'Ejemplo: abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y una alerta te avisa que ya usaste el 90% de tu presupuesto de comida.',
-    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','Revisa las "Alertas" si aparecen: te avisan de límites y riesgos.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
+    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','La campana 🔔 muestra un punto azul cuando tienes alertas; tócala para verlas.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
   },
   movs:{
     titulo:'Movimientos',
