@@ -223,7 +223,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.14.0';
+const APP_VERSION='1.14.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -2051,7 +2051,7 @@ async function openAdminSheet(){
         <h2 style="margin-bottom:8px">Generar código de recuperación</h2>
         <p class="sub" style="margin-bottom:10px">Genera un código y envíaselo tú mismo por WhatsApp a la persona.</p>
         <div class="field"><label>Teléfono (con código de país, ej: +59891234567)</label><input class="inp" id="resetPhoneAdmin" type="tel" placeholder="+59891234567"></div>
-        <button class="btn" onclick="generarCodigoReset()">Generar y enviar</button>
+        <button class="btn" onclick="generarCodigoReset()">Generar código</button>
         <div id="resetCodeResult" style="margin-top:12px"></div>
       </div>
     </div>`;
@@ -2091,14 +2091,21 @@ async function generarCodigoReset(){
   try{
     const{data,error}=await sb.rpc('admin_generar_codigo_reset',{p_phone:phone});
     if(error)throw error;
-    box.innerHTML=`<div class="card" style="background:var(--chip);text-align:center">
-      <div class="sub" style="margin-bottom:6px">Código válido por 15 minutos</div>
-      <div style="font-size:1.8rem;font-weight:800;letter-spacing:.1em">${esc(data)}</div>
-      <button class="link" style="margin-top:8px" onclick="copyText('${esc(data)}')">Copiar código</button>
-    </div>`;
-    const msg=`Este es tu código para recuperar tu contraseña en NexoBalance: *${data}*\n\nVálido por 15 minutos. Si no lo pediste, ignora este mensaje.`;
+    const codigo=data.codigo,nombre=data.nombre;
     const waPhone=phone.replace(/\D/g,'');
-    window.open('https://wa.me/'+waPhone+'?text='+encodeURIComponent(msg),'_blank');
+    const msg=`Este es tu código para recuperar tu contraseña en NexoBalance: *${codigo}*\n\nVálido por 15 minutos. Si no lo pediste, ignora este mensaje.`;
+    const waUrl='https://wa.me/'+waPhone+'?text='+encodeURIComponent(msg);
+    box.innerHTML=`<div class="card" style="background:var(--chip)">
+      <div style="background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.4);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:.72rem;color:var(--sub);margin-bottom:2px">Verifica antes de enviar. Este código es para:</div>
+        <div style="font-weight:800;font-size:1rem">${esc(nombre)}</div>
+        <div class="sub" style="font-size:.78rem">${esc(phone)}</div>
+      </div>
+      <div class="sub" style="text-align:center;margin-bottom:4px">Código válido por 15 minutos</div>
+      <div style="font-size:1.8rem;font-weight:800;letter-spacing:.1em;text-align:center">${esc(codigo)}</div>
+      <button class="btn" style="width:100%;margin-top:12px;background:#25D366" onclick="window.open('${waUrl}','_blank')">Enviar a ${esc(nombre)} por WhatsApp</button>
+      <button class="link" style="width:100%;margin-top:6px" onclick="copyText('${esc(codigo)}')">Solo copiar código</button>
+    </div>`;
   }catch(e){
     box.innerHTML='';
     toast(e.message&&e.message.includes('No existe')?'No existe una cuenta con ese teléfono':'No se pudo generar el código');
