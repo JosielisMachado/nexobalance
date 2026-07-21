@@ -91,6 +91,7 @@ nav button svg{transition:.15s}
 }
 .sheet{background:var(--card);border:1px solid var(--line);border-radius:26px 26px 0 0;width:100%;max-width:560px;margin:0 auto;max-height:92vh;overflow-y:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom));animation:up .25s cubic-bezier(.4,0,.2,1)}
 .sheet.full{max-height:100vh;height:100vh;border-radius:0;padding-top:calc(16px + env(safe-area-inset-top))}
+.sheet-bg:has(.sheet.full){background:var(--bg)}
 .sheet.closing{animation:down .22s cubic-bezier(.4,0,.2,1) forwards}
 @keyframes down{from{transform:translateY(0)}to{transform:translateY(100%)}}
 .sheet-x{position:absolute;top:12px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--chip);color:var(--txt);display:flex;align-items:center;justify-content:center;font-size:1.1rem;z-index:5}
@@ -227,7 +228,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.17.0';
+const APP_VERSION='1.17.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1713,12 +1714,11 @@ function closeSheet(){
     setTimeout(()=>{if(host.querySelector('.closing'))host.innerHTML=''},280);
   }else{host.innerHTML=''}
 }
-// Arrastrar hacia abajo para cerrar cualquier sheet
+// Arrastrar hacia abajo para cerrar — solo en sheets a pantalla completa (.full)
 let _shDragY=null,_shEl=null;
 document.addEventListener('touchstart',e=>{
-  const sheet=e.target.closest('.sheet');
+  const sheet=e.target.closest('.sheet.full');
   if(!sheet)return;
-  // Solo iniciar arrastre si el sheet está tope arriba (no en medio de scroll)
   if(sheet.scrollTop>2)return;
   _shDragY=e.touches[0].clientY;_shEl=sheet;
 },{passive:true});
