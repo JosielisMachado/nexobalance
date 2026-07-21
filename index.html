@@ -240,7 +240,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.22.1';
+const APP_VERSION='1.23.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -978,6 +978,7 @@ function viewPresu(){
   const plan=planMes(pk);
   const ingresoEsperado=plan?Number(plan.ingreso_esperado):0;
   const ingresoAnterior=ingresoRealMes(periodShift(pk,-1));
+  const ingresoRegistrado=ingresoRealMes(pk);
 
   let totalPresu=0,totalGastado=0,totalReservado=0;
   for(const b of buds){totalPresu+=Number(b.monto);if(b.reservado)totalReservado+=Number(b.monto)}
@@ -1007,6 +1008,18 @@ function viewPresu(){
       </div>
       <div style="font-size:1.7rem;font-weight:800;margin-top:4px;font-size:${fitFont(ingresoEsperado,1.7,0.9,9)}">${localFlag()} ${fmt(ingresoEsperado)}</div>
       ${ingresoAnterior>0?`<div style="opacity:.8;font-size:.72rem;margin-top:4px">El mes pasado ingresaste: ${fmt(ingresoAnterior)}</div>`:''}
+      ${ingresoEsperado>0?(()=>{
+        const pctReg=Math.min(999,Math.round(ingresoRegistrado/ingresoEsperado*100));
+        const falta=ingresoEsperado-ingresoRegistrado;
+        return `<div style="background:rgba(255,255,255,.14);border-radius:12px;padding:9px 12px;margin-top:10px">
+          <div class="row spread" style="font-size:.75rem"><span style="opacity:.85">Registrado este mes</span><span style="font-weight:800">${pctReg}%</span></div>
+          <div style="height:6px;background:rgba(255,255,255,.25);border-radius:6px;margin-top:6px;overflow:hidden"><div style="height:100%;width:${Math.min(100,pctReg)}%;background:#fff;border-radius:6px"></div></div>
+          <div class="row spread" style="font-size:.74rem;margin-top:6px;opacity:.9">
+            <span>${localFlag()} ${fmt(ingresoRegistrado)}</span>
+            <span>${falta>0?'Falta '+fmt(falta):'¡Completo! +'+fmt(-falta)}</span>
+          </div>
+        </div>`;
+      })():''}
       <div style="height:1px;background:rgba(255,255,255,.25);margin:12px 0"></div>
       <div class="row" style="gap:14px">
         <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Reservado</div><div style="font-weight:800;font-size:${fitFont(totalReservado,1.05,0.7,9)}">${fmt(totalReservado)}</div></div>
