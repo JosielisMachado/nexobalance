@@ -68,6 +68,19 @@ body:has(#appView:not(.hidden)){background:var(--panel-out)}
 .inp{width:100%;background:var(--chip);border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px 14px;font-size:1rem;outline:none;transition:.15s}
 .inp:focus{border-color:var(--pri)}
 textarea.inp{resize:vertical;min-height:64px}
+.calcbtn{width:44px;height:46px;flex-shrink:0;border-radius:var(--radius-sm);background:var(--chip);border:1px solid var(--line);font-size:1.25rem;display:flex;align-items:center;justify-content:center;transition:.15s}
+.calcbtn.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.calcpanel{margin-top:10px;background:var(--chip);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
+.calcdisp{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;min-height:52px;display:flex;flex-direction:column;justify-content:center}
+.calcexpr{font-size:1.05rem;font-weight:700;word-break:break-all;line-height:1.3;text-align:right}
+.calcprev{font-size:.78rem;color:var(--sub);text-align:right;margin-top:2px}
+.calcgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.calcgrid button{height:46px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:1.05rem;font-weight:600;transition:.12s}
+.calcgrid button:active{transform:scale(.94)}
+.calcgrid button.op{background:rgba(23,136,255,.1);color:var(--pri);font-weight:700}
+.calcgrid button.wide{grid-column:span 2}
+.calcusar{width:100%;margin-top:8px;height:46px;border-radius:12px;background:var(--pri);color:#fff;font-weight:700;font-size:.95rem}
+.calcusar:disabled{opacity:.45}
 .seg{display:flex;background:var(--chip);border-radius:var(--radius-sm);padding:4px;gap:4px}
 .seg button{flex:1;padding:10px;border-radius:12px;font-weight:700;color:var(--sub);transition:.15s}
 .seg button.on{background:var(--card);color:var(--txt);box-shadow:var(--shadow)}
@@ -241,7 +254,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.27.0';
+const APP_VERSION='1.29.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -305,7 +318,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],presuMes:null,calc:{abierta:false,expr:''},settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -357,9 +370,19 @@ async function trySync(){
     const pend=await idbAll('outbox');
     if(pend.length){
       const payload={categories:pend.filter(p=>p.kind==='cat').map(p=>p.data),movements:pend.filter(p=>p.kind==='mov').map(p=>p.data),budgets:pend.filter(p=>p.kind==='budget').map(p=>p.data),monthly_plan:pend.filter(p=>p.kind==='plan').map(p=>p.data)};
-      const{error}=await sb.rpc('sync_push',{p:payload});
+      const{data:resp,error}=await sb.rpc('sync_push',{p:payload});
       if(error)throw error;
-      await idbClear('outbox');
+      const omitidos=(resp&&Number(resp.skipped))||0;
+      if(omitidos>0){
+        logSyncError('sync_push_skipped','El servidor omitió '+omitidos+' de '+pend.length+' registro(s)');
+        for(const p of pend){
+          const n=(p.intentos||0)+1;
+          if(n>=5){await idbDel('outbox',p.k);logSyncError('sync_push_descartado',p.kind+':'+((p.data&&p.data.id)||'?')+' tras 5 intentos')}
+          else await idbPut('outbox',Object.assign({},p,{intentos:n}));
+        }
+      }else{
+        await idbClear('outbox');
+      }
     }
     await pullAll();
   }catch(e){console.error('sync',e);logSyncError('sync_push',e.message||String(e))}
@@ -374,13 +397,23 @@ async function pullAll(){
     sb.from('budgets').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(3000),
     sb.from('monthly_plan').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(1000)
   ]);
-  if(rc.error||rm.error){console.error('pull',rc.error||rm.error);return}
+  // Ninguna fuente puede fallar en silencio: si alguna falla, no se avanza lastPull
+  // y la ventana se reintenta completa en la próxima sincronización.
+  let fallo=false;
+  for(const[nombre,r]of[['categories',rc],['movements',rm],['budgets',rb],['monthly_plan',rp]]){
+    if(!r||r.error||!r.data){
+      fallo=true;
+      const msg=(r&&r.error&&(r.error.message||r.error.code))||'sin respuesta';
+      console.error('pull '+nombre,msg);
+      logSyncError('pull_'+nombre,msg);
+    }
+  }
   let maxT=since;let cambios=0;
-  for(const c of rc.data){const loc=S.cats.find(x=>x.id===c.id);if(!loc||c.updated_at>=loc.updated_at){await saveLocalCat(c);cambios++}if(c.updated_at>maxT)maxT=c.updated_at}
-  for(const m of rm.data){const loc=S.movs.find(x=>x.id===m.id);if(!loc||m.updated_at>=loc.updated_at){await saveLocalMov(m);cambios++}if(m.updated_at>maxT)maxT=m.updated_at}
+  if(rc&&!rc.error&&rc.data){for(const c of rc.data){const loc=S.cats.find(x=>x.id===c.id);if(!loc||c.updated_at>=loc.updated_at){await saveLocalCat(c);cambios++}if(c.updated_at>maxT)maxT=c.updated_at}}
+  if(rm&&!rm.error&&rm.data){for(const m of rm.data){const loc=S.movs.find(x=>x.id===m.id);if(!loc||m.updated_at>=loc.updated_at){await saveLocalMov(m);cambios++}if(m.updated_at>maxT)maxT=m.updated_at}}
   if(rb&&!rb.error&&rb.data){for(const b of rb.data){const loc=S.budgets.find(x=>x.id===b.id);if(!loc||b.updated_at>=loc.updated_at){await saveLocalBudget(b);cambios++}if(b.updated_at>maxT)maxT=b.updated_at}}
   if(rp&&!rp.error&&rp.data){for(const pl of rp.data){const loc=S.plan.find(x=>x.id===pl.id);if(!loc||pl.updated_at>=loc.updated_at){await saveLocalPlan(pl);cambios++}if(pl.updated_at>maxT)maxT=pl.updated_at}}
-  await kvSet('lastPull',maxT);
+  if(!fallo)await kvSet('lastPull',maxT);
   if(cambios>0)render();
 }
 
@@ -1893,9 +1926,94 @@ function openConfirm(title,msg,onYes){
   document.getElementById('confYes').onclick=async()=>{closeSheet();await onYes()};
 }
 
+// ===== Calculadora del monto =====
+// Evaluador propio: no se usa eval() por seguridad y por la CSP.
+function calcEvaluar(expr){
+  const s=String(expr||'').replace(/×/g,'*').replace(/÷/g,'/').replace(/,/g,'.');
+  if(!s.trim())return null;
+  if(!/^[0-9+\-*/(). ]+$/.test(s))return null;
+  const toks=s.match(/\d+\.?\d*|[+\-*/()]/g);
+  if(!toks)return null;
+  let pos=0;
+  const peek=()=>toks[pos];
+  function factor(){
+    const t=peek();
+    if(t==='-'){pos++;return -factor()}
+    if(t==='+'){pos++;return factor()}
+    if(t==='('){pos++;const v=expresion();if(peek()===')')pos++;else return NaN;return v}
+    if(t===undefined||/^[+\-*/()]$/.test(t))return NaN;
+    pos++;return parseFloat(t);
+  }
+  function termino(){let v=factor();while(peek()==='*'||peek()==='/'){const op=peek();pos++;const r=factor();v=op==='*'?v*r:(r===0?NaN:v/r)}return v}
+  function expresion(){let v=termino();while(peek()==='+'||peek()==='-'){const op=peek();pos++;const r=termino();v=op==='+'?v+r:v-r}return v}
+  const val=expresion();
+  if(pos<toks.length||!isFinite(val))return null;
+  return Math.round(val*100)/100;
+}
+function calcHTML(){
+  if(!S.calc.abierta)return '';
+  const expr=S.calc.expr;
+  const res=calcEvaluar(expr);
+  const teclas=[['7'],['8'],['9'],['÷','op'],['4'],['5'],['6'],['×','op'],['1'],['2'],['3'],['-','op'],['0'],['.'],['=','op'],['+','op']];
+  return `<div class="calcpanel">
+    <div class="calcdisp">
+      <div class="calcexpr">${expr?esc(expr):'<span style="color:var(--sub);font-weight:500">Escribe una operación</span>'}</div>
+      ${res!==null&&expr?`<div class="calcprev">= ${fmt(res)}</div>`:''}
+    </div>
+    <div class="calcgrid">
+      <button onclick="calcLimpiar()" style="color:var(--bad);font-weight:700">C</button>
+      <button onclick="calcBorrar()">⌫</button>
+      <button onclick="calcTecla('(')">(</button>
+      <button onclick="calcTecla(')')">)</button>
+      ${teclas.map(([t,cls])=>`<button class="${cls||''}" onclick="${t==='='?'calcIgual()':`calcTecla('${t}')`}">${t}</button>`).join('')}
+    </div>
+    <button class="calcusar" onclick="calcPasarMonto()" ${res===null||res<=0?'disabled':''}>Pasar al monto${res!==null&&res>0?' · '+fmt(res):''}</button>
+  </div>`;
+}
+function pintarCalc(){const b=document.getElementById('calcBox');if(b)b.innerHTML=calcHTML()}
+function toggleCalc(){
+  S.calc.abierta=!S.calc.abierta;
+  if(S.calc.abierta){
+    const el=document.getElementById('mMonto');
+    const v=el&&el.value?String(el.value):'';
+    if(v&&!S.calc.expr)S.calc.expr=v;
+  }
+  const btn=document.getElementById('calcToggle');
+  if(btn)btn.classList.toggle('on',S.calc.abierta);
+  pintarCalc();
+}
+function calcTecla(t){
+  const ops='+-×÷*/';
+  const last=S.calc.expr.slice(-1);
+  if(ops.includes(t)&&(!S.calc.expr||ops.includes(last)))
+    {if(!S.calc.expr)return;S.calc.expr=S.calc.expr.slice(0,-1)+t;pintarCalc();return}
+  S.calc.expr+=t;pintarCalc();
+}
+function calcBorrar(){S.calc.expr=S.calc.expr.slice(0,-1);pintarCalc()}
+function calcLimpiar(){S.calc.expr='';pintarCalc()}
+function calcIgual(){
+  const r=calcEvaluar(S.calc.expr);
+  if(r===null)return toast('Revisa la operación');
+  S.calc.expr=String(r);pintarCalc();
+}
+function calcPasarMonto(){
+  const r=calcEvaluar(S.calc.expr);
+  if(r===null||r<=0)return toast('Revisa la operación');
+  const el=document.getElementById('mMonto');
+  if(!el)return;
+  el.value=r;
+  S.editingMov.monto=String(r);
+  S.calc.expr='';S.calc.abierta=false;
+  const btn=document.getElementById('calcToggle');
+  if(btn)btn.classList.remove('on');
+  pintarCalc();
+  actualizarSimulador();
+}
+
 function openMovSheet(id,tipoPreset){
   const m=id?S.movs.find(x=>x.id===id):null;
   S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
+  S.calc={abierta:false,expr:''};
   drawMovSheet();
 }
 function openMovSheetType(tipo){closeFab();openMovSheet(null,tipo)}
@@ -1928,11 +2046,13 @@ function drawMovSheet(){
     <div class="field"><label>Monto</label>
       <div class="row">
         <input class="inp" id="mMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${e.monto}" style="font-size:1.3rem;font-weight:700" oninput="actualizarSimulador()">
-        <div class="seg" style="width:130px">
+        <button class="calcbtn ${S.calc.abierta?'on':''}" id="calcToggle" onclick="toggleCalc()" title="Calculadora">🧮</button>
+        <div class="seg" style="width:118px">
           <button class="${e.moneda==='UYU'?'on':''}" onclick="movMoneda('UYU')">${localFlag()} ${detectPais().cur}</button>
           <button class="${e.moneda==='USD'?'on':''}" onclick="movMoneda('USD')">${usdFlag()} USD</button>
         </div>
       </div>
+      <div id="calcBox">${calcHTML()}</div>
       <div id="simuladorBox" style="margin-top:8px"></div>
     </div>
     <div class="field"><label>Categoría</label><div class="chips">
@@ -1954,6 +2074,7 @@ function drawMovSheet(){
     <div class="field"><label>Etiquetas (separadas por coma)</label><input class="inp" id="mTags" placeholder="Ej: feria, niños" value="${esc((e.etiquetas||[]).join(', '))}"></div>
     <div class="field"><label>Notas</label><textarea class="inp" id="mNotas" placeholder="Opcional">${esc(e.notas||'')}</textarea></div>
     <button class="btn" onclick="saveMov()">${isEdit?'Guardar cambios':'Guardar movimiento'}</button>
+    ${isEdit?'':'<button class="btn ghost" style="margin-top:8px" onclick="closeSheet()">Terminar</button>'}
   </div></div>`;
   if(!e.monto)setTimeout(()=>{const i=document.getElementById('mMonto');i&&i.focus()},150);
 }
@@ -2030,7 +2151,21 @@ async function saveMov(){
   if(i>=0)S.movs[i]=rec;else S.movs.push(rec);
   await idbPut('movs',rec);
   await idbPut('outbox',{k:'mov:'+rec.id+':'+rec.updated_at,kind:'mov',data:rec});
-  closeSheet();
+  if(isEdit){
+    closeSheet();
+  }else{
+    // Registro en cadena: se conserva el contexto (tipo, moneda, fecha, categoría,
+    // forma de pago) y se limpia solo lo que cambia en cada movimiento.
+    const ahora=new Date();
+    S.calc={abierta:false,expr:''};
+    S.editingMov={
+      id:uuid(),tipo:rec.tipo,monto:'',moneda:rec.moneda,
+      fecha:rec.fecha,hora:ahora.toTimeString().slice(0,5),
+      categoria_id:rec.categoria_id||'',subcategoria_id:rec.subcategoria_id||'',
+      descripcion:'',notas:'',forma_pago:rec.forma_pago||'',etiquetas:[]
+    };
+    drawMovSheet();
+  }
   render();
   trySync();
   toast(isEdit?'Movimiento actualizado':'Movimiento guardado'+(navigator.onLine?'':' (se sincronizará al volver la conexión)'));
