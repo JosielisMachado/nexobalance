@@ -254,7 +254,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.29.0';
+const APP_VERSION='1.30.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -923,14 +923,21 @@ function viewMovs(){
   let list=movsActivos();
   if(f.q){const q=f.q.toLowerCase();list=list.filter(m=>(m.descripcion||'').toLowerCase().includes(q)||(m.notas||'').toLowerCase().includes(q)||(m.etiquetas||[]).join(',').toLowerCase().includes(q)||String(m.monto).includes(q))}
   if(f.tipo)list=list.filter(m=>m.tipo===f.tipo);
-  if(f.cats&&f.cats.length)list=list.filter(m=>f.cats.includes(m.categoria_id)||f.cats.includes(m.subcategoria_id));
   if(f.desde)list=list.filter(m=>m.fecha>=f.desde);
   if(f.hasta)list=list.filter(m=>m.fecha<=f.hasta);
+  // Base para los chips: todo filtrado MENOS las categorías. Si se calculara sobre la
+  // lista final, al elegir una categoría desaparecerían las demás y no se podría sumar otra.
+  const base=list;
+  if(f.cats&&f.cats.length)list=list.filter(m=>f.cats.includes(m.categoria_id)||f.cats.includes(m.subcategoria_id));
   list.sort((a,b)=>(b.fecha+(b.hora||''))<(a.fecha+(a.hora||''))?-1:1);
   const groups={};
   for(const m of list){(groups[m.fecha]=groups[m.fecha]||[]).push(m)}
   let tot=0;for(const m of list)tot+=(m.tipo==='ingreso'?1:-1)*toUYU(m);
-  const catsConMovs=new Set(movsActivos().map(m=>m.categoria_id).filter(Boolean));
+  const catsConMovs=new Set();
+  for(const m of base){
+    if(m.categoria_id)catsConMovs.add(m.categoria_id);
+    if(m.subcategoria_id){const sc=S.cats.find(x=>x.id===m.subcategoria_id);if(sc&&sc.parent_id)catsConMovs.add(sc.parent_id)}
+  }
   const selCats=new Set(f.cats||[]);
   const cats=activeCats().filter(c=>!c.parent_id&&(catsConMovs.has(c.id)||selCats.has(c.id)));
   const hayFiltro=f.q||f.tipo||f.desde||f.hasta||(f.cats&&f.cats.length);
@@ -950,7 +957,7 @@ function viewMovs(){
     </div>
     <label style="display:block;font-size:.8rem;color:var(--sub);margin:2px 0 6px;font-weight:600">Categorías (podés elegir varias)</label>
     <div class="chips">
-      ${cats.map(c=>`<button class="chip" style="${catChipStyle(c,(f.cats||[]).includes(c.id))}" onclick="toggleCatFilter('${c.id}')">${c.icon} ${esc(c.name)}</button>`).join('')||'<span class="sub">Sin categorías</span>'}
+      ${cats.map(c=>`<button class="chip" style="${catChipStyle(c,(f.cats||[]).includes(c.id))}" onclick="toggleCatFilter('${c.id}')">${c.icon} ${esc(c.name)}</button>`).join('')||'<span class="sub">Ninguna categoría con movimientos en este filtro</span>'}
     </div>
   </div>
   <div class="card"><div class="row spread"><span class="sub">${list.length} movimientos</span><span class="mid ${tot>=0?'ok':'bad'}">${money(tot)}</span></div></div>
