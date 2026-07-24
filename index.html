@@ -106,6 +106,12 @@ nav button svg{transition:.15s}
 .sheet-bg:has(.sheet.full){background:var(--bg)}
 .sheet-bg.dragging{background:var(--bg)!important}
 .sheet-bg{touch-action:none;overscroll-behavior:contain}
+.lockKey{width:72px;height:72px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:1.5rem;font-weight:600;display:flex;align-items:center;justify-content:center;transition:.12s}
+.lockKey:active{background:var(--chip);transform:scale(.94)}
+.lockDot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);transition:.15s}
+.lockDot.on{background:var(--pri);border-color:var(--pri);transform:scale(1.1)}
+.lockShake{animation:shk .4s}
+@keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
 .sheet{touch-action:pan-y;overscroll-behavior:contain}
 body.sheet-open{overflow:hidden!important;touch-action:none}
 .sheet.closing{animation:down .22s cubic-bezier(.4,0,.2,1) forwards}
@@ -238,13 +244,40 @@ svg text{font-family:inherit}
   </nav>
 </div>
 
+<div id="lockView" class="hidden">
+  <div style="position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+    <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,var(--pri),var(--pri2));display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 10px 30px rgba(23,136,255,.3)">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    </div>
+    <h2 style="font-size:1.2rem;margin-bottom:4px">NexoBalance</h2>
+    <p class="sub" id="lockMsg" style="font-size:.85rem;margin-bottom:22px">Ingresa tu PIN para continuar</p>
+    <div class="row" id="lockDots" style="gap:12px;margin-bottom:26px"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center">
+      ${''}
+      <button class="lockKey" onclick="lockDigit('1')">1</button>
+      <button class="lockKey" onclick="lockDigit('2')">2</button>
+      <button class="lockKey" onclick="lockDigit('3')">3</button>
+      <button class="lockKey" onclick="lockDigit('4')">4</button>
+      <button class="lockKey" onclick="lockDigit('5')">5</button>
+      <button class="lockKey" onclick="lockDigit('6')">6</button>
+      <button class="lockKey" onclick="lockDigit('7')">7</button>
+      <button class="lockKey" onclick="lockDigit('8')">8</button>
+      <button class="lockKey" onclick="lockDigit('9')">9</button>
+      <button class="lockKey" id="lockBio" style="font-size:1.3rem;visibility:hidden" onclick="desbloquearBiometria()">👆</button>
+      <button class="lockKey" onclick="lockDigit('0')">0</button>
+      <button class="lockKey" onclick="lockBorrar()" style="font-size:1.1rem">⌫</button>
+    </div>
+    <button class="link" style="margin-top:24px;font-size:.82rem" onclick="lockCerrarSesion()">Cerrar sesión</button>
+  </div>
+</div>
+
 <div id="sheetHost"></div>
 <div id="installHost"></div>
 <div id="toastHost"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.33.0';
+const APP_VERSION='1.34.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -543,6 +576,7 @@ async function startApp(user,isNew){
   const fab=document.getElementById('fabBtn');
   if(fab)fab.classList.toggle('hidden',S.tab==='ajustes'||S.tab==='cats'||S.tab==='presu');
   armExitGuard();
+  if(lockConfig())bloquearApp();
   if(navigator.onLine){await trySync();await loadUserName()}
   if(S.settings.tcAuto&&navigator.onLine){
     // Cada arranque (incluido el refresh manual) actualiza el tipo de cambio y su hora
@@ -967,6 +1001,211 @@ async function crearCategoriaAhorro(){
   // Esperar a que la categoría exista en memoria antes de abrir su presupuesto
   setTimeout(()=>{editarPresupuesto(catId,true)},350);
 }
+// ============ BLOQUEO CON PIN / BIOMETRÍA ============
+const LOCK_KEY='nb_lock';
+function lockConfig(){
+  try{return JSON.parse(localStorage.getItem(LOCK_KEY))||null}catch(e){return null}
+}
+function lockGuardar(cfg){try{localStorage.setItem(LOCK_KEY,JSON.stringify(cfg))}catch(e){}}
+async function hashPin(pin,salt){
+  const data=new TextEncoder().encode(pin+'::'+salt);
+  const buf=await crypto.subtle.digest('SHA-256',data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function bioDisponible(){
+  return !!(window.PublicKeyCredential&&navigator.credentials);
+}
+let _lockBuffer='',_lockIntentos=0,_lockPendiente=false;
+
+function lockRenderDots(){
+  const cont=document.getElementById('lockDots');
+  if(!cont)return;
+  const cfg=lockConfig();
+  const largo=cfg?cfg.largo:4;
+  cont.innerHTML='';
+  for(let i=0;i<largo;i++){
+    const d=document.createElement('div');
+    d.className='lockDot'+(i<_lockBuffer.length?' on':'');
+    cont.appendChild(d);
+  }
+}
+function lockDigit(d){
+  const cfg=lockConfig();if(!cfg)return;
+  if(_lockBuffer.length>=cfg.largo)return;
+  _lockBuffer+=d;
+  lockRenderDots();
+  if(_lockBuffer.length===cfg.largo)setTimeout(verificarPin,120);
+}
+function lockBorrar(){_lockBuffer=_lockBuffer.slice(0,-1);lockRenderDots()}
+async function verificarPin(){
+  const cfg=lockConfig();if(!cfg)return;
+  const h=await hashPin(_lockBuffer,cfg.salt);
+  if(h===cfg.hash){
+    _lockIntentos=0;_lockBuffer='';
+    desbloquearApp();
+  }else{
+    _lockIntentos++;
+    _lockBuffer='';lockRenderDots();
+    const dots=document.getElementById('lockDots');
+    if(dots){dots.classList.add('lockShake');setTimeout(()=>dots.classList.remove('lockShake'),400)}
+    const msg=document.getElementById('lockMsg');
+    if(msg){
+      if(_lockIntentos>=5){msg.textContent='Demasiados intentos. Cierra sesión para restablecer.';msg.style.color='var(--bad)'}
+      else{msg.textContent='PIN incorrecto. Intenta de nuevo.';msg.style.color='var(--bad)'}
+    }
+    if(navigator.vibrate)navigator.vibrate(200);
+  }
+}
+function bloquearApp(){
+  const cfg=lockConfig();
+  if(!cfg||!S.uid)return;
+  _lockPendiente=true;_lockBuffer='';
+  const lv=document.getElementById('lockView');
+  if(lv)lv.classList.remove('hidden');
+  const msg=document.getElementById('lockMsg');
+  if(msg){msg.textContent='Ingresa tu PIN para continuar';msg.style.color=''}
+  lockRenderDots();
+  const bioBtn=document.getElementById('lockBio');
+  if(bioBtn)bioBtn.style.visibility=(cfg.bio&&bioDisponible())?'visible':'hidden';
+  if(cfg.bio&&bioDisponible())setTimeout(desbloquearBiometria,300);
+}
+function desbloquearApp(){
+  _lockPendiente=false;
+  const lv=document.getElementById('lockView');
+  if(lv)lv.classList.add('hidden');
+  lockMarcarActividad();
+}
+async function desbloquearBiometria(){
+  const cfg=lockConfig();
+  if(!cfg||!cfg.bio||!bioDisponible())return;
+  try{
+    const challenge=crypto.getRandomValues(new Uint8Array(32));
+    await navigator.credentials.get({
+      publicKey:{
+        challenge,
+        timeout:30000,
+        userVerification:'required',
+        allowCredentials:cfg.credId?[{type:'public-key',id:Uint8Array.from(atob(cfg.credId),c=>c.charCodeAt(0))}]:[]
+      }
+    });
+    _lockIntentos=0;_lockBuffer='';
+    desbloquearApp();
+  }catch(e){
+    // El usuario canceló o falló: se queda el PIN como alternativa
+  }
+}
+function lockCerrarSesion(){
+  desbloquearApp();
+  doLogout();
+}
+// Control de inactividad
+let _lockLastActive=Date.now();
+function lockMarcarActividad(){_lockLastActive=Date.now()}
+function lockRevisar(){
+  const cfg=lockConfig();
+  if(!cfg||!S.uid||_lockPendiente)return;
+  const mins=cfg.timeout===undefined?0:cfg.timeout;
+  if(mins===0||(Date.now()-_lockLastActive)>mins*60000)bloquearApp();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)lockMarcarActividad();
+  else lockRevisar();
+});
+['click','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,lockMarcarActividad,{passive:true}));
+
+// Configuración desde Ajustes
+function abrirConfigBloqueo(){
+  const cfg=lockConfig();
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:4px">🔐 Bloqueo de la aplicación</h2>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:16px">Protege tus finanzas con un PIN. Se pedirá al abrir la aplicación o al volver después de un tiempo.</p>
+    ${cfg?`
+      <div style="background:var(--chip);border-radius:14px;padding:12px 14px;margin-bottom:14px">
+        <div class="row spread"><span style="font-weight:600;font-size:.88rem">Bloqueo activo</span><span class="pill" style="background:rgba(51,209,111,.15);color:var(--ok)">● Activado</span></div>
+      </div>
+      <div class="field"><label>Pedir el PIN</label>
+        <select class="inp" id="lkTimeout" onchange="cambiarTimeoutBloqueo(this.value)">
+          <option value="0" ${cfg.timeout===0?'selected':''}>Siempre al abrir</option>
+          <option value="1" ${cfg.timeout===1?'selected':''}>Tras 1 minuto sin usar</option>
+          <option value="5" ${cfg.timeout===5?'selected':''}>Tras 5 minutos sin usar</option>
+          <option value="15" ${cfg.timeout===15?'selected':''}>Tras 15 minutos sin usar</option>
+        </select>
+      </div>
+      ${bioDisponible()?`<label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
+        <input type="checkbox" id="lkBio" ${cfg.bio?'checked':''} onchange="cambiarBioBloqueo(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
+        <div><div style="font-weight:600">Usar huella o rostro</div><div class="sub" style="font-size:.75rem">Desbloquea sin escribir el PIN</div></div>
+      </label>`:'<div class="sub" style="font-size:.78rem;margin-bottom:14px">Este dispositivo no ofrece desbloqueo biométrico para aplicaciones web.</div>'}
+      <button class="btn ghost" style="width:100%;margin-bottom:8px" onclick="definirPin(true)">Cambiar PIN</button>
+      <button class="link" style="width:100%;color:var(--bad)" onclick="quitarBloqueo()">Desactivar bloqueo</button>
+    `:`
+      <button class="btn" onclick="definirPin(false)">Activar bloqueo con PIN</button>
+    `}
+  </div></div>`;
+}
+function definirPin(esCambio){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:4px">${esCambio?'Cambiar':'Crear'} PIN</h2>
+    <p class="sub" style="font-size:.85rem;margin-bottom:16px">Elige un PIN de 4 a 6 dígitos. Lo necesitarás cada vez que abras la aplicación.</p>
+    <div class="field"><label>PIN nuevo</label><input class="inp" id="pin1" type="password" inputmode="numeric" maxlength="6" placeholder="••••" style="text-align:center;font-size:1.4rem;letter-spacing:.4em" oninput="this.value=this.value.replace(/\\D/g,'')"></div>
+    <div class="field"><label>Repite el PIN</label><input class="inp" id="pin2" type="password" inputmode="numeric" maxlength="6" placeholder="••••" style="text-align:center;font-size:1.4rem;letter-spacing:.4em" oninput="this.value=this.value.replace(/\\D/g,'')"></div>
+    <div style="background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.35);border-radius:12px;padding:10px 12px;margin-bottom:16px">
+      <div style="font-size:.78rem;line-height:1.45">⚠️ Si olvidas tu PIN tendrás que cerrar sesión y volver a entrar con tu teléfono y contraseña. Tus datos no se pierden.</div>
+    </div>
+    <button class="btn" onclick="guardarPin()">Guardar PIN</button>
+  </div></div>`;
+}
+async function guardarPin(){
+  const p1=document.getElementById('pin1').value;
+  const p2=document.getElementById('pin2').value;
+  if(p1.length<4||p1.length>6)return toast('El PIN debe tener entre 4 y 6 dígitos');
+  if(p1!==p2)return toast('Los PIN no coinciden');
+  const salt=Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const hash=await hashPin(p1,salt);
+  const prev=lockConfig();
+  lockGuardar({hash,salt,largo:p1.length,timeout:prev?prev.timeout:0,bio:prev?prev.bio:false,credId:prev?prev.credId:null});
+  closeSheet();
+  toast('Bloqueo activado');
+  render();
+}
+function cambiarTimeoutBloqueo(v){
+  const cfg=lockConfig();if(!cfg)return;
+  cfg.timeout=Number(v);lockGuardar(cfg);
+  toast('Preferencia guardada');
+}
+async function cambiarBioBloqueo(activar){
+  const cfg=lockConfig();if(!cfg)return;
+  if(!activar){cfg.bio=false;cfg.credId=null;lockGuardar(cfg);toast('Biometría desactivada');return}
+  try{
+    const challenge=crypto.getRandomValues(new Uint8Array(32));
+    const userId=crypto.getRandomValues(new Uint8Array(16));
+    const cred=await navigator.credentials.create({
+      publicKey:{
+        challenge,
+        rp:{name:'NexoBalance'},
+        user:{id:userId,name:S.userPhone||'usuario',displayName:S.userName||'Usuario'},
+        pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+        authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+        timeout:60000
+      }
+    });
+    const raw=new Uint8Array(cred.rawId);
+    cfg.credId=btoa(String.fromCharCode(...raw));
+    cfg.bio=true;lockGuardar(cfg);
+    toast('Biometría activada');
+  }catch(e){
+    const el=document.getElementById('lkBio');if(el)el.checked=false;
+    toast('No se pudo activar la biometría en este dispositivo');
+  }
+}
+function quitarBloqueo(){
+  openConfirm('¿Desactivar el bloqueo?','Tu aplicación quedará accesible sin PIN.',()=>{
+    try{localStorage.removeItem(LOCK_KEY)}catch(e){}
+    closeSheet();toast('Bloqueo desactivado');render();
+  });
+}
+
 function recurrentesActivos(){return S.recurring.filter(r=>!r.deleted&&r.activo)}
 function recurrentesPendientes(){
   // Recurrentes cuyo día ya llegó este mes y aún no se registraron
@@ -1763,7 +2002,7 @@ const AYUDA={
     titulo:'Ajustes',
     que:'Configuras la app a tu gusto: tema claro u oscuro, tipo de cambio del dólar, tu contraseña, y puedes descargar una copia de tus datos.',
     ejemplo:'Ejemplo: activas el tipo de cambio automático para que el valor del dólar se actualice solo, y cambias al tema oscuro para usar la app de noche.',
-    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos cada mes.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
+    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos cada mes.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
   }
 };
 function ayudaBtn(tab){
@@ -1824,6 +2063,7 @@ function viewAjustes(){
     <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirConfigBloqueo()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔐</div><div class="mtxt"><div>Bloqueo de la aplicación</div><div class="sub">${lockConfig()?'Activado · PIN'+(lockConfig().bio?' y biometría':''):'Protege tus datos con un PIN'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     ${S.isAdmin?`<div class="item" onclick="openAdminSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--purple)">${ic('users',19)}</div><div class="mtxt"><div>Panel de administrador</div><div class="sub">Cuentas registradas en NexoBalance</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>`:''}
     <div class="item" onclick="doLogout()"><div class="iconbadge" style="background:var(--chip);color:var(--bad)">${ic('logout',19)}</div><div class="mtxt"><div>Cerrar sesión</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -1967,7 +2207,8 @@ function abrirInteligencia(){
     {icon:'🔔',t:'Alertas anticipadas',d:'Te avisa cuando te acercas a un límite o cuando tu ritmo pone en riesgo tu presupuesto, antes de que sea tarde.'},
     {icon:'🔁',t:'Movimientos fijos',d:'Registra una vez tus gastos e ingresos que se repiten cada mes y la app te los recuerda el día que tocan.'},
     {icon:'🎯',t:'Metas de ahorro',d:'Define un objetivo (un TV, unas vacaciones) y calcula, con tu ritmo real de ahorro, en cuántos meses lo alcanzas y en qué fecha.'},
-    {icon:'💰',t:'Detección de ingresos',d:'Si cobras más de lo que esperabas, lo detecta y te ofrece ajustar tu plan con un toque.'}
+    {icon:'💰',t:'Detección de ingresos',d:'Si cobras más de lo que esperabas, lo detecta y te ofrece ajustar tu plan con un toque.'},
+    {icon:'🔐',t:'Protección con PIN',d:'Bloquea la aplicación con un PIN o tu huella, para que solo tú veas tus finanzas.'}
   ];
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
