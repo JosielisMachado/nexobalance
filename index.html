@@ -292,7 +292,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.35.0';
+const APP_VERSION='1.36.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -422,8 +422,18 @@ async function trySync(){
   S.syncing=false;updateSyncPill();
 }
 
-async function pullAll(){
-  const since=(await kvGet('lastPull'))||'1970-01-01T00:00:00Z';
+async function pullAll(completo){
+  // Margen de seguridad: se re-piden los últimos 15 minutos en cada sincronización.
+  // Cubre desfases de reloj entre dispositivos y registros creados mientras otro
+  // dispositivo sincronizaba. El merge es idempotente, así que re-traer no duplica.
+  let since='1970-01-01T00:00:00Z';
+  if(!completo){
+    const lp=await kvGet('lastPull');
+    if(lp){
+      const t=new Date(lp).getTime();
+      if(!isNaN(t))since=new Date(t-15*60000).toISOString();
+    }
+  }
   const[rc,rm,rb,rp,rg,rr,ra]=await Promise.all([
     sb.from('categories').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(2000),
     sb.from('movements').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(5000),
@@ -443,7 +453,21 @@ async function pullAll(){
   if(rr&&!rr.error&&rr.data){for(const r of rr.data){const loc=S.recurring.find(x=>x.id===r.id);if(!loc||r.updated_at>=loc.updated_at){await saveLocalRec(r);cambios++}if(r.updated_at>maxT)maxT=r.updated_at}}
   if(ra&&!ra.error&&ra.data){for(const a of ra.data){const loc=S.accounts.find(x=>x.id===a.id);if(!loc||a.updated_at>=loc.updated_at){await saveLocalAcc(a);cambios++}if(a.updated_at>maxT)maxT=a.updated_at}}
   await kvSet('lastPull',maxT);
+  if(completo)await kvSet('lastFull',new Date().toISOString());
   if(cambios>0)render();
+  return cambios;
+}
+
+async function sincronizacionCompleta(silenciosa){
+  if(!navigator.onLine){if(!silenciosa)toast('Necesitas Internet para sincronizar');return}
+  if(!silenciosa)toast('Sincronizando todo…');
+  try{
+    const cambios=await pullAll(true);
+    if(!silenciosa)toast(cambios?'Sincronización completa: '+cambios+' registro'+(cambios!==1?'s':'')+' actualizado'+(cambios!==1?'s':''):'Todo estaba al día');
+    render();
+  }catch(e){
+    if(!silenciosa)toast('No se pudo completar la sincronización');
+  }
 }
 
 function updateSyncPill(){const el=document.getElementById('syncPill');if(!el)return;if(!navigator.onLine){el.textContent='Sin conexión · guardando local';el.className='pill off'}else if(S.syncing){el.textContent='Sincronizando…';el.className='pill'}else{el.textContent='Al día';el.className='pill'}}
@@ -597,7 +621,17 @@ async function startApp(user,isNew){
   if(fab)fab.classList.toggle('hidden',S.tab==='ajustes'||S.tab==='cats'||S.tab==='presu');
   armExitGuard();
   if(lockConfig())bloquearApp();
-  if(navigator.onLine){await trySync();await loadUserName()}
+  if(navigator.onLine){
+    await trySync();
+    await loadUserName();
+    // Una vez al día se hace una sincronización completa, por si algún registro
+    // quedó fuera del rango incremental.
+    try{
+      const lf=await kvGet('lastFull');
+      const venc=!lf||(Date.now()-new Date(lf).getTime())>24*3600*1000;
+      if(venc)sincronizacionCompleta(true);
+    }catch(e){}
+  }
   if(S.settings.tcAuto&&navigator.onLine){
     // Cada arranque (incluido el refresh manual) actualiza el tipo de cambio y su hora
     tcAutoFetch(true);
@@ -2178,7 +2212,7 @@ const AYUDA={
     titulo:'Ajustes',
     que:'Configuras la app a tu gusto: tema claro u oscuro, tipo de cambio del dólar, tu contraseña, y puedes descargar una copia de tus datos.',
     ejemplo:'Ejemplo: activas el tipo de cambio automático para que el valor del dólar se actualice solo, y cambias al tema oscuro para usar la app de noche.',
-    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Crea tus cuentas (efectivo, banco, tarjeta) para saber cuánto tienes en cada lugar.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos cada mes.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
+    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Crea tus cuentas (efectivo, banco, tarjeta) para saber cuánto tienes en cada lugar.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos cada mes.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Si un dispositivo muestra datos distintos a otro, usa "Sincronizar todo".','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
   }
 };
 function ayudaBtn(tab){
@@ -2239,6 +2273,7 @@ function viewAjustes(){
     <div class="item" onclick="abrirCuentas()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">💳</div><div class="mtxt"><div>Cuentas y medios de pago</div><div class="sub">${cuentasActivas().length?cuentasActivas().length+' cuenta'+(cuentasActivas().length!==1?'s':''):'Efectivo, banco, tarjeta…'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirConfigBloqueo()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔐</div><div class="mtxt"><div>Bloqueo de la aplicación</div><div class="sub">${lockConfig()?'Activado · PIN'+(lockConfig().bio?' y biometría':''):'Protege tus datos con un PIN'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
