@@ -105,6 +105,9 @@ nav button svg{transition:.15s}
 .sheet.full{max-height:100vh;height:100vh;border-radius:0;padding-top:calc(16px + env(safe-area-inset-top))}
 .sheet-bg:has(.sheet.full){background:var(--bg)}
 .sheet-bg.dragging{background:var(--bg)!important}
+.sheet-bg{touch-action:none;overscroll-behavior:contain}
+.sheet{touch-action:pan-y;overscroll-behavior:contain}
+body.sheet-open{overflow:hidden!important;touch-action:none}
 .sheet.closing{animation:down .22s cubic-bezier(.4,0,.2,1) forwards}
 @keyframes down{from{transform:translateY(0)}to{transform:translateY(100%)}}
 .sheet-x{position:absolute;top:12px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--chip);color:var(--txt);display:flex;align-items:center;justify-content:center;font-size:1.1rem;z-index:5}
@@ -156,7 +159,7 @@ svg text{font-family:inherit}
   <p class="sub" style="text-align:center;margin:6px 0 14px">Tus finanzas personales, simples y privadas</p>
   <button onclick="abrirBienvenida()" style="width:100%;margin-bottom:14px;background:rgba(23,136,255,.1);color:var(--pri);border:1px solid rgba(23,136,255,.3);border-radius:14px;padding:12px;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:8px">✨ ¿Por qué elegir NexoBalance?</button>
   <div class="card" style="margin-bottom:16px">
-    <p style="font-size:.86rem;line-height:1.55">Herramienta profesional de finanzas personales con análisis inteligente. Desarrollada por <b>JosmaTech</b> para la comunidad de emigrantes latinos, y abierta a cualquier persona.</p>
+    <p style="font-size:.86rem;line-height:1.55">Herramienta profesional de finanzas personales con análisis inteligente. Desarrollada por <b>JosmaTech</b>.</p>
     <button class="link" style="padding:8px 0 0;font-size:.82rem" onclick="togglePaises()" id="paisesBtn">Ver países donde ya se usa ›</button>
     <p class="sub" id="paisesList" style="display:none;margin-top:6px;line-height:1.6">Argentina, Bolivia, Brasil, Canadá, Chile, Colombia, Costa Rica, Cuba, Ecuador, El Salvador, España, Estados Unidos, Guatemala, Guyana, Honduras, Italia, México, Nicaragua, Panamá, Paraguay, Perú, República Dominicana, Rusia, Uruguay, Venezuela y más.</p>
   </div>
@@ -241,7 +244,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.32.0';
+const APP_VERSION='1.33.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -416,7 +419,7 @@ function abrirBienvenida(){
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
     <h2 style="margin-bottom:12px">💰 ¿Se te va el dinero y no sabes en qué?</h2>
-    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px"><b>NexoBalance</b> es una herramienta de finanzas personales creada por cubanos, pensada para nuestra comunidad de emigrantes y abierta a cualquier persona que quiera administrar mejor su dinero.</p>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px"><b>NexoBalance</b> es una herramienta profesional de finanzas personales que combina registro, planificación y análisis inteligente en una sola aplicación.</p>
     <div style="background:var(--chip);border-radius:14px;padding:14px;margin-bottom:16px">
       <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📊</span><span style="font-size:.86rem;line-height:1.45;flex:1">Registra tus ingresos y gastos en varias monedas.</span></div>
       <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">💵</span><span style="font-size:.86rem;line-height:1.45;flex:1">Aparta dinero para el alquiler, remesas, servicios o tu ahorro.</span></div>
@@ -961,8 +964,8 @@ async function crearCategoriaAhorro(){
   const t=nowISO();
   const catId=uuid();
   await enqueue('cat',{id:catId,user_id:S.uid,name:'Ahorro',tipo:'gasto',icon:'🐷',color:'#9B5CFF',parent_id:null,deleted:false,created_at:t,updated_at:t});
-  toast('Categoría Ahorro creada. Asígnale un monto y márcala como reservada.');
-  setTimeout(()=>editarPresupuesto(catId),400);
+  // Esperar a que la categoría exista en memoria antes de abrir su presupuesto
+  setTimeout(()=>{editarPresupuesto(catId,true)},350);
 }
 function recurrentesActivos(){return S.recurring.filter(r=>!r.deleted&&r.activo)}
 function recurrentesPendientes(){
@@ -1334,9 +1337,11 @@ function viewPresu(){
       const asignado=b?Number(b.monto):0;
       const gastado=gastadoEnCat(c.id,pk);
       const disp=asignado-gastado;
-      const pct=asignado>0?Math.min(100,Math.round(gastado/asignado*100)):0;
+      const pctReal=asignado>0?Math.round(gastado/asignado*100):0;
+      const pct=Math.min(100,pctReal);
       const over=asignado>0&&gastado>asignado;
-      const barColor=over?'var(--bad)':pct>=90?'#ea580c':pct>=70?'#d97706':'var(--ok)';
+      // Rojo SOLO si se pasó del presupuesto. Al 100% exacto sigue estando dentro.
+      const barColor=over?'var(--bad)':(pctReal>=100?'var(--pri)':pctReal>=85?'#d97706':'var(--ok)');
       lista+=`
       <div style="padding:13px 0;border-top:1px solid var(--line)">
         <div class="row spread" onclick="editarPresupuesto('${c.id}')" style="cursor:pointer">
@@ -1344,9 +1349,9 @@ function viewPresu(){
           <span style="color:var(--sub)">${ic('chevron',16)}</span>
         </div>
         ${asignado>0?`
-        <div class="row spread" style="margin-top:8px;font-size:.78rem"><span class="sub">${localFlag()} ${fmt(gastado)} de ${fmt(asignado)}</span><span style="font-weight:700;color:${barColor}">${pct}%</span></div>
+        <div class="row spread" style="margin-top:8px;font-size:.78rem"><span class="sub">${localFlag()} ${fmt(gastado)} de ${fmt(asignado)}</span><span style="font-weight:700;color:${barColor}">${pctReal}%</span></div>
         <div style="height:7px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:5px"><div class="bar" data-w="${pct}" style="height:100%;width:0;background:${barColor};border-radius:6px;transition:width .5s"></div></div>
-        <div class="sub" style="font-size:.72rem;margin-top:4px">${disp>=0?'Disponible: '+localFlag()+' '+fmt(disp):'Excedido en '+localFlag()+' '+fmt(-disp)}</div>
+        <div class="sub" style="font-size:.72rem;margin-top:4px">${disp>0?'Disponible: '+localFlag()+' '+fmt(disp):(disp===0?'Presupuesto usado por completo':'Excedido en '+localFlag()+' '+fmt(-disp)+' ('+(pctReal-100)+'% de más)')}</div>
         `:`<div class="sub" style="font-size:.78rem;margin-top:6px">Sin presupuesto asignado · gastado ${localFlag()} ${fmt(gastado)}</div>`}
       </div>`;
     }
@@ -1462,9 +1467,10 @@ async function guardarIngresoEsperado(){
   closeSheet();toast('Ingreso esperado guardado');
 }
 
-function editarPresupuesto(catId){
+function editarPresupuesto(catId,forzarReserva){
   const pk=S.presuMes;
   const c=catById(catId);
+  if(!c)return toast('No se encontró la categoría');
   const b=budgetFor(catId,pk);
   const gastado=gastadoEnCat(catId,pk);
   document.getElementById('sheetHost').innerHTML=`
@@ -1473,7 +1479,7 @@ function editarPresupuesto(catId){
     <p class="sub" style="margin-bottom:14px">Presupuesto para ${periodLabel(pk)}. Ya gastaste ${localFlag()} ${fmt(gastado)}.</p>
     <div class="field"><label>Monto asignado (moneda local)</label><input class="inp" id="budMonto" type="number" inputmode="decimal" step="0.01" value="${b?Number(b.monto):''}" placeholder="0.00"></div>
     <label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
-      <input type="checkbox" id="budReserv" ${b&&b.reservado?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
+      <input type="checkbox" id="budReserv" ${(b&&b.reservado)||forzarReserva?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
       <div><div style="font-weight:600">Obligación reservada</div><div class="sub" style="font-size:.75rem">Se aparta de tu dinero disponible (alquiler, remesas, servicios...)</div></div>
     </label>
     <button class="btn" onclick="guardarPresupuesto('${catId}')">Guardar</button>
@@ -1638,11 +1644,14 @@ function generarAlertas(){
     const gastado=gastadoEnCat(b.categoria_id,pk);
     const pct=gastado/Number(b.monto);
     if(pct>1){
-      alertas.push({nivel:'alto',icon:'🔴',txt:`Excediste el presupuesto de ${esc(cat.name)} en ${localFlag()} ${fmt(gastado-Number(b.monto))}.`});
+      // prioridad 0: lo más grave, y se ordena por monto excedido
+      alertas.push({prio:0,exceso:gastado-Number(b.monto),nivel:'alto',icon:'🔴',txt:`Excediste el presupuesto de ${esc(cat.name)} en ${localFlag()} ${fmt(gastado-Number(b.monto))} (${Math.round(pct*100)-100}% de más).`});
+    }else if(pct>=1){
+      alertas.push({prio:1,nivel:'alto',icon:'🟠',txt:`Agotaste el presupuesto de ${esc(cat.name)}.`});
     }else if(pct>=0.9){
-      alertas.push({nivel:'alto',icon:'🟠',txt:`Has usado el ${Math.round(pct*100)}% del presupuesto de ${esc(cat.name)}.`});
+      alertas.push({prio:2,nivel:'alto',icon:'🟠',txt:`Has usado el ${Math.round(pct*100)}% del presupuesto de ${esc(cat.name)}.`});
     }else if(pct>=0.75){
-      alertas.push({nivel:'medio',icon:'🟡',txt:`Vas por el ${Math.round(pct*100)}% de ${esc(cat.name)}. Quedan ${localFlag()} ${fmt(Number(b.monto)-gastado)}.`});
+      alertas.push({prio:3,nivel:'medio',icon:'🟡',txt:`Vas por el ${Math.round(pct*100)}% de ${esc(cat.name)}. Quedan ${localFlag()} ${fmt(Number(b.monto)-gastado)}.`});
     }
   }
 
@@ -1651,7 +1660,7 @@ function generarAlertas(){
     const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=a&&m.fecha<=z).reduce((s,m)=>s+toUYU(m),0);
     const proyeccion=(gastoTotal/diaHoy)*diasMes;
     if(proyeccion>ingresoEsp*1.05){
-      alertas.push({nivel:'alto',icon:'⚠️',txt:`Al ritmo actual gastarías ${localFlag()} ${fmt(proyeccion)} este mes, más que tu ingreso de ${fmt(ingresoEsp)}.`});
+      alertas.push({prio:0,exceso:Infinity,nivel:'alto',icon:'⚠️',txt:`Al ritmo actual gastarías ${localFlag()} ${fmt(proyeccion)} este mes, más que tu ingreso de ${fmt(ingresoEsp)}.`});
     }
   }
 
@@ -1664,7 +1673,12 @@ function generarAlertas(){
     }
   }
 
-  return alertas.sort((a,b)=>(a.nivel==='alto'?0:1)-(b.nivel==='alto'?0:1)).slice(0,4);
+  // Orden: primero los excedidos (mayor exceso arriba), luego agotados, luego cercanos
+  return alertas.sort((a,b)=>{
+    const pa=a.prio===undefined?1:a.prio, pb=b.prio===undefined?1:b.prio;
+    if(pa!==pb)return pa-pb;
+    return (b.exceso||0)-(a.exceso||0);
+  }).slice(0,6);
 }
 function irAAlertas(){
   const al=generarAlertas();
@@ -1760,17 +1774,21 @@ function abrirAyuda(tab){
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
-    <div class="row" style="gap:10px;align-items:center;margin-bottom:12px">
-      <div class="iconbadge" style="width:40px;height:40px;background:rgba(23,136,255,.13);color:var(--pri);font-weight:800;font-size:1.1rem">?</div>
-      <h2>${a.titulo}</h2>
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:18px">
+      <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff;font-weight:800;font-size:1.4rem;display:flex;align-items:center;justify-content:center;margin-bottom:10px;box-shadow:0 6px 18px rgba(23,136,255,.3)">?</div>
+      <h2 style="font-size:1.25rem">${a.titulo}</h2>
     </div>
-    <p style="font-size:.9rem;line-height:1.55;margin-bottom:14px">${a.que}</p>
-    <div style="background:var(--chip);border-radius:14px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:.8rem;line-height:1.5;color:var(--sub)">${a.ejemplo}</div>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px">${a.que}</p>
+    <div style="background:var(--chip);border-radius:16px;padding:14px 16px;margin-bottom:18px;border-left:3px solid var(--pri)">
+      <div style="font-size:.68rem;font-weight:800;letter-spacing:.08em;color:var(--pri);margin-bottom:5px">EJEMPLO</div>
+      <div style="font-size:.82rem;line-height:1.55;color:var(--sub)">${a.ejemplo}</div>
     </div>
-    <div style="font-weight:700;margin-bottom:8px;font-size:.9rem">Cómo proceder</div>
-    ${a.pasos.map((p,i)=>`<div class="row" style="gap:10px;align-items:flex-start;margin-bottom:9px"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--pri);color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</span><span style="font-size:.85rem;line-height:1.45;flex:1">${p}</span></div>`).join('')}
-    <button class="btn" style="margin-top:12px" onclick="closeSheet()">Entendido</button>
+    <div style="font-weight:800;margin-bottom:12px;font-size:.95rem">Cómo proceder</div>
+    ${a.pasos.map((p,i)=>`<div class="row" style="gap:12px;align-items:flex-start;padding-bottom:14px;position:relative">
+      <span style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:rgba(23,136,255,.12);color:var(--pri);font-size:.76rem;font-weight:800;display:flex;align-items:center;justify-content:center">${i+1}</span>
+      <span style="font-size:.87rem;line-height:1.5;flex:1;padding-top:3px">${p}</span>
+    </div>`).join('')}
+    <button class="btn" style="margin-top:6px" onclick="closeSheet()">Entendido</button>
   </div></div>`;
 }
 
@@ -1812,7 +1830,7 @@ function viewAjustes(){
   </div>
   <div class="card">
     <h2 style="margin-bottom:8px">¿Qué es JosmaTech?</h2>
-    <p class="sub" style="font-size:.85rem;line-height:1.5">Empresa de tecnología especializada en soluciones de software para la comunidad latina e inmigrante. Desarrollamos herramientas profesionales que resuelven problemas reales de las personas. NexoBalance es uno de nuestros productos.</p>
+    <p class="sub" style="font-size:.85rem;line-height:1.5">Empresa de tecnología especializada en el desarrollo de software. Creamos herramientas profesionales que resuelven problemas reales. NexoBalance es uno de nuestros productos.</p>
   </div>
   <div class="card">
     <h2 style="margin-bottom:8px">🔒 Privacidad</h2>
@@ -1929,7 +1947,7 @@ function abrirJosmaTech(){
       <h2 style="font-size:1.3rem">JosmaTech</h2>
       <div class="sub" style="font-size:.72rem;letter-spacing:.1em;font-weight:700;margin-top:2px">TECNOLOGÍA · SOLUCIONES · CRECIMIENTO</div>
     </div>
-    <p style="font-size:.88rem;line-height:1.55;margin:14px 0;text-align:center">Empresa de tecnología enfocada en crear soluciones que aportan valor a la comunidad. NexoBalance es uno de nuestros proyectos.</p>
+    <p style="font-size:.88rem;line-height:1.55;margin:14px 0;text-align:center">Empresa de tecnología especializada en el desarrollo de software profesional. NexoBalance es uno de nuestros productos.</p>
     <div style="background:var(--chip);border-radius:14px;padding:12px 14px;margin-bottom:14px;text-align:center">
       <div class="sub" style="font-size:.72rem">CEO / Fundador</div>
       <div style="font-weight:800;margin-top:2px">Lic. Josielis Machado Fajardo</div>
@@ -2113,6 +2131,30 @@ function closeSheet(){
     setTimeout(()=>{if(host.querySelector('.closing'))host.innerHTML=''},280);
   }else{host.innerHTML=''}
 }
+// Bloquear el scroll de la pantalla de fondo mientras haya una ventana abierta
+(function(){
+  const host=document.getElementById('sheetHost');
+  if(!host)return;
+  let savedY=0;
+  const obs=new MutationObserver(()=>{
+    const abierto=!!host.querySelector('.sheet-bg');
+    if(abierto&&!document.body.classList.contains('sheet-open')){
+      savedY=window.scrollY;
+      document.body.classList.add('sheet-open');
+      document.body.style.top=(-savedY)+'px';
+      document.body.style.position='fixed';
+      document.body.style.width='100%';
+    }else if(!abierto&&document.body.classList.contains('sheet-open')){
+      document.body.classList.remove('sheet-open');
+      document.body.style.position='';
+      document.body.style.top='';
+      document.body.style.width='';
+      window.scrollTo(0,savedY);
+    }
+  });
+  obs.observe(host,{childList:true,subtree:false});
+})();
+
 // Arrastrar hacia abajo para cerrar cualquier sheet (con fondo opaco para que no se vea el fondo moverse)
 let _shDragY=null,_shEl=null;
 document.addEventListener('touchstart',e=>{
@@ -2125,10 +2167,11 @@ document.addEventListener('touchmove',e=>{
   if(_shDragY===null||!_shEl)return;
   const dy=e.touches[0].clientY-_shDragY;
   if(dy>0){
+    if(e.cancelable)e.preventDefault();
     _shEl.style.transform='translateY('+dy+'px)';_shEl.style.transition='none';
     const bg=_shEl.closest('.sheet-bg');if(bg)bg.classList.add('dragging');
   }
-},{passive:true});
+},{passive:false});
 document.addEventListener('touchend',e=>{
   if(_shDragY===null||!_shEl){return}
   const dy=(e.changedTouches[0].clientY)-_shDragY;
