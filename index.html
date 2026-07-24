@@ -156,7 +156,7 @@ svg text{font-family:inherit}
   <p class="sub" style="text-align:center;margin:6px 0 14px">Tus finanzas personales, simples y privadas</p>
   <button onclick="abrirBienvenida()" style="width:100%;margin-bottom:14px;background:rgba(23,136,255,.1);color:var(--pri);border:1px solid rgba(23,136,255,.3);border-radius:14px;padding:12px;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:8px">✨ ¿Por qué elegir NexoBalance?</button>
   <div class="card" style="margin-bottom:16px">
-    <p style="font-size:.87rem;line-height:1.5">🇨🇺 Somos cubanos. Creamos NexoBalance porque sabemos lo importante que es aprender a organizar nuestras finanzas, más todavía lejos de casa. Nació pensando en ayudar a nuestros compatriotas — pero está abierta a cualquier hermano de cualquier nación.</p>
+    <p style="font-size:.86rem;line-height:1.55">Herramienta profesional de finanzas personales con análisis inteligente. Desarrollada por <b>JosmaTech</b> para la comunidad de emigrantes latinos, y abierta a cualquier persona.</p>
     <button class="link" style="padding:8px 0 0;font-size:.82rem" onclick="togglePaises()" id="paisesBtn">Ver países donde ya se usa ›</button>
     <p class="sub" id="paisesList" style="display:none;margin-top:6px;line-height:1.6">Argentina, Bolivia, Brasil, Canadá, Chile, Colombia, Costa Rica, Cuba, Ecuador, El Salvador, España, Estados Unidos, Guatemala, Guyana, Honduras, Italia, México, Nicaragua, Panamá, Paraguay, Perú, República Dominicana, Rusia, Uruguay, Venezuela y más.</p>
   </div>
@@ -241,7 +241,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.29.0';
+const APP_VERSION='1.32.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -261,7 +261,6 @@ const ICONS={
   wallet:'<path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3"/><path d="M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-4"/><path d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"/>',
   target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 8v.1"/>',
-  ship:'<path d="M3 15h18l-2 5H5l-2-5Z"/><path d="M6 15V9h12v6"/><path d="M12 9V3l4 2"/>',
   moon:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/>',
   sun:'<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
   exchange:'<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
@@ -305,7 +304,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -320,7 +319,7 @@ function catById(id){return S.cats.find(c=>c.id===id)}
 function activeCats(){return S.cats.filter(c=>!c.deleted)}
 
 let _db=null;
-function idb(){return new Promise((res,rej)=>{if(_db)return res(_db);const r=indexedDB.open('nexobalance',3);r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains('movs'))d.createObjectStore('movs',{keyPath:'id'});if(!d.objectStoreNames.contains('cats'))d.createObjectStore('cats',{keyPath:'id'});if(!d.objectStoreNames.contains('outbox'))d.createObjectStore('outbox',{keyPath:'k'});if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('budgets'))d.createObjectStore('budgets',{keyPath:'id'});if(!d.objectStoreNames.contains('plan'))d.createObjectStore('plan',{keyPath:'id'});if(!d.objectStoreNames.contains('goals'))d.createObjectStore('goals',{keyPath:'id'})};r.onsuccess=e=>{_db=e.target.result;res(_db)};r.onerror=()=>rej(r.error)})}
+function idb(){return new Promise((res,rej)=>{if(_db)return res(_db);const r=indexedDB.open('nexobalance',4);r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains('movs'))d.createObjectStore('movs',{keyPath:'id'});if(!d.objectStoreNames.contains('cats'))d.createObjectStore('cats',{keyPath:'id'});if(!d.objectStoreNames.contains('outbox'))d.createObjectStore('outbox',{keyPath:'k'});if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('budgets'))d.createObjectStore('budgets',{keyPath:'id'});if(!d.objectStoreNames.contains('plan'))d.createObjectStore('plan',{keyPath:'id'});if(!d.objectStoreNames.contains('goals'))d.createObjectStore('goals',{keyPath:'id'});if(!d.objectStoreNames.contains('recurring'))d.createObjectStore('recurring',{keyPath:'id'})};r.onsuccess=e=>{_db=e.target.result;res(_db)};r.onerror=()=>rej(r.error)})}
 function tx(store,mode,fn){return idb().then(d=>new Promise((res,rej)=>{const t=d.transaction(store,mode);const s=t.objectStore(store);const out=fn(s);t.oncomplete=()=>res(out&&out.result!==undefined?out.result:out);t.onerror=()=>rej(t.error)}))}
 function idbAll(store){return idb().then(d=>new Promise((res,rej)=>{const r=d.transaction(store,'readonly').objectStore(store).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
 function idbPut(store,val){return tx(store,'readwrite',s=>s.put(val))}
@@ -334,6 +333,7 @@ async function saveLocalCat(c){const i=S.cats.findIndex(x=>x.id===c.id);if(i>=0)
 async function saveLocalBudget(b){const i=S.budgets.findIndex(x=>x.id===b.id);if(i>=0)S.budgets[i]=b;else S.budgets.push(b);await idbPut('budgets',b)}
 async function saveLocalPlan(p){const i=S.plan.findIndex(x=>x.id===p.id);if(i>=0)S.plan[i]=p;else S.plan.push(p);await idbPut('plan',p)}
 async function saveLocalGoal(g){const i=S.goals.findIndex(x=>x.id===g.id);if(i>=0)S.goals[i]=g;else S.goals.push(g);await idbPut('goals',g)}
+async function saveLocalRec(r){const i=S.recurring.findIndex(x=>x.id===r.id);if(i>=0)S.recurring[i]=r;else S.recurring.push(r);await idbPut('recurring',r)}
 
 async function enqueue(kind,data){
   await idbPut('outbox',{k:kind+':'+data.id+':'+data.updated_at,kind,data});
@@ -342,6 +342,7 @@ async function enqueue(kind,data){
   else if(kind==='budget')await saveLocalBudget(data);
   else if(kind==='plan')await saveLocalPlan(data);
   else if(kind==='goal')await saveLocalGoal(data);
+  else if(kind==='rec')await saveLocalRec(data);
   render();trySync();
 }
 
@@ -358,7 +359,7 @@ async function trySync(){
   try{
     const pend=await idbAll('outbox');
     if(pend.length){
-      const payload={categories:pend.filter(p=>p.kind==='cat').map(p=>p.data),movements:pend.filter(p=>p.kind==='mov').map(p=>p.data),budgets:pend.filter(p=>p.kind==='budget').map(p=>p.data),monthly_plan:pend.filter(p=>p.kind==='plan').map(p=>p.data),goals:pend.filter(p=>p.kind==='goal').map(p=>p.data)};
+      const payload={categories:pend.filter(p=>p.kind==='cat').map(p=>p.data),movements:pend.filter(p=>p.kind==='mov').map(p=>p.data),budgets:pend.filter(p=>p.kind==='budget').map(p=>p.data),monthly_plan:pend.filter(p=>p.kind==='plan').map(p=>p.data),goals:pend.filter(p=>p.kind==='goal').map(p=>p.data),recurring:pend.filter(p=>p.kind==='rec').map(p=>p.data)};
       const{error}=await sb.rpc('sync_push',{p:payload});
       if(error)throw error;
       await idbClear('outbox');
@@ -370,12 +371,13 @@ async function trySync(){
 
 async function pullAll(){
   const since=(await kvGet('lastPull'))||'1970-01-01T00:00:00Z';
-  const[rc,rm,rb,rp,rg]=await Promise.all([
+  const[rc,rm,rb,rp,rg,rr]=await Promise.all([
     sb.from('categories').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(2000),
     sb.from('movements').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(5000),
     sb.from('budgets').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(3000),
     sb.from('monthly_plan').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(1000),
-    sb.from('goals').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(500)
+    sb.from('goals').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(500),
+    sb.from('recurring').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(500)
   ]);
   if(rc.error||rm.error){console.error('pull',rc.error||rm.error);return}
   let maxT=since;let cambios=0;
@@ -384,6 +386,7 @@ async function pullAll(){
   if(rb&&!rb.error&&rb.data){for(const b of rb.data){const loc=S.budgets.find(x=>x.id===b.id);if(!loc||b.updated_at>=loc.updated_at){await saveLocalBudget(b);cambios++}if(b.updated_at>maxT)maxT=b.updated_at}}
   if(rp&&!rp.error&&rp.data){for(const pl of rp.data){const loc=S.plan.find(x=>x.id===pl.id);if(!loc||pl.updated_at>=loc.updated_at){await saveLocalPlan(pl);cambios++}if(pl.updated_at>maxT)maxT=pl.updated_at}}
   if(rg&&!rg.error&&rg.data){for(const g of rg.data){const loc=S.goals.find(x=>x.id===g.id);if(!loc||g.updated_at>=loc.updated_at){await saveLocalGoal(g);cambios++}if(g.updated_at>maxT)maxT=g.updated_at}}
+  if(rr&&!rr.error&&rr.data){for(const r of rr.data){const loc=S.recurring.find(x=>x.id===r.id);if(!loc||r.updated_at>=loc.updated_at){await saveLocalRec(r);cambios++}if(r.updated_at>maxT)maxT=r.updated_at}}
   await kvSet('lastPull',maxT);
   if(cambios>0)render();
 }
@@ -413,18 +416,18 @@ function abrirBienvenida(){
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
     <h2 style="margin-bottom:12px">💰 ¿Se te va el dinero y no sabes en qué?</h2>
-    <p style="font-size:.9rem;line-height:1.6;margin-bottom:12px">Te comparto <b>NexoBalance</b>, una aplicación gratuita creada por cubanos como una forma de aportar valor y agradecer el apoyo que tantos hermanos nos han brindado al abrirnos las puertas de su hogar.</p>
-    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px">Está pensada especialmente para nuestra comunidad, pero puede ser utilizada por cualquier persona que desee administrar mejor su dinero.</p>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px"><b>NexoBalance</b> es una herramienta de finanzas personales creada por cubanos, pensada para nuestra comunidad de emigrantes y abierta a cualquier persona que quiera administrar mejor su dinero.</p>
     <div style="background:var(--chip);border-radius:14px;padding:14px;margin-bottom:16px">
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📊</span><span style="font-size:.86rem;line-height:1.45;flex:1">Registra tus ingresos y gastos.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">💵</span><span style="font-size:.86rem;line-height:1.45;flex:1">Reserva dinero para el alquiler, remesas, servicios o cualquier otro compromiso importante.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📅</span><span style="font-size:.86rem;line-height:1.45;flex:1">Descubre cuánto puedes gastar cada día para llegar tranquilo a fin de mes.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start"><span style="font-size:1.3rem;flex-shrink:0">🔔</span><span style="font-size:.86rem;line-height:1.45;flex:1">Recibe alertas antes de exceder tu presupuesto.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📊</span><span style="font-size:.86rem;line-height:1.45;flex:1">Registra tus ingresos y gastos en varias monedas.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">💵</span><span style="font-size:.86rem;line-height:1.45;flex:1">Aparta dinero para el alquiler, remesas, servicios o tu ahorro.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">🔮</span><span style="font-size:.86rem;line-height:1.45;flex:1">Predice cómo cerrarás el mes y te dice cuánto puedes gastar por día.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">🎯</span><span style="font-size:.86rem;line-height:1.45;flex:1">Ponte metas y calcula cuándo las alcanzas con tu ritmo de ahorro.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start"><span style="font-size:1.3rem;flex-shrink:0">🔔</span><span style="font-size:.86rem;line-height:1.45;flex:1">Recibe alertas antes de exceder tu presupuesto, no después.</span></div>
     </div>
-    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="font-size:1.2rem;flex-shrink:0">✅</span><span style="font-size:.85rem;line-height:1.45;flex:1">Funciona incluso sin conexión a Internet y sincroniza automáticamente tus datos cuando vuelves a conectarte.</span></div>
-    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:18px"><span style="font-size:1.2rem;flex-shrink:0">🔒</span><span style="font-size:.85rem;line-height:1.45;flex:1">Tu información es privada y segura.</span></div>
-    <p style="font-weight:700;text-align:center;font-size:.95rem;margin-bottom:14px">¡Pruébala y empieza hoy a tomar el control de tus finanzas!</p>
-    <button class="btn" onclick="closeSheet()">Empezar ahora</button>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="font-size:1.2rem;flex-shrink:0">✨</span><span style="font-size:.85rem;line-height:1.45;flex:1">Análisis inteligente de tus finanzas, con un índice de salud y recomendaciones personalizadas.</span></div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="font-size:1.2rem;flex-shrink:0">📴</span><span style="font-size:.85rem;line-height:1.45;flex:1">Funciona sin conexión a Internet y sincroniza automáticamente al reconectarte.</span></div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:18px"><span style="font-size:1.2rem;flex-shrink:0">🔒</span><span style="font-size:.85rem;line-height:1.45;flex:1">Tu información es privada y segura. Solo tú accedes a ella.</span></div>
+    <button class="btn" onclick="closeSheet()">Comenzar</button>
   </div></div>`;
 }
 function onCountryChange(){
@@ -516,6 +519,7 @@ async function startApp(user,isNew){
   S.budgets=await idbAll('budgets');
   S.plan=await idbAll('plan');
   S.goals=await idbAll('goals');
+  S.recurring=await idbAll('recurring');
   const st=await kvGet('settings');if(st)S.settings=Object.assign(S.settings,st);
   if(S.settings.name)S.userName=S.settings.name;
   document.documentElement.dataset.theme=S.settings.theme||'light';
@@ -560,8 +564,8 @@ async function loadUserName(){
 async function doLogout(){if(!confirmSheetOpen)openConfirm('¿Cerrar sesión?','Tus datos quedan guardados en tu cuenta.',async()=>{
   try{await sb.auth.signOut({scope:'local'})}catch(e){}
   try{Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k)})}catch(e){}
-  S.uid=null;S.movs=[];S.cats=[];S.budgets=[];S.plan=[];S.goals=[];
-  await idbClear('movs');await idbClear('cats');await idbClear('outbox');await idbClear('kv');await idbClear('budgets');await idbClear('plan');await idbClear('goals');
+  S.uid=null;S.movs=[];S.cats=[];S.budgets=[];S.plan=[];S.goals=[];S.recurring=[];
+  await idbClear('movs');await idbClear('cats');await idbClear('outbox');await idbClear('kv');await idbClear('budgets');await idbClear('plan');await idbClear('goals');await idbClear('recurring');
   try{sessionStorage.removeItem('nb_tab');sessionStorage.removeItem('nb_scroll')}catch(e){}
   location.reload();
 })}
@@ -657,6 +661,7 @@ function viewInicio(){
       <div style="min-width:0;flex:1"><div class="sub">Ahorro del mes</div><div class="mid" style="margin-top:2px;color:var(--purple);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cpct(tasa,oculto)}</div></div>
     </div>
   </div>
+  ${recurrentesPendientesCard()}
   ${alertasCard()}
   ${tarjetaPresupuestoInicio(oculto)}
 
@@ -669,31 +674,6 @@ function viewInicio(){
     </div>
     ${chart6m(act)}
   </div>
-
-  <div class="card" style="position:relative;overflow:hidden;background:linear-gradient(120deg,#5B2CD9,var(--pri2) 70%);color:#fff">
-    <div style="position:absolute;right:8px;top:14px;width:72px;height:120px;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.28);border-radius:18px;transform:rotate(11deg);box-shadow:0 14px 26px rgba(0,0,0,.3)">
-      <div style="position:absolute;inset:7px;background:linear-gradient(160deg,#1B39FF,#5B2CD9);border-radius:11px;overflow:hidden">
-        <svg viewBox="0 0 60 100" style="width:100%;height:100%;position:absolute;opacity:.55"><path d="M0 55 Q15 38 30 55 T60 50" stroke="#fff" stroke-width="2" fill="none"/><path d="M0 70 Q15 58 30 70 T60 65" stroke="#fff" stroke-width="1.4" fill="none" opacity=".6"/></svg>
-        <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#fff;font-size:.5rem;font-weight:800;letter-spacing:.04em;line-height:1.3">NEXO<br>ENVÍOS</div>
-      </div>
-    </div>
-    <div class="row" style="gap:14px;align-items:flex-start;padding-right:66px">
-      <span class="iconbadge" style="width:46px;height:46px;background:rgba(255,255,255,.18);flex-shrink:0">${ic('ship',22,'#fff')}</span>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:1.02rem;margin-bottom:3px">¿Necesitas enviar algo a Cuba?</div>
-        <div style="opacity:.9;font-size:.82rem;margin-bottom:10px">Conoce NexoEnvíos</div>
-        <div class="row" style="gap:8px">
-          <button onclick="window.open('https://chat.whatsapp.com/LtskEd9QL7o3gTsVy80DBv?s=cl&p=a&ilr=4','_blank')" class="pill" style="background:#fff;color:#5B2CD9;padding:8px 14px;font-weight:800">Hacer un envío →</button>
-          <button onclick="toggleNexoInfo('nexoInfoHome')" class="pill" style="background:rgba(255,255,255,.22);color:#fff;padding:8px 14px;font-weight:700">Cómo funciona</button>
-        </div>
-      </div>
-    </div>
-    <div id="nexoInfoHome" class="hidden" style="margin-top:14px;background:rgba(255,255,255,.14);border-radius:var(--radius-sm);padding:12px 32px 12px 12px;font-size:.8rem;line-height:1.5;position:relative">
-      <button onclick="hideNexoInfo('nexoInfoHome')" style="position:absolute;top:8px;right:10px;color:#fff;font-size:.95rem">✕</button>
-      Te hacemos la compra en Temu u otra tienda online. Pagas en Uruguay 🇺🇾 mediante Prex, MiDinero, Mercado Pago o efectivo en La Unión, Montevideo. Enviamos a Miami y pagas el envío a la puerta de tu casa en Cuba 🇨🇺.
-    </div>
-  </div>
-
   <div class="card">
     <div class="row spread" style="margin-bottom:6px"><h2>Últimos movimientos</h2><button class="link" onclick="go('movs')">Ver todos</button></div>
     ${ult.length?ult.map(movRow).join(''):'<div class="empty"><div>🌱</div>Toca ＋ para registrar tu primer movimiento</div>'}
@@ -892,17 +872,22 @@ function movRow(m){
 
 function viewMovs(){
   const f=S.filtro;
-  let list=movsActivos();
-  if(f.q){const q=f.q.toLowerCase();list=list.filter(m=>(m.descripcion||'').toLowerCase().includes(q)||(m.notas||'').toLowerCase().includes(q)||(m.etiquetas||[]).join(',').toLowerCase().includes(q)||String(m.monto).includes(q))}
-  if(f.tipo)list=list.filter(m=>m.tipo===f.tipo);
+  // Base: aplica todos los filtros EXCEPTO el de categorías,
+  // para saber qué categorías tienen movimientos en ese periodo/tipo/búsqueda.
+  let base=movsActivos();
+  if(f.q){const q=f.q.toLowerCase();base=base.filter(m=>(m.descripcion||'').toLowerCase().includes(q)||(m.notas||'').toLowerCase().includes(q)||(m.etiquetas||[]).join(',').toLowerCase().includes(q)||String(m.monto).includes(q))}
+  if(f.tipo)base=base.filter(m=>m.tipo===f.tipo);
+  if(f.desde)base=base.filter(m=>m.fecha>=f.desde);
+  if(f.hasta)base=base.filter(m=>m.fecha<=f.hasta);
+  // Lista final: agrega el filtro de categorías
+  let list=base;
   if(f.cats&&f.cats.length)list=list.filter(m=>f.cats.includes(m.categoria_id)||f.cats.includes(m.subcategoria_id));
-  if(f.desde)list=list.filter(m=>m.fecha>=f.desde);
-  if(f.hasta)list=list.filter(m=>m.fecha<=f.hasta);
   list.sort((a,b)=>(b.fecha+(b.hora||''))<(a.fecha+(a.hora||''))?-1:1);
   const groups={};
   for(const m of list){(groups[m.fecha]=groups[m.fecha]||[]).push(m)}
   let tot=0;for(const m of list)tot+=(m.tipo==='ingreso'?1:-1)*toUYU(m);
-  const catsConMovs=new Set(movsActivos().map(m=>m.categoria_id).filter(Boolean));
+  const catsConMovs=new Set();
+  for(const m of base){if(m.categoria_id)catsConMovs.add(m.categoria_id);if(m.subcategoria_id)catsConMovs.add(m.subcategoria_id)}
   const selCats=new Set(f.cats||[]);
   const cats=activeCats().filter(c=>!c.parent_id&&(catsConMovs.has(c.id)||selCats.has(c.id)));
   const hayFiltro=f.q||f.tipo||f.desde||f.hasta||(f.cats&&f.cats.length);
@@ -978,6 +963,150 @@ async function crearCategoriaAhorro(){
   await enqueue('cat',{id:catId,user_id:S.uid,name:'Ahorro',tipo:'gasto',icon:'🐷',color:'#9B5CFF',parent_id:null,deleted:false,created_at:t,updated_at:t});
   toast('Categoría Ahorro creada. Asígnale un monto y márcala como reservada.');
   setTimeout(()=>editarPresupuesto(catId),400);
+}
+function recurrentesActivos(){return S.recurring.filter(r=>!r.deleted&&r.activo)}
+function recurrentesPendientes(){
+  // Recurrentes cuyo día ya llegó este mes y aún no se registraron
+  const pk=periodKey(new Date());
+  const hoy=new Date().getDate();
+  return recurrentesActivos().filter(r=>r.ultimo_periodo!==pk&&Number(r.dia_mes)<=hoy);
+}
+function fechaRecurrente(r,pk){
+  const[y,m]=pk.split('-').map(Number);
+  const ultimoDia=new Date(y,m,0).getDate();
+  const dia=Math.min(Number(r.dia_mes)||1,ultimoDia);
+  const p=n=>String(n).padStart(2,'0');
+  return pk+'-'+p(dia);
+}
+async function registrarRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);
+  if(!r)return;
+  const pk=periodKey(new Date());
+  const t=nowISO();
+  await enqueue('mov',{
+    id:uuid(),user_id:S.uid,tipo:r.tipo,monto:Number(r.monto),moneda:r.moneda||'UYU',
+    fecha:fechaRecurrente(r,pk),hora:new Date().toTimeString().slice(0,5),
+    categoria_id:r.categoria_id||'',subcategoria_id:r.subcategoria_id||'',
+    descripcion:r.descripcion||'',notas:'',forma_pago:'',etiquetas:[],
+    deleted:false,created_at:t,updated_at:t
+  });
+  await enqueue('rec',{...r,ultimo_periodo:pk,updated_at:nowISO()});
+  toast('Registrado: '+(r.descripcion||'movimiento fijo'));
+}
+async function registrarTodosRecurrentes(){
+  const pend=recurrentesPendientes();
+  if(!pend.length)return;
+  for(const r of pend)await registrarRecurrente(r.id);
+  toast(pend.length+' movimiento'+(pend.length!==1?'s':'')+' fijo'+(pend.length!==1?'s':'')+' registrado'+(pend.length!==1?'s':''));
+}
+async function omitirRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  await enqueue('rec',{...r,ultimo_periodo:periodKey(new Date()),updated_at:nowISO()});
+  toast('Omitido este mes');
+}
+function recurrentesPendientesCard(){
+  const pend=recurrentesPendientes();
+  if(!pend.length)return '';
+  let total=0;for(const r of pend)total+=(r.tipo==='gasto'?1:-1)*(r.moneda==='USD'?Number(r.monto)*(Number(S.settings.tc)||40):Number(r.monto));
+  return `<div class="card" style="border:1px solid rgba(23,136,255,.3);background:rgba(23,136,255,.05)">
+    <div class="row spread" style="margin-bottom:8px"><h2 style="font-size:1rem">🔁 Movimientos fijos pendientes</h2><span class="pill" style="background:rgba(23,136,255,.15);color:var(--pri)">${pend.length}</span></div>
+    ${pend.map(r=>{
+      const c=catById(r.categoria_id);
+      return `<div class="row spread" style="padding:9px 0;border-top:1px solid var(--line);gap:8px">
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:600;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.descripcion||(c?c.name:'Movimiento fijo'))}</div>
+          <div class="sub" style="font-size:.75rem">Día ${r.dia_mes}${c?' · '+esc(c.name):''}</div>
+        </div>
+        <div class="row" style="gap:8px;align-items:center;flex-shrink:0">
+          <span class="${r.tipo==='ingreso'?'ok':'bad'}" style="font-weight:700;font-size:.85rem">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)}</span>
+          <button class="pill" style="background:var(--pri);color:#fff;padding:6px 12px;font-weight:700" onclick="registrarRecurrente('${r.id}')">Registrar</button>
+        </div>
+      </div>`;
+    }).join('')}
+    ${pend.length>1?`<button class="btn" style="width:100%;margin-top:12px" onclick="registrarTodosRecurrentes()">Registrar todos (${money(Math.abs(total))})</button>`:''}
+  </div>`;
+}
+function viewRecurrentes(){
+  const activos=S.recurring.filter(r=>!r.deleted);
+  return `<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row spread" style="margin-bottom:4px"><h2>🔁 Movimientos fijos</h2></div>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:14px">El alquiler, el teléfono, las remesas o tu salario se repiten cada mes. Regístralos una vez y la app te los recordará.</p>
+    ${activos.length?activos.map(r=>{
+      const c=catById(r.categoria_id);
+      return `<div class="item" onclick="editarRecurrente('${r.id}')" style="cursor:pointer">
+        <div class="iconbadge" style="background:var(--chip);color:${r.tipo==='ingreso'?'var(--ok)':'var(--bad)'}">${c?c.icon:'🔁'}</div>
+        <div class="mtxt">
+          <div>${esc(r.descripcion||(c?c.name:'Movimiento fijo'))}</div>
+          <div class="sub">Día ${r.dia_mes} · ${r.tipo==='ingreso'?'Ingreso':'Gasto'} · ${money(r.monto,r.moneda)}${r.activo?'':' · pausado'}</div>
+        </div>
+        <span style="color:var(--sub)">${ic('chevron',18)}</span>
+      </div>`;
+    }).join(''):'<div class="sub" style="text-align:center;padding:20px 0">Aún no tienes movimientos fijos.</div>'}
+    <button class="btn" style="margin-top:14px" onclick="editarRecurrente()">Agregar movimiento fijo</button>
+  </div></div>`;
+}
+function abrirRecurrentes(){document.getElementById('sheetHost').innerHTML=viewRecurrentes()}
+function editarRecurrente(id){
+  const r=id?S.recurring.find(x=>x.id===id):null;
+  const cats=activeCats().filter(c=>!c.parent_id);
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:14px">${r?'Editar':'Nuevo'} movimiento fijo</h2>
+    <div class="seg" style="margin-bottom:14px">
+      <button class="${!r||r.tipo==='gasto'?'on':''}" onclick="_recTipo='gasto';this.classList.add('on');this.nextElementSibling.classList.remove('on')">Gasto</button>
+      <button class="${r&&r.tipo==='ingreso'?'on':''}" onclick="_recTipo='ingreso';this.classList.add('on');this.previousElementSibling.classList.remove('on')">Ingreso</button>
+    </div>
+    <div class="field"><label>Descripción</label><input class="inp" id="rcDesc" placeholder="Ej: Alquiler" value="${r?esc(r.descripcion||''):''}"></div>
+    <div class="field"><label>Monto</label>
+      <div class="row">
+        <input class="inp" id="rcMonto" type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="${r?Number(r.monto):''}">
+        <div class="seg" style="width:130px">
+          <button class="${!r||r.moneda==='UYU'?'on':''}" onclick="_recMon='UYU';this.classList.add('on');this.nextElementSibling.classList.remove('on')">${localFlag()} ${detectPais().cur}</button>
+          <button class="${r&&r.moneda==='USD'?'on':''}" onclick="_recMon='USD';this.classList.add('on');this.previousElementSibling.classList.remove('on')">${usdFlag()} USD</button>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Categoría</label>
+      <select class="inp" id="rcCat">
+        <option value="">Sin categoría</option>
+        ${cats.map(c=>`<option value="${c.id}" ${r&&r.categoria_id===c.id?'selected':''}>${c.icon} ${esc(c.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Día del mes en que ocurre</label><input class="inp" id="rcDia" type="number" inputmode="numeric" min="1" max="31" value="${r?r.dia_mes:1}"></div>
+    ${r?`<label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="rcActivo" ${r.activo?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
+      <div><div style="font-weight:600">Activo</div><div class="sub" style="font-size:.75rem">Desmárcalo para pausarlo sin borrarlo</div></div>
+    </label>`:''}
+    <button class="btn" onclick="guardarRecurrente(${r?"'"+r.id+"'":'null'})">Guardar</button>
+    ${r?`<button class="link" style="width:100%;margin-top:8px;color:var(--bad)" onclick="eliminarRecurrente('${r.id}')">Eliminar</button>`:''}
+  </div></div>`;
+  window._recTipo=r?r.tipo:'gasto';
+  window._recMon=r?r.moneda:'UYU';
+}
+async function guardarRecurrente(id){
+  const desc=document.getElementById('rcDesc').value.trim();
+  const monto=Number(document.getElementById('rcMonto').value);
+  const cat=document.getElementById('rcCat').value;
+  const dia=Math.max(1,Math.min(31,Number(document.getElementById('rcDia').value)||1));
+  const activoEl=document.getElementById('rcActivo');
+  if(!monto||monto<=0)return toast('Ingresa un monto válido');
+  const prev=id?S.recurring.find(x=>x.id===id):null;
+  const t=nowISO();
+  await enqueue('rec',{
+    id:id||uuid(),user_id:S.uid,tipo:window._recTipo||'gasto',
+    monto:Math.round(monto*100)/100,moneda:window._recMon||'UYU',
+    categoria_id:cat||'',subcategoria_id:'',descripcion:desc,dia_mes:dia,
+    activo:activoEl?activoEl.checked:true,
+    ultimo_periodo:prev?prev.ultimo_periodo:null,
+    deleted:false,created_at:prev?prev.created_at:t,updated_at:t
+  });
+  closeSheet();toast(id?'Movimiento fijo actualizado':'Movimiento fijo creado');
+}
+async function eliminarRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  await enqueue('rec',{...r,deleted:true,updated_at:nowISO()});
+  closeSheet();toast('Eliminado');
 }
 function metasActivas(){return S.goals.filter(g=>!g.deleted)}
 function ahorroMensualPromedio(){
@@ -1596,7 +1725,7 @@ const AYUDA={
     titulo:'Inicio',
     que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total, cuánto entró y salió este mes, tu disponible según el presupuesto, y las alertas importantes del momento.',
     ejemplo:'Ejemplo: abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y una alerta te avisa que ya usaste el 90% de tu presupuesto de comida.',
-    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','La campana 🔔 muestra un punto azul cuando tienes alertas; tócala para verlas.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
+    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','La campana 🔔 muestra un punto azul cuando tienes alertas; tócala para verlas.','Si tienes movimientos fijos pendientes, aparecen arriba para registrarlos con un toque.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
   },
   movs:{
     titulo:'Movimientos',
@@ -1620,7 +1749,7 @@ const AYUDA={
     titulo:'Ajustes',
     que:'Configuras la app a tu gusto: tema claro u oscuro, tipo de cambio del dólar, tu contraseña, y puedes descargar una copia de tus datos.',
     ejemplo:'Ejemplo: activas el tipo de cambio automático para que el valor del dólar se actualice solo, y cambias al tema oscuro para usar la app de noche.',
-    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
+    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos cada mes.','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
   }
 };
 function ayudaBtn(tab){
@@ -1672,20 +1801,9 @@ function viewAjustes(){
     </div>
   </div>
   <div class="card">
-    <div class="item">
-      <div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('ship',19)}</div>
-      <div class="mtxt" onclick="window.open('https://chat.whatsapp.com/LtskEd9QL7o3gTsVy80DBv?s=cl&p=a&ilr=4','_blank')" style="cursor:pointer">
-        <div>NexoEnvíos</div>
-        <div class="sub">Pedidos desde EE.UU. hasta Cuba · <span onclick="event.stopPropagation();toggleNexoInfo('nexoInfoAj')" style="text-decoration:underline;font-weight:700">cómo funciona</span></div>
-      </div>
-      <span style="color:var(--sub)" onclick="window.open('https://chat.whatsapp.com/LtskEd9QL7o3gTsVy80DBv?s=cl&p=a&ilr=4','_blank')">${ic('chevron',18)}</span>
-    </div>
-    <div id="nexoInfoAj" class="hidden" style="margin:-2px 0 12px 54px;font-size:.8rem;line-height:1.5;color:var(--sub);position:relative;padding-right:22px">
-      <button onclick="hideNexoInfo('nexoInfoAj')" style="position:absolute;top:0;right:0;color:var(--sub)">✕</button>
-      Te hacemos la compra en Temu u otra tienda online. Pagas en Uruguay 🇺🇾 mediante Prex, MiDinero, Mercado Pago o efectivo en La Unión, Montevideo. Enviamos a Miami y pagas el envío a la puerta de tu casa en Cuba 🇨🇺.
-    </div>
-    <div class="item" onclick="shareApp()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('share',19)}</div><div class="mtxt"><div>Compartir aplicación</div><div class="sub">Invita a otros a usar NexoBalance gratis</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="shareApp()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('share',19)}</div><div class="mtxt"><div>Compartir aplicación</div><div class="sub">Comparte NexoBalance con quien lo necesite</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="triggerInstall()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('phone',19)}</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -1693,8 +1811,8 @@ function viewAjustes(){
     <div class="item" onclick="doLogout()"><div class="iconbadge" style="background:var(--chip);color:var(--bad)">${ic('logout',19)}</div><div class="mtxt"><div>Cerrar sesión</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
   </div>
   <div class="card">
-    <h2 style="margin-bottom:8px">🇨🇺 ¿Qué es JosmaTech?</h2>
-    <p class="sub" style="font-size:.85rem;line-height:1.5">Proyecto de cubanos enfocados en ayudar a nuestra comunidad de emigrantes y servir de ayuda a todos los hermanos que nos han brindado su hogar para cumplir nuestros sueños y metas.</p>
+    <h2 style="margin-bottom:8px">¿Qué es JosmaTech?</h2>
+    <p class="sub" style="font-size:.85rem;line-height:1.5">Empresa de tecnología especializada en soluciones de software para la comunidad latina e inmigrante. Desarrollamos herramientas profesionales que resuelven problemas reales de las personas. NexoBalance es uno de nuestros productos.</p>
   </div>
   <div class="card">
     <h2 style="margin-bottom:8px">🔒 Privacidad</h2>
@@ -1709,18 +1827,6 @@ function viewAjustes(){
     <div class="sub">NexoBalance v${APP_VERSION}</div>
     <div class="sub">Desarrollado por Lic. Josielis Machado Fajardo · JosmaTech</div>
     <a class="link" href="https://wa.me/59898308375" target="_blank" rel="noopener">Soporte por WhatsApp</a>
-  </div>
-  <div style="text-align:center;padding:20px 0 4px">
-    <button onclick="toggleApoyo()" style="opacity:.4;font-size:.7rem;color:var(--sub);padding:8px 12px">💙</button>
-  </div>
-  <div id="apoyoBlock" class="hidden card">
-    <div class="sub" style="font-weight:700;margin-bottom:6px">Apoya este proyecto</div>
-    <p class="sub" style="font-size:.78rem;line-height:1.55;margin-bottom:8px">JosmaTech es y será siempre gratuito. Si esta herramienta te ha sido útil y puedes colaborar, cualquier aporte —desde 10 pesos uruguayos 🇺🇾— ayuda a que sigamos mejorando, desarrollando nuevas aplicaciones gratuitas para la comunidad y apoyando a más hermanos. Es completamente libre y voluntario, nunca una condición para usar la app.</p>
-    ${donRow('Nombre','Lic. Josielis Machado Fajardo')}
-    ${donRow('Prex','22441810')}
-    ${donRow('MiDinero','3701732771')}
-    ${donRow('Mercado Pago','1003180721830')}
-    <a class="link" style="font-size:.76rem;display:block;margin-top:10px" href="https://wa.me/59898308375" target="_blank" rel="noopener">¿Dudas, sugerencias o donaciones grandes? Escríbenos por WhatsApp</a>
   </div>`;
 }
 
@@ -1784,12 +1890,6 @@ async function tcAutoFetch(silencioso){
   }
 }
 
-function donRow(label,value){
-  return `<div class="item" onclick="copyText('${value.replace(/'/g,"\\'")}')" style="cursor:pointer">
-    <div class="mtxt"><div class="sub" style="font-weight:700">${esc(label)}</div><div style="font-size:.92rem;font-weight:600">${esc(value)}</div></div>
-    <span class="link" style="font-size:.8rem;font-weight:700">Copiar</span>
-  </div>`;
-}
 async function abrirCuenta(){
   const online=navigator.onLine;
   let ultSync='—';
@@ -1847,6 +1947,7 @@ function abrirInteligencia(){
     {icon:'💡',t:'Recomendaciones',d:'Detecta patrones en tu historial: categorías donde gastas de más varios meses seguidos, mejoras que lograste, y proyecciones de ahorro.'},
     {icon:'🧮',t:'Simulador de compras',d:'Antes de registrar un gasto, te muestra cómo afectará tu presupuesto de esa categoría, para que decidas con la información delante.'},
     {icon:'🔔',t:'Alertas anticipadas',d:'Te avisa cuando te acercas a un límite o cuando tu ritmo pone en riesgo tu presupuesto, antes de que sea tarde.'},
+    {icon:'🔁',t:'Movimientos fijos',d:'Registra una vez tus gastos e ingresos que se repiten cada mes y la app te los recuerda el día que tocan.'},
     {icon:'🎯',t:'Metas de ahorro',d:'Define un objetivo (un TV, unas vacaciones) y calcula, con tu ritmo real de ahorro, en cuántos meses lo alcanzas y en qué fecha.'},
     {icon:'💰',t:'Detección de ingresos',d:'Si cobras más de lo que esperabas, lo detecta y te ofrece ajustar tu plan con un toque.'}
   ];
@@ -1866,7 +1967,6 @@ function abrirInteligencia(){
   </div></div>`;
 }
 
-function toggleApoyo(){const b=document.getElementById('apoyoBlock');if(b)b.classList.toggle('hidden')}
 
 function zonaRojaPaso1(){
   document.getElementById('sheetHost').innerHTML=`
@@ -1923,7 +2023,7 @@ async function zonaRojaEjecutar(){
     if(error)throw error;
     // Limpiar local
     S.movs=[];S.cats=[];S.budgets=[];S.plan=[];
-    await idbClear('movs');await idbClear('cats');await idbClear('budgets');await idbClear('plan');await idbClear('goals');await idbClear('outbox');
+    await idbClear('movs');await idbClear('cats');await idbClear('budgets');await idbClear('plan');await idbClear('goals');await idbClear('recurring');await idbClear('outbox');
     await kvSet('lastPull','1970-01-01T00:00:00Z');
     closeSheet();
     toast('Todos tus datos fueron eliminados');
@@ -2002,15 +2102,6 @@ function fallbackCopy(txt){
   document.body.removeChild(ta);
 }
 
-const _nexoTimers={};
-function toggleNexoInfo(id){
-  const el=document.getElementById(id);if(!el)return;
-  const show=el.classList.contains('hidden');
-  el.classList.toggle('hidden',!show);
-  clearTimeout(_nexoTimers[id]);
-  if(show)_nexoTimers[id]=setTimeout(()=>hideNexoInfo(id),16000);
-}
-function hideNexoInfo(id){const el=document.getElementById(id);if(el)el.classList.add('hidden');clearTimeout(_nexoTimers[id])}
 
 function closeSheet(){
   const host=document.getElementById('sheetHost');
@@ -2516,7 +2607,7 @@ setInterval(()=>{if(navigator.onLine&&S.uid&&!S.syncing)trySync()},45000);
 
 async function shareApp(){
   const url=location.origin+location.pathname;
-  const text='NexoBalance — tus finanzas personales, simples y privadas. Es gratis:';
+  const text='NexoBalance — tus finanzas personales, simples y privadas:';
   if(navigator.share){
     try{await navigator.share({title:'NexoBalance',text,url})}catch(e){}
   }else{
