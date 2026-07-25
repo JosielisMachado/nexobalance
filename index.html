@@ -301,7 +301,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.46.0';
+const APP_VERSION='1.48.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -445,8 +445,8 @@ function cmpMovDesc(a,b){
 // Así dos personas pueden usar el mismo teléfono sin verse los datos, y cerrar
 // sesión deja de exigir que se destruya todo para mantener la privacidad.
 // ---------------------------------------------------------------------------
-const IDB_VER=5;
-const IDB_STORES=['movs','cats','outbox','kv','budgets','plan','goals','recurring','accounts'];
+const IDB_VER=6;
+const IDB_STORES=['movs','cats','outbox','kv','budgets','plan','goals','recurring','accounts','adjuntos'];
 const IDB_LEGACY='nexobalance';
 const MIGRA_FLAG='nb_migrado_local';
 let _db=null,_dbUid=undefined,_dbAbriendo=null;
@@ -462,6 +462,7 @@ function idbAbrir(nombre){
         if(s==='kv')d.createObjectStore(s);
         else if(s==='outbox')d.createObjectStore(s,{keyPath:'k'});
         else d.createObjectStore(s,{keyPath:'id'});
+        // 'adjuntos' es local: nunca entra en la cola de sincronización.
       }
     };
     r.onsuccess=e=>res(e.target.result);
@@ -726,6 +727,7 @@ async function sincronizacionCompleta(silenciosa){
   if(!silenciosa)toast('Sincronizando todo…');
   try{
     const cambios=await pullAll(true);
+    if(!silenciosa)await auditEvento('sincronizacion_manual',{cambios});
     if(!silenciosa)toast(cambios?'Sincronización completa: '+cambios+' registro'+(cambios!==1?'s':'')+' actualizado'+(cambios!==1?'s':''):'Todo estaba al día');
     if(!silenciosa&&cambios>0)render(true);
     else updateSyncPill();
@@ -2933,6 +2935,9 @@ function viewAjustes(){
     <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub">Fotos y PDFs guardados solo en este teléfono</div></div>
+      <input type="checkbox" ${adjuntosOn()?'checked':''} onchange="setAdjuntos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"></label>
+    <div class="item" onclick="abrirBitacora()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🗒️</div><div class="mtxt"><div>Bitácora</div><div class="sub">Todo lo que pasó con tus datos, solo lectura</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInformes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📊</div><div class="mtxt"><div>Informes</div><div class="sub">Balance, categorías, cuentas y flujo de caja con filtros</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirConfigBloqueo()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔐</div><div class="mtxt"><div>Bloqueo de la aplicación</div><div class="sub">${lockConfig()?'Activado · PIN'+(lockConfig().bio?' y biometría':''):'Protege tus datos con un PIN'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -3355,7 +3360,206 @@ function exportarInforme(){
     });
   }
   const csv=toCSV(rows,['seccion','concepto','cantidad','ingresos','gastos','neto']);
-  if(descargarArchivo(infNombreArchivo(),csv))toast('Informe descargado ✓');
+  if(descargarArchivo(infNombreArchivo(),csv)){auditEvento('informe',{desde:INF.desde,hasta:INF.hasta,filas:r.movimientos.length});toast('Informe descargado ✓')}
+}
+
+
+// ===== Bitácora (H-018) — solo lectura, escrita por triggers en el servidor =====
+const BIT={filas:[],cargando:false,tabla:'',accion:'',desde:'',hasta:''};
+const BIT_TABLAS={movements:'Movimientos',accounts:'Cuentas',categories:'Categorías',budgets:'Presupuestos',monthly_plan:'Ingreso esperado',goals:'Metas',recurring:'Movimientos fijos',app:'Aplicación'};
+const BIT_ACCIONES={alta:'Alta',baja:'Baja',cambio:'Cambio'};
+async function auditEvento(tipo,detalle){
+  try{if(navigator.onLine&&S.uid)await sb.rpc('audit_evento',{p_tipo:tipo,p_detalle:detalle||null})}catch(e){}
+}
+async function abrirBitacora(){
+  BIT.cargando=true;dibujarBitacora();
+  try{
+    let q=sb.from('audit_log').select('*').order('creado_en',{ascending:false}).limit(400);
+    if(BIT.tabla)q=q.eq('tabla',BIT.tabla);
+    if(BIT.accion)q=q.eq('accion',BIT.accion);
+    if(BIT.desde)q=q.gte('creado_en',BIT.desde+'T00:00:00Z');
+    if(BIT.hasta)q=q.lte('creado_en',BIT.hasta+'T23:59:59Z');
+    const{data,error}=await q;
+    if(error)throw error;
+    BIT.filas=data||[];
+  }catch(e){
+    BIT.filas=[];
+    if(!navigator.onLine)toast('La bitácora vive en la nube: conéctate para verla');
+    else toast('No se pudo cargar la bitácora');
+  }
+  BIT.cargando=false;dibujarBitacora();
+}
+function bitLeer(){
+  const g=id=>document.getElementById(id);
+  if(g('bitTabla'))BIT.tabla=g('bitTabla').value;
+  if(g('bitAccion'))BIT.accion=g('bitAccion').value;
+  if(g('bitDesde'))BIT.desde=g('bitDesde').value;
+  if(g('bitHasta'))BIT.hasta=g('bitHasta').value;
+}
+function bitAplicar(){bitLeer();abrirBitacora()}
+function bitFecha(iso){
+  try{return new Date(iso).toLocaleString('es-UY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return iso}
+}
+function bitValor(v){
+  if(v===null||v===undefined||v==='')return '—';
+  if(typeof v==='object')return esc(JSON.stringify(v));
+  return esc(String(v));
+}
+function bitResumen(f){
+  const d=f.detalle||{};
+  if(f.accion==='cambio'){
+    const claves=Object.keys(d).filter(k=>d[k]&&typeof d[k]==='object'&&'ahora' in d[k]);
+    return claves.length?claves.slice(0,4).join(', ')+(claves.length>4?' y '+(claves.length-4)+' más':''):'sin detalle';
+  }
+  return d.descripcion||d.nombre||d.name||d.periodo||'—';
+}
+function bitDetalle(f){
+  const d=f.detalle||{};
+  if(f.accion==='cambio'){
+    return Object.keys(d).filter(k=>d[k]&&typeof d[k]==='object'&&'ahora' in d[k]).map(k=>
+      '<div class="row spread" style="font-size:.75rem;padding:4px 0;gap:8px"><span class="sub" style="flex-shrink:0">'+esc(k)+'</span>'
+      +'<span style="text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis">'+bitValor(d[k].antes)+' → <b>'+bitValor(d[k].ahora)+'</b></span></div>').join('');
+  }
+  return Object.keys(d).slice(0,14).map(k=>
+    '<div class="row spread" style="font-size:.75rem;padding:4px 0;gap:8px"><span class="sub">'+esc(k)+'</span>'
+    +'<span style="text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis">'+bitValor(d[k])+'</span></div>').join('');
+}
+function bitToggle(i){
+  const el=document.getElementById('bitD'+i);
+  if(el)el.classList.toggle('hidden');
+}
+function dibujarBitacora(){
+  const opt=(v,t,sel)=>'<option value="'+v+'"'+(sel===v?' selected':'')+'>'+t+'</option>';
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<div class="row spread" style="margin-bottom:4px"><h2>Bitácora</h2>'
+  +'<button class="btn sm ghost" onclick="exportarBitacora()">Exportar</button></div>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:12px">Registro de todo lo que pasó con tus datos. Lo escribe el servidor, no la app: no se puede alterar desde el teléfono.</p>'
+  +'<div class="row" style="gap:8px;margin-bottom:8px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Módulo</label><select class="inp" id="bitTabla" onchange="bitAplicar()">'
+  +opt('','Todos',BIT.tabla)+Object.keys(BIT_TABLAS).map(k=>opt(k,BIT_TABLAS[k],BIT.tabla)).join('')+'</select></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Acción</label><select class="inp" id="bitAccion" onchange="bitAplicar()">'
+  +opt('','Todas',BIT.accion)+Object.keys(BIT_ACCIONES).map(k=>opt(k,BIT_ACCIONES[k],BIT.accion)).join('')+'</select></div></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:12px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Desde</label><input class="inp" id="bitDesde" type="date" value="'+BIT.desde+'" onchange="bitAplicar()"></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Hasta</label><input class="inp" id="bitHasta" type="date" value="'+BIT.hasta+'" onchange="bitAplicar()"></div></div>'
+  +(BIT.cargando
+    ?'<div class="sub" style="text-align:center;padding:26px 0">Cargando…</div>'
+    :(BIT.filas.length
+      ?BIT.filas.map((f,i)=>{
+        const col=f.accion==='alta'?'var(--ok)':(f.accion==='baja'?'var(--bad)':'var(--pri)');
+        return '<div style="border-bottom:1px solid var(--line);padding:9px 0">'
+        +'<div class="row spread" style="gap:8px;cursor:pointer" onclick="bitToggle('+i+')">'
+        +'<div style="min-width:0;flex:1">'
+        +'<div style="font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        +(BIT_TABLAS[f.tabla]||esc(f.tabla))+' · '+esc(bitResumen(f))+'</div>'
+        +'<div class="sub" style="font-size:.73rem">'+bitFecha(f.creado_en)+'</div></div>'
+        +'<span class="pill" style="background:'+col+'1a;color:'+col+';flex-shrink:0">'+(BIT_ACCIONES[f.accion]||esc(f.accion))+'</span></div>'
+        +'<div class="hidden" id="bitD'+i+'" style="margin-top:7px;background:var(--chip);border-radius:10px;padding:8px 10px">'+bitDetalle(f)+'</div>'
+        +'</div>';
+      }).join('')
+      :'<div class="sub" style="text-align:center;padding:26px 0">Sin registros para esos filtros.</div>'))
+  +(BIT.filas.length>=400?'<div class="sub" style="font-size:.73rem;text-align:center;padding:10px 0">Mostrando los 400 más recientes. Acota las fechas para ver más atrás.</div>':'')
+  +'</div></div>';
+}
+function exportarBitacora(){
+  if(!BIT.filas.length)return toast('No hay registros para exportar');
+  const rows=BIT.filas.map(f=>({
+    fecha:f.creado_en,
+    modulo:BIT_TABLAS[f.tabla]||f.tabla,
+    accion:BIT_ACCIONES[f.accion]||f.accion,
+    registro:f.registro_id||'',
+    resumen:bitResumen(f),
+    detalle:JSON.stringify(f.detalle||{})
+  }));
+  const csv=toCSV(rows,['fecha','modulo','accion','registro','resumen','detalle']);
+  if(descargarArchivo('nexobalance_bitacora_'+stamp()+'.csv',csv))toast('Bitácora descargada ✓');
+}
+
+
+// ===== Adjuntos (H-020) — solo en este teléfono, nunca se suben =====
+const ADJ_MAX=5*1024*1024;
+function adjuntosOn(){return !!S.settings.adjuntos}
+async function setAdjuntos(v){S.settings.adjuntos=v;await kvSet('settings',S.settings);render();toast(v?'Adjuntos activados':'Adjuntos desactivados')}
+async function adjuntosDe(movId){
+  try{return (await idbAll('adjuntos')).filter(a=>a.mov_id===movId)}catch(e){return[]}
+}
+async function adjuntosPeso(){
+  try{return (await idbAll('adjuntos')).reduce((s,a)=>s+(a.tam||0),0)}catch(e){return 0}
+}
+function pesoLegible(b){
+  if(b<1024)return b+' B';
+  if(b<1048576)return (b/1024).toFixed(0)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+function comprimirImagen(file){
+  return new Promise(res=>{
+    try{
+      const img=new Image(),url=URL.createObjectURL(file);
+      img.onload=()=>{
+        const max=1600;
+        let{width:w,height:h}=img;
+        if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r)}
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        c.toBlob(b=>{URL.revokeObjectURL(url);res(b||file)},'image/jpeg',0.8);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);res(file)};
+      img.src=url;
+    }catch(e){res(file)}
+  });
+}
+async function adjuntarArchivo(movId,input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  if(!file)return;
+  let blob=file;
+  if(file.type.startsWith('image/'))blob=await comprimirImagen(file);
+  if(blob.size>ADJ_MAX)return toast('El archivo es muy grande (máximo '+pesoLegible(ADJ_MAX)+')');
+  try{
+    await idbPut('adjuntos',{id:uuid(),mov_id:movId,nombre:file.name||'adjunto',tipo:blob.type||file.type||'application/octet-stream',tam:blob.size,blob,created_at:nowISO()});
+    toast('Adjunto guardado');
+    await pintarAdjuntos(movId);
+  }catch(e){toast('No se pudo guardar el adjunto')}
+}
+async function verAdjunto(id){
+  try{
+    const a=(await idbAll('adjuntos')).find(x=>x.id===id);
+    if(!a)return;
+    const url=URL.createObjectURL(a.blob);
+    window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(e){toast('No se pudo abrir el adjunto')}
+}
+async function borrarAdjunto(id,movId){
+  try{await idbDel('adjuntos',id);await pintarAdjuntos(movId);toast('Adjunto eliminado')}
+  catch(e){toast('No se pudo eliminar')}
+}
+async function borrarAdjuntosDe(movId){
+  try{for(const a of await adjuntosDe(movId))await idbDel('adjuntos',a.id)}catch(e){}
+}
+async function pintarAdjuntos(movId){
+  const box=document.getElementById('adjBox');
+  if(!box)return;
+  const lista=await adjuntosDe(movId);
+  box.innerHTML=lista.length
+    ?lista.map(a=>'<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line);gap:8px">'
+      +'<div style="min-width:0;flex:1;cursor:pointer" onclick="verAdjunto(\''+a.id+'\')">'
+      +'<div style="font-size:.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.tipo.startsWith('image/')?'🖼️ ':'📄 ')+esc(a.nombre)+'</div>'
+      +'<div class="sub" style="font-size:.72rem">'+pesoLegible(a.tam||0)+'</div></div>'
+      +'<button class="pill" style="background:var(--chip);color:var(--bad);padding:5px 10px;font-weight:700;flex-shrink:0" onclick="borrarAdjunto(\''+a.id+'\',\''+movId+'\')">Quitar</button></div>').join('')
+    :'<div class="sub" style="font-size:.75rem;padding:4px 0">Sin adjuntos.</div>';
+}
+function adjuntosCampo(movId){
+  if(!adjuntosOn())return '';
+  setTimeout(()=>pintarAdjuntos(movId),30);
+  return '<div class="field"><label>Adjuntos</label>'
+    +'<div id="adjBox"></div>'
+    +'<input type="file" id="adjInput" accept="image/*,application/pdf" style="display:none" onchange="adjuntarArchivo(\''+movId+'\',this)">'
+    +'<button class="btn ghost" style="width:100%;margin-top:8px" onclick="document.getElementById(\'adjInput\').click()">Agregar foto o PDF</button>'
+    +'<div class="sub" style="font-size:.72rem;margin-top:6px">Se guardan solo en este teléfono. No se suben ni se sincronizan: si borras la app o cierras sesión borrando tus datos, se van con ellos.</div>'
+    +'</div>';
 }
 
 function csvEscape(v){
@@ -3397,7 +3601,7 @@ function exportarMisDatos(){
     };
   }).sort((a,b)=>a.fecha<b.fecha?-1:1);
   const csv=toCSV(rows,['fecha','hora','tipo','monto','moneda','categoria','subcategoria','descripcion','forma_pago','notas']);
-  if(descargarArchivo('nexobalance_mis_movimientos_'+stamp()+'.csv',csv))toast('Archivo descargado ✓');
+  if(descargarArchivo('nexobalance_mis_movimientos_'+stamp()+'.csv',csv)){auditEvento('respaldo',{filas:rows.length});toast('Archivo descargado ✓')}
 }
 async function descargarRespaldoCompleto(){
   if(!navigator.onLine)return toast('Necesitas Internet para generar el respaldo');
@@ -3581,6 +3785,7 @@ function drawMovSheet(){
     </select></div>
     <div class="field"><label>Etiquetas (separadas por coma)</label><input class="inp" id="mTags" placeholder="Ej: feria, niños" value="${esc((e.etiquetas||[]).join(', '))}"></div>
     <div class="field"><label>Notas</label><textarea class="inp" id="mNotas" placeholder="Opcional">${esc(e.notas||'')}</textarea></div>
+    ${adjuntosCampo(e.id)}
     <button class="btn" onclick="saveMov()">${isEdit?'Guardar cambios':'Guardar movimiento'}</button>
     ${isEdit?'':`<button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveMov(true)">Guardar y agregar otro</button>`}
   </div></div>`;
@@ -3721,11 +3926,12 @@ function delMov(id){
       const t=nowISO();
       // Las dos patas se van juntas.
       if(esTransfer){
-        for(const p of patasTransfer(m.transfer_id))await enqueue('mov',{...p,deleted:true,updated_at:t});
+        for(const p of patasTransfer(m.transfer_id)){await enqueue('mov',{...p,deleted:true,updated_at:t});await borrarAdjuntosDe(p.id)}
         toast('Transferencia eliminada');
         return;
       }
       await enqueue('mov',{...m,deleted:true,updated_at:t});
+      await borrarAdjuntosDe(m.id);
       toast('Movimiento eliminado');
     });
 }
@@ -3897,6 +4103,7 @@ async function doChangePass(){
   if(a!==b)return toast('Las contraseñas no coinciden');
   const{error}=await sb.auth.updateUser({password:a});
   if(error)return toast('No se pudo actualizar. Intenta de nuevo.');
+  await auditEvento('cambio_password');
   closeSheet();toast('Contraseña actualizada');
 }
 
