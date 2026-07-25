@@ -1,6 +1,6 @@
 // NexoBalance Service Worker
 // La versión se deriva de APP_VERSION del index.html. Al bumpear una, bumpea la otra.
-const APP_VERSION='1.51.0';
+const APP_VERSION='1.52.0';
 const CACHE='nexobalance-v'+APP_VERSION;
 const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'];
 

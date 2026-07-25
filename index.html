@@ -286,11 +286,18 @@ svg text{font-family:inherit}
       <button class="lockKey" onclick="lockDigit('7')">7</button>
       <button class="lockKey" onclick="lockDigit('8')">8</button>
       <button class="lockKey" onclick="lockDigit('9')">9</button>
-      <button class="lockKey" id="lockBio" style="font-size:1.3rem;visibility:hidden" onclick="desbloquearBiometria()">👆</button>
+      <button class="lockKey" id="lockBio" style="font-size:1.3rem;display:none" onclick="desbloquearBiometria()">👆</button>
+      <button class="lockKey" id="lockAyuda" style="font-size:1.3rem;font-weight:800;color:var(--pri)" onclick="abrirManual()">?</button>
       <button class="lockKey" onclick="lockDigit('0')">0</button>
       <button class="lockKey" onclick="lockBorrar()" style="font-size:1.1rem">⌫</button>
     </div>
     <button class="link" style="margin-top:24px;font-size:.82rem" onclick="lockCerrarSesion()">Cerrar sesión</button>
+  </div>
+  <div id="lockConfirm" class="hidden" style="position:fixed;inset:0;background:var(--bg);z-index:210;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center">
+    <h2 style="font-size:1.15rem;margin-bottom:8px">¿Cerrar sesión?</h2>
+    <p class="sub" style="font-size:.86rem;line-height:1.5;margin-bottom:22px;max-width:320px">Tendrás que volver a entrar con tu cuenta. Tus datos quedan guardados en este teléfono y en la nube.</p>
+    <button class="btn danger" style="width:100%;max-width:320px;margin-bottom:10px" onclick="cerrarSesionAhora(false)">Cerrar sesión</button>
+    <button class="link" style="font-size:.86rem" onclick="lockCancelarSalir()">Cancelar</button>
   </div>
 </div>
 
@@ -300,7 +307,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.51.0';
+const APP_VERSION='1.52.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1858,9 +1865,16 @@ function bloquearApp(){
   const msg=document.getElementById('lockMsg');
   if(msg){msg.textContent='Ingresa tu PIN para continuar';msg.style.color=''}
   lockRenderDots();
+  const conBio=!!(cfg.bio&&bioDisponible());
   const bioBtn=document.getElementById('lockBio');
-  if(bioBtn)bioBtn.style.visibility=(cfg.bio&&bioDisponible())?'visible':'hidden';
-  if(cfg.bio&&bioDisponible())setTimeout(desbloquearBiometria,300);
+  const ayudaBtn=document.getElementById('lockAyuda');
+  // La huella ocupa la celda libre del teclado; si no está disponible,
+  // esa celda la usa el manual en vez de quedar como un hueco.
+  if(bioBtn)bioBtn.style.display=conBio?'':'none';
+  if(ayudaBtn)ayudaBtn.style.display=conBio?'none':'';
+  const conf=document.getElementById('lockConfirm');
+  if(conf)conf.classList.add('hidden');
+  if(conBio)setTimeout(desbloquearBiometria,300);
 }
 function desbloquearApp(){
   _lockPendiente=false;
@@ -1888,8 +1902,12 @@ async function desbloquearBiometria(){
   }
 }
 function lockCerrarSesion(){
-  desbloquearApp();
-  doLogout();
+  const el=document.getElementById('lockConfirm');
+  if(el)el.classList.remove('hidden');
+}
+function lockCancelarSalir(){
+  const el=document.getElementById('lockConfirm');
+  if(el)el.classList.add('hidden');
 }
 // Control de inactividad
 let _lockLastActive=Date.now();
@@ -3016,6 +3034,7 @@ function viewAjustes(){
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub" id="adjPeso">Fotos y PDFs guardados solo en este teléfono</div></div>
       <input type="checkbox" ${adjuntosOn()?'checked':''} onchange="setAdjuntos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"></label>
+    <div class="item" onclick="abrirManual()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📘</div><div class="mtxt"><div>Manual de uso</div><div class="sub">Instrucciones y procedimientos, disponible sin conexión</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirCola()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📤</div><div class="mtxt"><div>Cambios por subir</div><div class="sub">${S.pendientes?S.pendientes+' esperando':'Todo sincronizado'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirBitacora()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🗒️</div><div class="mtxt"><div>Bitácora</div><div class="sub">Todo lo que pasó con tus datos, solo lectura</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInformes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📊</div><div class="mtxt"><div>Informes</div><div class="sub">Balance, categorías, cuentas y flujo de caja con filtros</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -3464,6 +3483,72 @@ function exportarInformePDF(){
   };
   if(d.readyState==='complete')setTimeout(lanzar,180);
   else f.onload=()=>setTimeout(lanzar,180);
+  toast('Elige "Guardar como PDF" en el destino');
+}
+
+
+// ===== Manual de instrucciones y procedimientos =====
+const MANUAL=[["Primeros pasos","🚀",[["Qué es NexoBalance","Una aplicación gratuita para llevar tus finanzas personales. Funciona sin Internet: todo lo que registras se guarda en tu teléfono y sube a la nube apenas hay conexión. Puedes instalarla como una app normal desde el navegador."],["Cómo empezar bien","El orden que menos problemas da es este: 1) crea tus cuentas con el dinero que tienes hoy en cada una; 2) revisa las categorías y ajusta las que no uses; 3) declara tu ingreso esperado del mes en Presupuesto; 4) carga tus movimientos fijos como el alquiler o las remesas. Con eso hecho, el día a día es solo registrar lo que gastas."],["Instalarla en el teléfono","En Ajustes encuentras la opción para instalarla. Una vez instalada abre como cualquier otra app, sin barra del navegador, y sigue funcionando sin señal."]]],["Cuentas y saldos","🏦",[["Qué es una cuenta","Un lugar donde tienes dinero: efectivo, una cuenta bancaria, una tarjeta, una billetera digital. Cada movimiento se asigna a una, y así sabes cuánto hay realmente en cada sitio, no solo cuánto tienes en total."],["Cuenta principal","La que se preselecciona cada vez que registras algo. Marca como principal la que más uses para ahorrarte toques."],["Saldo de apertura","Es el dinero que había en la cuenta cuando empezaste a usarla en la app. No es un campo suelto: se guarda como un movimiento con su fecha, que puedes ver en tu historial marcado como Apertura. Por eso el saldo de la cuenta siempre se puede explicar sumando movimientos, sin números que aparezcan de la nada."],["Cuentas en negativo","Si es una tarjeta de crédito con saldo en contra, escribe el saldo de apertura con signo menos. Por ejemplo −1500."],["Editar el saldo de apertura","Se edita desde la cuenta, en Ajustes → Cuentas. Si lo abres desde el historial de movimientos, la app te lleva ahí: es el único lugar desde donde se puede cambiar sin descuadrar nada."],["Eliminar una cuenta","Al eliminarla, su saldo de apertura se elimina con ella. Los movimientos que tenía quedan sin cuenta asignada, y la app te avisa para que los reasignes."]]],["Movimientos","💸",[["Registrar un ingreso o un gasto","Toca el botón azul + en Movimientos o en Inicio. Escribe el monto, elige categoría y cuenta, y guarda. La fecha y la hora se ponen solas, pero puedes cambiarlas."],["Elegir la cuenta es obligatorio","Si tienes cuentas creadas, todo movimiento debe ir a una. Si no, el dinero cuenta en tu total pero no en el saldo de ninguna cuenta, y los números dejan de cuadrar."],["Moneda","Puedes registrar en moneda local o en dólares. La app convierte usando el tipo de cambio que tengas configurado, y en la lista cada movimiento muestra su moneda de forma visible."],["Buscar","El buscador encuentra por categoría, cuenta, descripción, etiqueta, nota, forma de pago, moneda o monto. No hace falta escribir la palabra completa ni poner los acentos: escribir 'reg' encuentra 'Regalos', y 'cafe' encuentra 'Café'."],["Filtrar","Puedes filtrar por tipo, por rango de fechas y por varias categorías a la vez. El total que ves arriba se recalcula con los filtros puestos."],["Duplicar","Abre un movimiento y toca Duplicar. Copia categoría, cuenta, importe, etiquetas y notas, y le pone la fecha y hora de ahora. Útil para gastos que se repiten pero no son fijos."],["Eliminar","Los movimientos eliminados no desaparecen del todo: quedan marcados como dados de baja, y la bitácora guarda constancia."]]],["Transferencias","⇄",[["Para qué sirven","Para mover dinero entre tus propias cuentas: sacar del banco para tener efectivo, pasar pesos a dólares, cargar una billetera digital. No es un gasto ni un ingreso, porque tu patrimonio no cambia: el dinero solo cambia de lugar."],["Cómo se hace","Ajustes → Cuentas → Transferir entre cuentas. Eliges desde qué cuenta sale, hacia cuál entra, el monto y la fecha."],["Entre monedas distintas","Si las cuentas tienen monedas diferentes, la app te pide cuánto entra realmente en la cuenta destino. Escribe lo que te dieron de verdad: así queda registrado el tipo de cambio de esa operación concreta, no un promedio."],["Qué no afectan","No aparecen en tus ingresos ni en tus gastos, no consumen presupuesto y no cambian tu resultado del mes. Solo mueven saldos entre cuentas."],["Editarlas o borrarlas","Una transferencia son dos movimientos que van siempre juntos. Al abrir cualquiera de los dos se abre el editor completo, y al eliminarla se eliminan los dos lados. Nunca queda uno suelto."]]],["Presupuesto","🎯",[["Ingreso esperado","Es lo primero que hay que declarar: cuánto esperas ingresar este mes, aunque todavía no lo hayas cobrado. Sin ese dato no se puede calcular tu disponible ni avisarte si te estás pasando."],["Esperado no es lo mismo que registrado","El esperado es tu plan. El registrado es lo que efectivamente entró. Si ya registraste ingresos pero no declaraste el esperado, la app te lo advierte en vez de mostrarte un disponible equivocado."],["Presupuesto por categoría","Toca cada categoría y asígnale un límite. Verás el porcentaje consumido y la app te avisa cuando te acercas o te pasas."],["Obligación reservada","Marca así los gastos que ya tienes comprometidos: alquiler, remesas, ahorro. Ese dinero se aparta de tu disponible aunque todavía no lo hayas pagado, para que no lo gastes sin querer."],["Saldo inicial del mes","Con cuánto empezaste el mes. Se arrastra solo desde el cierre del mes anterior. Si no coincide con la realidad, tócalo y escribe el saldo real: la app registra un asiento de ajuste por la diferencia en la cuenta que elijas. Ten en cuenta que corregir la apertura de un mes cambia el cierre del anterior; contablemente es lo correcto."],["Predicción del mes","Estima cómo vas a cerrar el mes si sigues al ritmo actual. Puedes elegir sobre qué base calcularla: todo el mes, los últimos 7 días o los últimos 30. Los últimos 7 días sirven cuando cambiaste de hábitos hace poco; todo el mes sirve cuando tu gasto es parejo."],["Metas","Ponte un objetivo con un monto y la app calcula en cuántos meses lo alcanzas según tu ritmo de ahorro."],["Salud financiera","Un puntaje que resume si tus gastos están bajo control respecto a tus ingresos y a lo que presupuestaste."]]],["Categorías","🏷️",[["Para qué sirven","Clasifican tu dinero y son la base del presupuesto, los filtros y los informes. Sin categorías puedes registrar, pero no puedes analizar."],["Crear y organizar","Elige si es de ingreso o de gasto, ponle nombre, ícono y color. Puedes crear subcategorías dentro de una categoría para tener más detalle sin llenar la lista principal."],["Por qué algunas no se borran","Las categorías que ya usaste no se pueden eliminar. Si se borraran, los movimientos viejos quedarían sin clasificar y tu historial perdería sentido."]]],["Movimientos fijos","🔁",[["Qué son","Gastos o ingresos que se repiten todos los meses el mismo día: alquiler, salario, remesas, suscripciones. Se configuran una vez y no hay que escribirlos cada mes."],["Configurarlos","Ajustes → Movimientos fijos. Define tipo, monto, categoría, cuenta y el día del mes en que ocurre."],["Estados","Al día significa que ya lo registraste este mes. Pendiente que ya venció y falta registrarlo. Programado que aún no llega su día. Pausado que está detenido sin borrarse."],["Acciones","Al tocar uno puedes registrarlo ahora, omitirlo solo este mes, volver a dejarlo pendiente si lo registraste por error, pausarlo, reanudarlo, duplicarlo, editarlo o eliminar toda la serie."],["Registro automático","Si activas 'Registrarlos solos', al abrir la app se registran los que ya vencieron, sin preguntarte. Conviene si tus fijos son siempre por el mismo monto; si suelen variar, es mejor dejarlo apagado y confirmarlos a mano."]]],["Informes","📊",[["Cómo llegar","Ajustes → Informes."],["Período","Tienes atajos para este mes, el mes pasado, los últimos tres meses y el año, o puedes poner las fechas exactas que quieras."],["Filtros","Puedes cruzar cuentas, categorías, moneda, forma de pago y etiqueta. Si no seleccionas ninguna cuenta, el informe es consolidado: todas juntas."],["Balance financiero","Muestra saldo inicial, ingresos, gastos, resultado y saldo final del período. Las transferencias internas se cuentan aparte y no afectan el resultado, porque no son ni ingreso ni gasto."],["Desgloses","El informe incluye el detalle por categoría, por cuenta, por moneda, por forma de pago y el flujo de caja mes a mes, además del listado completo de movimientos."],["Exportar","CSV para abrirlo en una planilla y seguir trabajando. PDF para imprimirlo o enviarlo: elige 'Guardar como PDF' en el destino de impresión. El nombre del archivo incluye los filtros y el período, así no se te mezclan."]]],["Sincronización y offline","☁️",[["Cómo funciona","Todo se guarda primero en tu teléfono. Lo que registras sin conexión queda en una cola de salida y sube solo cuando vuelve el Internet. Nunca tienes que esperar a tener señal para anotar un gasto."],["Cambios por subir","Ajustes → Cambios por subir, o toca la etiqueta de estado arriba en Inicio. Ahí ves exactamente qué está esperando. Si algo no logra subir, aparece marcado y puedes reintentarlo o descartarlo."],["Varios dispositivos","Puedes usar la misma cuenta en varios teléfonos. Si uno muestra datos distintos a otro, usa Ajustes → Sincronizar todo para forzar la puesta al día."],["Varias personas en un mismo teléfono","Cada cuenta guarda sus datos por separado. Al cerrar sesión puedes dejarlos en el teléfono para volver a entrar más rápido, o borrarlos. Una persona nunca ve los datos de la otra."],["Cerrar sesión con cambios sin subir","Si eliges borrar tus datos del teléfono y hay cambios que no llegaron a la nube, la app te dice cuántos son y te pide confirmar. Si eliges solo cerrar sesión, no se pierde nada."]]],["Seguridad","🔒",[["Bloqueo con PIN o huella","Ajustes te permite exigir un PIN cada vez que abres la app, y usar la huella si tu teléfono la tiene. El bloqueo es por cuenta: en un teléfono compartido, tu PIN no bloquea a la otra persona."],["Si olvidas el PIN","Desde la pantalla de bloqueo puedes cerrar sesión y volver a entrar con tu cuenta y contraseña. Tus datos no se pierden: están en la nube."],["Ocultar los montos","El ícono del ojo en Inicio esconde todas las cifras. Útil si estás en la calle o alguien mira tu pantalla."],["Bitácora","Ajustes → Bitácora. Registra cada alta, baja y modificación de tus datos, con el valor anterior y el nuevo. La escribe el servidor, no la app, así que no se puede alterar desde el teléfono. Es de solo lectura y se puede exportar."]]],["Adjuntos","📎",[["Activarlos","Ajustes → Adjuntos en movimientos. Vienen apagados."],["Cómo usarlos","Con la opción activada, cada movimiento tiene una sección para agregar una foto o un PDF: una boleta, una factura, un comprobante."],["Las fotos se reducen","Para no llenarte el teléfono, las imágenes se reducen antes de guardarse. El límite por archivo es de 5 MB, y en Ajustes ves cuánto ocupan en total."],["Advertencia importante","Los adjuntos se guardan solo en este teléfono. No suben a la nube, no aparecen en otro dispositivo y no van incluidos en el respaldo. Si borras la app o cierras sesión eligiendo borrar tus datos, se pierden."]]],["Respaldos y datos","💾",[["Descargar tus datos","Ajustes → Descargar mis datos genera un CSV con todos tus movimientos. Guárdalo donde quieras: es tuyo."],["Qué no incluye","El respaldo no incluye los adjuntos, porque son archivos y no datos de planilla."],["Borrar todo","En la Zona Roja de Ajustes puedes eliminar todos tus datos y empezar de cero. Es permanente y no hay forma de deshacerlo. Descarga un respaldo antes."]]],["Problemas frecuentes","🛠️",[["El saldo total no coincide con la suma de mis cuentas","Casi siempre es porque hay movimientos sin cuenta asignada: cuentan en el total pero no en ninguna cuenta. Ve a Ajustes → Cuentas; si hay un aviso naranja, tócalo y asígnalos. Revisa también que tus movimientos fijos tengan cuenta."],["Registré algo y no aparece en otro teléfono","Revisa Ajustes → Cambios por subir. Si hay algo esperando, conéctate y usa Reintentar. En el otro teléfono, usa Sincronizar todo."],["Mi disponible sale en cero o raro","Falta declarar el ingreso esperado del mes en Presupuesto. Sin ese dato no hay contra qué comparar."],["Un ingreso aparece en el saldo pero no en los ingresos del mes","Probablemente sea un saldo de apertura o una transferencia. Los dos suman al saldo porque son dinero real, pero no son ingresos del mes: no ganaste ese dinero este mes, ya lo tenías o lo moviste de lugar."],["No veo la versión nueva","Cierra la app por completo y vuelve a abrirla. La versión que estás usando aparece al final de Ajustes."]]]];
+
+let _manualAbierto=-1;
+function manualToggle(i){
+  _manualAbierto=(_manualAbierto===i)?-1:i;
+  dibujarManual();
+}
+function dibujarManual(){
+  const secs=MANUAL.map((s,i)=>{
+    const abierto=_manualAbierto===i;
+    return '<div style="border:1px solid var(--line);border-radius:14px;margin-bottom:8px;overflow:hidden">'
+    +'<div onclick="manualToggle('+i+')" style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;gap:11px;background:'+(abierto?'var(--chip)':'transparent')+'">'
+    +'<span style="font-size:1.15rem">'+s[1]+'</span>'
+    +'<span style="flex:1;font-weight:700;font-size:.92rem">'+esc(s[0])+'</span>'
+    +'<span class="sub" style="font-size:.72rem">'+s[2].length+'</span>'
+    +'<span style="color:var(--sub);transform:rotate('+(abierto?'90':'0')+'deg);transition:transform .15s">'+ic('chevron',17)+'</span></div>'
+    +(abierto?'<div style="padding:2px 14px 12px">'+s[2].map(t=>
+        '<div style="padding:10px 0;border-top:1px solid var(--line)">'
+        +'<div style="font-weight:700;font-size:.85rem;margin-bottom:4px">'+esc(t[0])+'</div>'
+        +'<div class="sub" style="font-size:.83rem;line-height:1.6">'+esc(t[1])+'</div></div>').join('')+'</div>':'')
+    +'</div>';
+  }).join('');
+  const host=document.getElementById('sheetHost');
+  host.innerHTML='<div class="sheet-bg" style="z-index:220" onclick="if(event.target===this)cerrarManual()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<div class="row spread" style="margin-bottom:4px"><h2>Manual de uso</h2>'
+  +'<button class="btn sm ghost" onclick="manualPDF()">PDF</button></div>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:14px">Instrucciones y procedimientos de NexoBalance. Disponible sin conexión.</p>'
+  +secs
+  +'<button class="btn ghost" style="width:100%;margin-top:10px" onclick="cerrarManual()">Cerrar</button>'
+  +'</div></div>';
+}
+function abrirManual(){_manualAbierto=-1;dibujarManual()}
+function cerrarManual(){
+  const host=document.getElementById('sheetHost');
+  if(host)host.innerHTML='';
+  confirmSheetOpen=false;
+}
+function manualHTML(){
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexoBalance — Manual de uso</title><style>'
+  +'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#101828;margin:0;padding:26px;font-size:12.5px;line-height:1.6}'
+  +'h1{font-size:20px;margin:0 0 4px}.sub{color:#667085;font-size:11px;margin-bottom:20px}'
+  +'h2{font-size:14px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #1788FF;page-break-after:avoid}'
+  +'h3{font-size:12.5px;margin:12px 0 3px}p{margin:0 0 10px;color:#344054}'
+  +'@media print{body{padding:0}h3,p{page-break-inside:avoid}}'
+  +'</style></head><body><h1>NexoBalance — Manual de instrucciones y procedimientos</h1>'
+  +'<div class="sub">Aplicación de finanzas personales · JosmaTech · Versión '+APP_VERSION+'</div>'
+  +MANUAL.map(s=>'<h2>'+esc(s[0])+'</h2>'+s[2].map(t=>'<h3>'+esc(t[0])+'</h3><p>'+esc(t[1])+'</p>').join('')).join('')
+  +'</body></html>';
+}
+function manualPDF(){
+  const previo=document.getElementById('printFrame');
+  if(previo)previo.remove();
+  const f=document.createElement('iframe');
+  f.id='printFrame';
+  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const d=f.contentWindow.document;
+  d.open();d.write(manualHTML());d.close();
+  const lanzar=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('No se pudo abrir la impresión')}};
+  if(d.readyState==='complete')setTimeout(lanzar,180); else f.onload=()=>setTimeout(lanzar,180);
   toast('Elige "Guardar como PDF" en el destino');
 }
 
