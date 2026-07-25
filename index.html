@@ -301,7 +301,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.41.0';
+const APP_VERSION='1.42.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -1535,6 +1535,47 @@ function saldoCuenta(id){
 }
 function movsSinCuenta(){return movsActivos().filter(m=>!m.cuenta_id).length}
 
+// El saldo inicial de una cuenta ya no es un campo: es su movimiento de apertura.
+// Estas funciones son el único punto por donde se lee y se escribe.
+function aperturaDe(cuentaId){return movsActivos().find(m=>m.cuenta_id===cuentaId&&esApertura(m))||null}
+function saldoAperturaDe(cuentaId){
+  const ap=aperturaDe(cuentaId);
+  if(ap)return (ap.tipo==='ingreso'?1:-1)*(Number(ap.monto)||0);
+  // Cuenta todavía sin migrar: se sigue leyendo el campo viejo.
+  const a=cuentaById(cuentaId);
+  return a?(Number(a.saldo_inicial)||0):0;
+}
+function fechaAperturaDe(cuentaId){
+  const ap=aperturaDe(cuentaId);
+  if(ap)return ap.fecha;
+  const a=cuentaById(cuentaId);
+  return (a&&a.created_at)?String(a.created_at).slice(0,10):new Date().toISOString().slice(0,10);
+}
+// Deja el movimiento de apertura igual al saldo pedido: lo crea, lo actualiza
+// o lo da de baja si el saldo pasa a cero.
+async function sincronizarApertura(cuentaId,saldo,fecha,moneda){
+  const ap=aperturaDe(cuentaId);
+  const t=nowISO();
+  const monto=Math.round(Math.abs(saldo)*100)/100;
+  if(!monto){
+    if(ap)await enqueue('mov',{...ap,deleted:true,updated_at:t});
+    return;
+  }
+  const base=ap?{...ap}:{
+    id:uuid(),user_id:S.uid,categoria_id:null,subcategoria_id:null,
+    notas:null,forma_pago:null,etiquetas:[],transfer_id:null,
+    hora:'00:00',created_at:t
+  };
+  await enqueue('mov',{...base,
+    cuenta_id:cuentaId,clase:'apertura',
+    tipo:saldo>0?'ingreso':'gasto',
+    monto,moneda:moneda||'UYU',
+    fecha:fecha||new Date().toISOString().slice(0,10),
+    descripcion:'Saldo de apertura',
+    deleted:false,updated_at:t
+  });
+}
+
 function abrirCuentas(){
   const cuentas=cuentasActivas();
   const sinAsignar=movsSinCuenta();
@@ -1592,8 +1633,12 @@ function editarCuenta(id){
         <button class="${a&&a.moneda==='USD'?'on':''}" onclick="_accMon='USD';this.classList.add('on');this.previousElementSibling.classList.remove('on')">${usdFlag()} USD</button>
       </div>
     </div>
-    <div class="field"><label>Saldo actual${a?'':' (opcional)'}</label><input class="inp" id="acSaldo" type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="${a?Number(a.saldo_inicial):''}">
-      <div class="sub" style="font-size:.74rem;margin-top:5px">El dinero que hay hoy en esta cuenta. Los movimientos que registres después se sumarán o restarán de aquí.</div>
+    <div class="field"><label>Saldo de apertura${a?'':' (opcional)'}</label><input class="inp" id="acSaldo" type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="${a?(saldoAperturaDe(a.id)||''):''}">
+      <div class="sub" style="font-size:.74rem;margin-top:5px">El dinero que había en esta cuenta al empezar. Se guarda como un movimiento de apertura, así que puedes verlo y auditarlo en tu historial. Si la cuenta está en negativo, escribe el número con signo menos.</div>
+    </div>
+    <div class="field"><label>Fecha de ese saldo</label>
+      <input class="inp" id="acFecha" type="date" value="${a?fechaAperturaDe(a.id):new Date().toISOString().slice(0,10)}">
+      <div class="sub" style="font-size:.74rem;margin-top:5px">Desde cuándo cuenta ese dinero. Importa para los informes por período.</div>
     </div>
     <label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
       <input type="checkbox" id="acPrincipal" ${a&&a.principal?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
@@ -1623,6 +1668,7 @@ async function guardarCuenta(id){
   const nombre=document.getElementById('acNombre').value.trim();
   const tipo=document.getElementById('acTipo').value;
   const saldo=Number(document.getElementById('acSaldo').value)||0;
+  const fechaAp=(document.getElementById('acFecha')||{}).value||new Date().toISOString().slice(0,10);
   const principal=document.getElementById('acPrincipal').checked;
   if(!nombre)return toast('Ponle un nombre a la cuenta');
   const prev=id?cuentaById(id):null;
@@ -1631,21 +1677,29 @@ async function guardarCuenta(id){
     for(const o of cuentasActivas()){if(o.principal&&o.id!==id)await enqueue('acc',{...o,principal:false,updated_at:t})}
   }
   const tc=TIPOS_CUENTA.find(x=>x.id===tipo);
+  const idFinal=id||uuid();
   await enqueue('acc',{
-    id:id||uuid(),user_id:S.uid,nombre,tipo,
+    id:idFinal,user_id:S.uid,nombre,tipo,
     icono:window._accIc||(tc?tc.ic:'💵'),
     color:prev?prev.color:'#1788FF',
-    saldo_inicial:Math.round(saldo*100)/100,
+    saldo_inicial:0,
     moneda:window._accMon||'UYU',
     principal,deleted:false,
     created_at:prev?prev.created_at:t,updated_at:t
   });
+  // El saldo vive en el movimiento de apertura, no en la cuenta. Guardar
+  // siempre reconcilia los dos, así una cuenta sin migrar se corrige sola.
+  await sincronizarApertura(idFinal,saldo,fechaAp,window._accMon||'UYU');
   closeSheet();toast(id?'Cuenta actualizada':'Cuenta creada');
 }
 async function eliminarCuenta(id){
   const a=cuentaById(id);if(!a)return;
   const conMovs=movsActivos().filter(m=>m.cuenta_id===id).length;
   openConfirm('¿Eliminar '+a.nombre+'?',conMovs?'Los '+conMovs+' movimientos de esta cuenta se conservan, pero quedarán sin cuenta asignada.':'Esta cuenta se eliminará.',async()=>{
+    // La apertura pertenece a la cuenta: si la cuenta se va, se va con ella.
+    // Si no, quedaría sumando al saldo total sin pertenecer a ningún lado.
+    const ap=aperturaDe(id);
+    if(ap)await enqueue('mov',{...ap,deleted:true,updated_at:nowISO()});
     await enqueue('acc',{...a,deleted:true,updated_at:nowISO()});
     closeSheet();toast('Cuenta eliminada');
   });
@@ -3131,6 +3185,12 @@ function openConfirm(title,msg,onYes,labelSi){
 
 function openMovSheet(id,tipoPreset){
   const m=id?S.movs.find(x=>x.id===id):null;
+  // Una apertura no se edita como un movimiento suelto: quitarle la cuenta o
+  // cambiarle la clase la volvería inválida y el servidor la rechazaría.
+  if(m&&esApertura(m)){
+    if(m.cuenta_id)return editarCuenta(m.cuenta_id);
+    return toast('Este saldo de apertura se edita desde su cuenta');
+  }
   const _accPrin=cuentasActivas().find(a=>a.principal);
   S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',cuenta_id:_accPrin?_accPrin.id:'',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
   drawMovSheet();
