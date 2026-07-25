@@ -300,7 +300,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.50.0';
+const APP_VERSION='1.51.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -386,7 +386,7 @@ function claseDe(m){return (m&&m.clase)?m.clase:'normal'}
 function esNormal(m){return claseDe(m)==='normal'}
 function esApertura(m){return claseDe(m)==='apertura'}
 function movsNormales(){return movsActivos().filter(esNormal)}
-const CLASE_ETIQUETA={apertura:'Apertura',transferencia:'Transferencia'};
+const CLASE_ETIQUETA={apertura:'Apertura',transferencia:'Transferencia',ajuste:'Ajuste de saldo'};
 
 function catById(id){return S.cats.find(c=>c.id===id)}
 function activeCats(){return S.cats.filter(c=>!c.deleted)}
@@ -2569,48 +2569,66 @@ function saldoInicialAuto(pk){
   const[d1]=periodRange(pk);
   return movsActivos().filter(m=>m.fecha<d1).reduce((s,m)=>s+(m.tipo==='ingreso'?1:-1)*toUYU(m),0);
 }
-function saldoInicialMes(pk){
-  const plan=planMes(pk);
-  if(plan&&plan.saldo_inicial!==null&&plan.saldo_inicial!==undefined&&plan.saldo_inicial!=='')return Number(plan.saldo_inicial);
-  return saldoInicialAuto(pk);
+function saldoInicialMes(pk){return saldoInicialAuto(pk)}
+// El ajuste se fecha el último día del mes anterior: corregir la apertura de un
+// mes es corregir el cierre del anterior. Así entra en el saldo inicial sin
+// excepciones, y el informe del mes previo también cuadra.
+function fechaAjuste(pk){
+  const[,dz]=periodRange(periodShift(pk,-1));
+  return dz;
 }
-function saldoInicialFijado(pk){
-  const plan=planMes(pk);
-  return !!(plan&&plan.saldo_inicial!==null&&plan.saldo_inicial!==undefined&&plan.saldo_inicial!=='');
+function ajusteDe(pk){
+  const f=fechaAjuste(pk);
+  return movsActivos().find(m=>claseDe(m)==='ajuste'&&m.fecha===f)||null;
 }
+function saldoInicialFijado(pk){return !!ajusteDe(pk)}
 function editarSaldoInicialMes(){
-  const pk=S.presuMes,auto=saldoInicialAuto(pk),fijado=saldoInicialFijado(pk);
+  const pk=S.presuMes,actual=saldoInicialMes(pk),aj=ajusteDe(pk);
+  const sinAjuste=actual-(aj?(aj.tipo==='ingreso'?1:-1)*toUYU(aj):0);
+  const cuentas=cuentasActivas();
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div><h2 style="margin-bottom:4px">Saldo inicial de ${periodLabel(pk)}</h2>
-    <p class="sub" style="margin-bottom:14px">Con cuánto empezaste el mes. Se arrastra solo desde el cierre del mes anterior; solo escríbelo si necesitas corregirlo.</p>
-    <div class="field"><label>Monto en moneda local</label>
-      <input class="inp" id="sinMonto" type="number" inputmode="decimal" step="0.01" value="${fijado?Number(saldoInicialMes(pk)):''}" placeholder="${auto.toFixed(2)}"></div>
-    <div class="sub" style="font-size:.78rem;margin-bottom:14px">Calculado automáticamente: <b>${localFlag()} ${fmt(auto)}</b>${fijado?' · ahora está fijado a mano':''}</div>
-    <button class="btn" onclick="guardarSaldoInicialMes()">Guardar</button>
-    ${fijado?`<button class="link" style="width:100%;margin-top:10px" onclick="guardarSaldoInicialMes(true)">Volver al cálculo automático</button>`:''}
+    <p class="sub" style="margin-bottom:14px">Con cuánto empezaste el mes. Se arrastra solo desde el cierre del anterior. Si lo corriges, se registra un asiento de ajuste por la diferencia, para que cuentas, informes y saldo total sigan cuadrando.</p>
+    <div class="field"><label>Saldo real al empezar el mes</label>
+      <input class="inp" id="sinMonto" type="number" inputmode="decimal" step="0.01" value="${Number(actual.toFixed(2))}"></div>
+    ${cuentas.length?`<div class="field"><label>Cuenta donde cargar el ajuste</label><select class="inp" id="sinCuenta">
+      ${cuentas.map(a=>`<option value="${a.id}" ${(aj?aj.cuenta_id:cuentaPorDefecto())===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)}</option>`).join('')}
+    </select></div>`:'<div class="sub" style="font-size:.78rem;margin-bottom:14px;color:var(--bad)">Necesitas al menos una cuenta para poder ajustar.</div>'}
+    <div class="sub" style="font-size:.78rem;margin-bottom:14px">Sin ajustes daría <b>${localFlag()} ${fmt(sinAjuste)}</b>${aj?' · hoy hay un ajuste de '+money(aj.monto,aj.moneda):''}</div>
+    ${cuentas.length?`<button class="btn" onclick="guardarSaldoInicialMes()">Guardar</button>`:''}
+    ${aj?`<button class="link" style="width:100%;margin-top:10px" onclick="quitarAjusteMes()">Quitar el ajuste</button>`:''}
   </div></div>`;
 }
-async function guardarSaldoInicialMes(auto){
+async function guardarSaldoInicialMes(){
   const pk=S.presuMes,t=nowISO();
-  let valor=null;
-  if(!auto){
-    const raw=document.getElementById('sinMonto').value;
-    if(raw==='')valor=null;
-    else{
-      const v=Number(raw);
-      if(isNaN(v))return toast('Ingresa un monto válido');
-      valor=Math.round(v*100)/100;
-    }
+  const cta=document.getElementById('sinCuenta');
+  if(!cta)return toast('Necesitas al menos una cuenta');
+  const v=Number(document.getElementById('sinMonto').value);
+  if(isNaN(v))return toast('Ingresa un monto válido');
+  const aj=ajusteDe(pk);
+  const actual=saldoInicialMes(pk);
+  const previoAjuste=aj?(aj.tipo==='ingreso'?1:-1)*toUYU(aj):0;
+  const diferencia=Math.round((v-(actual-previoAjuste))*100)/100;
+  if(!diferencia){
+    if(aj)await enqueue('mov',{...aj,deleted:true,updated_at:t});
+    closeSheet();return toast('Sin diferencia que ajustar');
   }
-  const ex=planMes(pk);
-  await enqueue('plan',{
-    id:ex?ex.id:uuid(),user_id:S.uid,periodo:pk,
-    ingreso_esperado:ex?Number(ex.ingreso_esperado||0):0,
-    saldo_inicial:valor,
-    created_at:ex?ex.created_at:t,updated_at:t
+  const base=aj?{...aj}:{id:uuid(),user_id:S.uid,categoria_id:null,subcategoria_id:null,notas:null,forma_pago:null,etiquetas:[],transfer_id:null,hora:'00:00',created_at:t};
+  await enqueue('mov',{...base,
+    clase:'ajuste',cuenta_id:cta.value,
+    tipo:diferencia>0?'ingreso':'gasto',
+    monto:Math.abs(diferencia),moneda:'UYU',
+    fecha:fechaAjuste(pk),descripcion:'Ajuste de saldo inicial de '+periodLabel(pk),
+    deleted:false,updated_at:t
   });
-  closeSheet();toast(valor===null?'Vuelve a calcularse solo':'Saldo inicial guardado');
+  closeSheet();toast('Ajuste registrado');
+}
+async function quitarAjusteMes(){
+  const aj=ajusteDe(S.presuMes);
+  if(!aj)return closeSheet();
+  await enqueue('mov',{...aj,deleted:true,updated_at:nowISO()});
+  closeSheet();toast('Ajuste quitado');
 }
 function editarIngresoEsperado(){
   const pk=S.presuMes;
@@ -2633,7 +2651,7 @@ async function guardarIngresoEsperado(){
   if(isNaN(v)||v<0)return toast('Ingresa un monto válido');
   const pk=S.presuMes;const t=nowISO();
   const existing=planMes(pk);
-  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(v*100)/100,saldo_inicial:existing?(existing.saldo_inicial??null):null,created_at:existing?existing.created_at:t,updated_at:t});
+  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(v*100)/100,saldo_inicial:null,created_at:existing?existing.created_at:t,updated_at:t});
   closeSheet();toast('Ingreso esperado guardado');
 }
 
@@ -3903,6 +3921,7 @@ function openMovSheet(id,tipoPreset){
     return toast('Este saldo de apertura se edita desde su cuenta');
   }
   if(m&&claseDe(m)==='transferencia'&&m.transfer_id)return abrirTransferencia(m.transfer_id);
+  if(m&&claseDe(m)==='ajuste')return toast('Este ajuste se edita desde el saldo inicial del mes, en Presupuesto');
   S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',cuenta_id:cuentaPorDefecto()||'',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
   drawMovSheet();
 }
