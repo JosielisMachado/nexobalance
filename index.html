@@ -277,7 +277,6 @@ svg text{font-family:inherit}
     <p class="sub" id="lockMsg" style="font-size:.85rem;margin-bottom:22px">Ingresa tu PIN para continuar</p>
     <div class="row" id="lockDots" style="gap:12px;margin-bottom:26px"></div>
     <div style="display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center">
-      ${''}
       <button class="lockKey" onclick="lockDigit('1')">1</button>
       <button class="lockKey" onclick="lockDigit('2')">2</button>
       <button class="lockKey" onclick="lockDigit('3')">3</button>
@@ -301,7 +300,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.49.0';
+const APP_VERSION='1.50.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -2395,6 +2394,10 @@ function viewPresu(){
       </div>
       <div style="font-size:1.7rem;font-weight:800;margin-top:4px;font-size:${fitFont(ingresoEsperado,1.7,0.9,9)}">${hayEsperado?localFlag()+' '+fmt(ingresoEsperado):'Sin definir'}</div>
       ${ingresoAnterior>0?`<div style="opacity:.8;font-size:.72rem;margin-top:4px">El mes pasado ingresaste: ${fmt(ingresoAnterior)}</div>`:''}
+      <div onclick="editarSaldoInicialMes()" style="cursor:pointer;background:rgba(255,255,255,.13);border-radius:12px;padding:9px 12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:.76rem;opacity:.9">Saldo inicial del mes${saldoInicialFijado(pk)?' · fijado':''}</div>
+        <div style="font-weight:800;font-size:.92rem">${localFlag()} ${fmt(saldoInicialMes(pk))} ›</div>
+      </div>
       ${!hayEsperado?`<div style="background:rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:.78rem;line-height:1.5">
         ${ingresoRegistrado>0
           ?`Ya registraste <b>${localFlag()} ${fmt(ingresoRegistrado)}</b> de ingresos este mes, pero no declaraste cuánto esperas ganar. Sin ese dato no se puede calcular tu disponible ni avisarte si te estás excediendo.`
@@ -2562,6 +2565,53 @@ function irAAjustarIngreso(){
     }
   },S.tab==='presu'?0:100);
 }
+function saldoInicialAuto(pk){
+  const[d1]=periodRange(pk);
+  return movsActivos().filter(m=>m.fecha<d1).reduce((s,m)=>s+(m.tipo==='ingreso'?1:-1)*toUYU(m),0);
+}
+function saldoInicialMes(pk){
+  const plan=planMes(pk);
+  if(plan&&plan.saldo_inicial!==null&&plan.saldo_inicial!==undefined&&plan.saldo_inicial!=='')return Number(plan.saldo_inicial);
+  return saldoInicialAuto(pk);
+}
+function saldoInicialFijado(pk){
+  const plan=planMes(pk);
+  return !!(plan&&plan.saldo_inicial!==null&&plan.saldo_inicial!==undefined&&plan.saldo_inicial!=='');
+}
+function editarSaldoInicialMes(){
+  const pk=S.presuMes,auto=saldoInicialAuto(pk),fijado=saldoInicialFijado(pk);
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:4px">Saldo inicial de ${periodLabel(pk)}</h2>
+    <p class="sub" style="margin-bottom:14px">Con cuánto empezaste el mes. Se arrastra solo desde el cierre del mes anterior; solo escríbelo si necesitas corregirlo.</p>
+    <div class="field"><label>Monto en moneda local</label>
+      <input class="inp" id="sinMonto" type="number" inputmode="decimal" step="0.01" value="${fijado?Number(saldoInicialMes(pk)):''}" placeholder="${auto.toFixed(2)}"></div>
+    <div class="sub" style="font-size:.78rem;margin-bottom:14px">Calculado automáticamente: <b>${localFlag()} ${fmt(auto)}</b>${fijado?' · ahora está fijado a mano':''}</div>
+    <button class="btn" onclick="guardarSaldoInicialMes()">Guardar</button>
+    ${fijado?`<button class="link" style="width:100%;margin-top:10px" onclick="guardarSaldoInicialMes(true)">Volver al cálculo automático</button>`:''}
+  </div></div>`;
+}
+async function guardarSaldoInicialMes(auto){
+  const pk=S.presuMes,t=nowISO();
+  let valor=null;
+  if(!auto){
+    const raw=document.getElementById('sinMonto').value;
+    if(raw==='')valor=null;
+    else{
+      const v=Number(raw);
+      if(isNaN(v))return toast('Ingresa un monto válido');
+      valor=Math.round(v*100)/100;
+    }
+  }
+  const ex=planMes(pk);
+  await enqueue('plan',{
+    id:ex?ex.id:uuid(),user_id:S.uid,periodo:pk,
+    ingreso_esperado:ex?Number(ex.ingreso_esperado||0):0,
+    saldo_inicial:valor,
+    created_at:ex?ex.created_at:t,updated_at:t
+  });
+  closeSheet();toast(valor===null?'Vuelve a calcularse solo':'Saldo inicial guardado');
+}
 function editarIngresoEsperado(){
   const pk=S.presuMes;
   const plan=planMes(pk);
@@ -2583,7 +2633,7 @@ async function guardarIngresoEsperado(){
   if(isNaN(v)||v<0)return toast('Ingresa un monto válido');
   const pk=S.presuMes;const t=nowISO();
   const existing=planMes(pk);
-  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(v*100)/100,created_at:existing?existing.created_at:t,updated_at:t});
+  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(v*100)/100,saldo_inicial:existing?(existing.saldo_inicial??null):null,created_at:existing?existing.created_at:t,updated_at:t});
   closeSheet();toast('Ingreso esperado guardado');
 }
 
@@ -2630,7 +2680,7 @@ async function copiarPresupuestoAnterior(){
   }
   const prevPlan=planMes(prev);
   if(prevPlan&&!planMes(pk)){
-    await enqueue('plan',{id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:prevPlan.ingreso_esperado,created_at:t,updated_at:t});
+    await enqueue('plan',{id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:prevPlan.ingreso_esperado,saldo_inicial:null,created_at:t,updated_at:t});
   }
   toast('Presupuesto copiado del mes anterior');
 }
@@ -3287,7 +3337,7 @@ function dibujarInformes(){
   '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
   +'<div class="handle"></div>'
   +'<div class="row spread" style="margin-bottom:12px"><h2>Informes</h2>'
-  +'<button class="btn sm ghost" onclick="exportarInforme()">Exportar</button></div>'
+  +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="exportarInformePDF()">PDF</button><button class="btn sm ghost" onclick="exportarInforme()">CSV</button></div></div>'
   +'<div class="chips" style="margin-bottom:10px">'
   +'<button class="chip" onclick="infPreset(\'mes\')">Este mes</button>'
   +'<button class="chip" onclick="infPreset(\'mesant\')">Mes pasado</button>'
@@ -3327,6 +3377,78 @@ function dibujarInformes(){
   +'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>'
   +'</div></div>';
 }
+
+function infHTMLImpresion(){
+  const r=calcularInforme();
+  const cur=detectPais().cur||'UYU';
+  const filtros=[];
+  if(INF.cuentas.length)filtros.push('Cuentas: '+INF.cuentas.map(id=>{const c=cuentaById(id);return c?c.nombre:''}).filter(Boolean).join(', '));
+  else filtros.push('Cuentas: consolidado');
+  if(INF.cats.length)filtros.push('Categorías: '+INF.cats.map(id=>{const c=catById(id);return c?c.name:''}).filter(Boolean).join(', '));
+  if(INF.moneda)filtros.push('Moneda: '+INF.moneda);
+  if(INF.pago)filtros.push('Forma de pago: '+INF.pago);
+  if(INF.tag)filtros.push('Etiqueta: '+INF.tag);
+  const n=v=>fmt(v);
+  const tabla=(t,filas)=>filas.length?('<h2>'+esc(t)+'</h2><table><thead><tr><th>Concepto</th><th class="c">Cant.</th><th class="r">Ingresos</th><th class="r">Gastos</th><th class="r">Neto</th></tr></thead><tbody>'
+    +filas.map(f=>'<tr><td>'+esc(f.nombre)+'</td><td class="c">'+f.n+'</td><td class="r">'+(f.ing?n(f.ing):'—')+'</td><td class="r">'+(f.gas?n(f.gas):'—')+'</td><td class="r">'+n(f.ing-f.gas)+'</td></tr>').join('')
+    +'</tbody></table>'):'';
+  const detalle='<h2>Detalle de movimientos</h2><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Cuenta</th><th class="r">Monto</th></tr></thead><tbody>'
+    +r.movimientos.map(m=>{
+      const c=catById(m.categoria_id),cu=cuentaById(m.cuenta_id),cl=CLASE_ETIQUETA[claseDe(m)];
+      return '<tr><td>'+m.fecha+'</td><td>'+esc(m.descripcion||(c?c.name:''))+(c?' <i>('+esc(c.name)+')</i>':'')+(cl?' <b>['+cl+']</b>':'')+'</td><td>'+esc(cu?cu.nombre:'—')+'</td>'
+        +'<td class="r '+(m.tipo==='ingreso'?'ok':'bad')+'">'+(m.tipo==='ingreso'?'+':'−')+money(m.monto,m.moneda)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexoBalance — Informe</title><style>'
+    +'*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#101828;margin:0;padding:24px;font-size:12px}'
+    +'h1{font-size:19px;margin:0 0 2px}h2{font-size:13px;margin:20px 0 6px;padding-bottom:4px;border-bottom:2px solid #1788FF}'
+    +'.meta{color:#667085;font-size:11px;line-height:1.5;margin-bottom:14px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:6px}'
+    +'th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#667085;border-bottom:1px solid #d0d5dd;padding:5px 4px}'
+    +'td{padding:5px 4px;border-bottom:1px solid #eaecf0}'
+    +'.r{text-align:right}.c{text-align:center}.ok{color:#027A48}.bad{color:#B42318}'
+    +'.bal td{font-size:13px}.bal .tot{font-weight:800;border-top:2px solid #101828}'
+    +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}}'
+    +'</style></head><body>'
+    +'<h1>NexoBalance — Informe financiero</h1>'
+    +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString('es-UY')+'</div>'
+    +'<h2>Balance financiero</h2><table class="bal"><tbody>'
+    +'<tr><td>Saldo inicial</td><td class="r">'+n(r.saldoInicial)+'</td></tr>'
+    +'<tr><td>Ingresos</td><td class="r ok">'+n(r.ingresos)+'</td></tr>'
+    +'<tr><td>Gastos</td><td class="r bad">'+n(r.gastos)+'</td></tr>'
+    +'<tr><td>Resultado</td><td class="r">'+n(r.resultado)+'</td></tr>'
+    +(r.aperturas?'<tr><td>Saldos de apertura</td><td class="r">'+n(r.aperturas)+'</td></tr>':'')
+    +'<tr class="tot"><td>Saldo final</td><td class="r">'+n(r.saldoFinal)+'</td></tr>'
+    +'</tbody></table>'
+    +(r.nTransfer?'<div class="meta">'+r.nTransfer+' transferencia(s) interna(s) en el período. No afectan ingresos, gastos ni resultado.</div>':'')
+    +tabla('Por categoría',r.porCategoria)
+    +tabla('Por cuenta',r.porCuenta)
+    +tabla('Por moneda',r.porMoneda)
+    +tabla('Por forma de pago',r.porPago)
+    +tabla('Flujo de caja por mes',r.porMes)
+    +detalle
+    +'</body></html>';
+}
+function exportarInformePDF(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  const html=infHTMLImpresion();
+  const previo=document.getElementById('printFrame');
+  if(previo)previo.remove();
+  const f=document.createElement('iframe');
+  f.id='printFrame';
+  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const d=f.contentWindow.document;
+  d.open();d.write(html);d.close();
+  const lanzar=()=>{
+    try{f.contentWindow.focus();f.contentWindow.print();auditEvento('informe_pdf',{desde:INF.desde,hasta:INF.hasta})}
+    catch(e){toast('No se pudo abrir la impresión')}
+  };
+  if(d.readyState==='complete')setTimeout(lanzar,180);
+  else f.onload=()=>setTimeout(lanzar,180);
+  toast('Elige "Guardar como PDF" en el destino');
+}
+
 function infNombreArchivo(){
   const p=[];
   if(INF.cuentas.length===1){const c=cuentaById(INF.cuentas[0]);if(c)p.push(norm(c.nombre).replace(/[^a-z0-9]+/g,'-'))}
