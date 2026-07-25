@@ -171,24 +171,24 @@ svg text{font-family:inherit}
 <div id="authView" class="auth hidden">
   <div class="logo">N$</div>
   <h1 style="text-align:center;font-size:1.5rem">NexoBalance</h1>
-  <p class="sub" style="text-align:center;margin:6px 0 20px">Presupuesto, análisis y control en un solo lugar</p>
+  <p class="sub" style="text-align:center;margin:6px 0 20px;line-height:1.5">Sabe cuánto puedes gastar hoy<br>y llega a fin de mes sin sorpresas.</p>
 
   <div class="row" style="gap:8px;margin-bottom:20px">
     <div style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px">
       <div style="font-size:1.2rem;margin-bottom:3px">✨</div>
-      <div style="font-size:.66rem;font-weight:700;color:var(--sub);letter-spacing:.02em;line-height:1.25">ANÁLISIS<br>INTELIGENTE</div>
+      <div style="font-size:.66rem;font-weight:700;color:var(--sub);letter-spacing:.02em;line-height:1.25">SABES SI<br>VAS A LLEGAR</div>
     </div>
     <div style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px">
       <div style="font-size:1.2rem;margin-bottom:3px">📴</div>
-      <div style="font-size:.66rem;font-weight:700;color:var(--sub);letter-spacing:.02em;line-height:1.25">FUNCIONA<br>SIN INTERNET</div>
+      <div style="font-size:.66rem;font-weight:700;color:var(--sub);letter-spacing:.02em;line-height:1.25">ANOTAS<br>DONDE SEA</div>
     </div>
     <div style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px">
       <div style="font-size:1.2rem;margin-bottom:3px">🔐</div>
-      <div style="font-size:.66rem;font-weight:700;color:var(--sub);letter-spacing:.02em;line-height:1.25">DATOS<br>PROTEGIDOS</div>
+      <div style="font-size:.66rem;font-weight:700;color:var(--sub);letter-spacing:.02em;line-height:1.25">SOLO TÚ<br>LO VES</div>
     </div>
   </div>
 
-  <button onclick="abrirBienvenida()" style="width:100%;margin-bottom:20px;background:transparent;color:var(--pri);border:none;padding:4px;font-weight:700;font-size:.87rem">Conoce todo lo que puede hacer ›</button>
+  <button onclick="abrirBienvenida()" style="width:100%;margin-bottom:20px;background:transparent;color:var(--pri);border:none;padding:4px;font-weight:700;font-size:.87rem">¿Cómo te cambia el mes? ›</button>
   <div id="loginForm">
     <div class="field"><label>Número de teléfono</label><input class="inp" id="loginPhone" type="tel" inputmode="tel" placeholder="098 123 456"></div>
     <div class="field"><label>Contraseña</label><div style="position:relative">
@@ -277,7 +277,6 @@ svg text{font-family:inherit}
     <p class="sub" id="lockMsg" style="font-size:.85rem;margin-bottom:22px">Ingresa tu PIN para continuar</p>
     <div class="row" id="lockDots" style="gap:12px;margin-bottom:26px"></div>
     <div style="display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center">
-      ${''}
       <button class="lockKey" onclick="lockDigit('1')">1</button>
       <button class="lockKey" onclick="lockDigit('2')">2</button>
       <button class="lockKey" onclick="lockDigit('3')">3</button>
@@ -287,11 +286,18 @@ svg text{font-family:inherit}
       <button class="lockKey" onclick="lockDigit('7')">7</button>
       <button class="lockKey" onclick="lockDigit('8')">8</button>
       <button class="lockKey" onclick="lockDigit('9')">9</button>
-      <button class="lockKey" id="lockBio" style="font-size:1.3rem;visibility:hidden" onclick="desbloquearBiometria()">👆</button>
+      <button class="lockKey" id="lockBio" style="font-size:1.3rem;display:none" onclick="desbloquearBiometria()">👆</button>
+      <button class="lockKey" id="lockAyuda" style="font-size:1.3rem;font-weight:800;color:var(--pri)" onclick="abrirManual()">?</button>
       <button class="lockKey" onclick="lockDigit('0')">0</button>
       <button class="lockKey" onclick="lockBorrar()" style="font-size:1.1rem">⌫</button>
     </div>
     <button class="link" style="margin-top:24px;font-size:.82rem" onclick="lockCerrarSesion()">Cerrar sesión</button>
+  </div>
+  <div id="lockConfirm" class="hidden" style="position:fixed;inset:0;background:var(--bg);z-index:210;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center">
+    <h2 style="font-size:1.15rem;margin-bottom:8px">¿Cerrar sesión?</h2>
+    <p class="sub" style="font-size:.86rem;line-height:1.5;margin-bottom:22px;max-width:320px">Tendrás que volver a entrar con tu cuenta. Tus datos quedan guardados en este teléfono y en la nube.</p>
+    <button class="btn danger" style="width:100%;max-width:320px;margin-bottom:10px" onclick="cerrarSesionAhora(false)">Cerrar sesión</button>
+    <button class="link" style="font-size:.86rem" onclick="lockCancelarSalir()">Cancelar</button>
   </div>
 </div>
 
@@ -301,7 +307,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.37.3';
+const APP_VERSION='1.59.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -364,7 +370,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,rechazadosIds:[],editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -375,11 +381,211 @@ function money(n,mon){return (mon==='USD'?'US$ ':'$ ')+fmt(n)}
 function toUYU(m){return m.moneda==='USD'?m.monto*(Number(S.settings.tc)||40):m.monto*1}
 function autoIcon(name){const n=name.toLowerCase();for(const[k,v]of ICON_MAP){if(n.includes(k))return v}return '🏷️'}
 function autoColor(name){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length]}
+// --- Clase de movimiento (F3) ---
+// 'normal'        → un ingreso o gasto real; cuenta para presupuesto y análisis.
+// 'apertura'      → el saldo con el que empezó una cuenta; suma al saldo pero
+//                   no es un ingreso del mes.
+// 'transferencia' → una de las dos patas de un traspaso entre cuentas; mueve
+//                   dinero de lugar, no genera resultado.
+// El signo lo sigue llevando 'tipo', así que los saldos no cambian de fórmula.
+// Los registros anteriores no traen 'clase': se consideran normales.
+function claseDe(m){return (m&&m.clase)?m.clase:'normal'}
+function esNormal(m){return claseDe(m)==='normal'}
+function esApertura(m){return claseDe(m)==='apertura'}
+function movsNormales(){return movsActivos().filter(esNormal)}
+const CLASE_ETIQUETA={apertura:'Apertura',transferencia:'Transferencia',ajuste:'Ajuste de saldo'};
+
 function catById(id){return S.cats.find(c=>c.id===id)}
 function activeCats(){return S.cats.filter(c=>!c.deleted)}
 
-let _db=null;
-function idb(){return new Promise((res,rej)=>{if(_db)return res(_db);const r=indexedDB.open('nexobalance',5);r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains('movs'))d.createObjectStore('movs',{keyPath:'id'});if(!d.objectStoreNames.contains('cats'))d.createObjectStore('cats',{keyPath:'id'});if(!d.objectStoreNames.contains('outbox'))d.createObjectStore('outbox',{keyPath:'k'});if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('budgets'))d.createObjectStore('budgets',{keyPath:'id'});if(!d.objectStoreNames.contains('plan'))d.createObjectStore('plan',{keyPath:'id'});if(!d.objectStoreNames.contains('goals'))d.createObjectStore('goals',{keyPath:'id'});if(!d.objectStoreNames.contains('recurring'))d.createObjectStore('recurring',{keyPath:'id'});if(!d.objectStoreNames.contains('accounts'))d.createObjectStore('accounts',{keyPath:'id'})};r.onsuccess=e=>{_db=e.target.result;res(_db)};r.onerror=()=>rej(r.error)})}
+// --- Búsqueda (H-022) ---
+// Normaliza a minúsculas y sin acentos, para que "cafe" encuentre "Café"
+// y "REG" encuentre "Regalos".
+function norm(s){return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+// Texto indexable de un movimiento: reúne TODOS los campos por los que
+// el usuario espera poder buscar, no solo la descripción.
+function movSearchText(m){
+  const c=catById(m.categoria_id),sc=catById(m.subcategoria_id),cu=cuentaById(m.cuenta_id);
+  return norm([
+    m.descripcion,
+    m.notas,
+    (m.etiquetas||[]).join(' '),
+    c?c.name:'',
+    sc?sc.name:'',
+    cu?cu.nombre:'',
+    m.forma_pago,
+    m.moneda,
+    m.moneda==='USD'?'usd dolares dólares':'pesos',
+    m.tipo,
+    m.tipo==='ingreso'?'entrada':'salida',
+    CLASE_ETIQUETA[claseDe(m)]||'',
+    m.fecha,
+    String(m.monto),
+    fmt(m.monto)
+  ].join(' '));
+}
+// Todas las palabras de la consulta deben aparecer (coincidencia parcial).
+function movMatch(m,q){
+  const terms=norm(q).split(/\s+/).filter(Boolean);
+  if(!terms.length)return true;
+  const hay=movSearchText(m);
+  return terms.every(t=>hay.includes(t));
+}
+
+// --- Orden cronológico descendente (H-005) ---
+// El comparador anterior nunca devolvía 0 y era inconsistente en empates,
+// lo que producía órdenes distintos según el motor. Este es estable:
+// fecha + hora descendente y, a igualdad, el más recientemente creado primero.
+function movStamp(m){return (m.fecha||'')+'T'+((m.hora||'00:00')+':00').slice(0,8)}
+function cmpMovDesc(a,b){
+  const sa=movStamp(a),sb=movStamp(b);
+  if(sa!==sb)return sa<sb?1:-1;
+  const ca=a.created_at||'',cb=b.created_at||'';
+  if(ca!==cb)return ca<cb?1:-1;
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Base local por usuario (H-008 / H-009)
+// Cada cuenta guarda sus datos en su propia base: nexobalance_u_<uid>.
+// Así dos personas pueden usar el mismo teléfono sin verse los datos, y cerrar
+// sesión deja de exigir que se destruya todo para mantener la privacidad.
+// ---------------------------------------------------------------------------
+const IDB_VER=6;
+const IDB_STORES=['movs','cats','outbox','kv','budgets','plan','goals','recurring','accounts','adjuntos'];
+const IDB_LEGACY='nexobalance';
+const MIGRA_FLAG='nb_migrado_local';
+let _db=null,_dbUid=undefined,_dbAbriendo=null;
+
+function idbNombre(uid){return uid?('nexobalance_u_'+uid):IDB_LEGACY}
+function idbAbrir(nombre){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(nombre,IDB_VER);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      for(const s of IDB_STORES){
+        if(d.objectStoreNames.contains(s))continue;
+        if(s==='kv')d.createObjectStore(s);
+        else if(s==='outbox')d.createObjectStore(s,{keyPath:'k'});
+        else d.createObjectStore(s,{keyPath:'id'});
+        // 'adjuntos' es local: nunca entra en la cola de sincronización.
+      }
+    };
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=()=>rej(r.error);
+    r.onblocked=()=>rej(new Error('base local bloqueada por otra pestaña'));
+  });
+}
+function idb(){
+  const uid=S.uid||null;
+  // Sin sesión no se toca ninguna base: evita crear la base antigua de nuevo
+  // justo después de haberla migrado y borrado.
+  if(!uid)return Promise.reject(new Error('sin sesión'));
+  if(_db&&_dbUid===uid)return Promise.resolve(_db);
+  if(_dbAbriendo&&_dbUid===uid)return _dbAbriendo;
+  _dbUid=uid;
+  _dbAbriendo=(async()=>{
+    if(_db){try{_db.close()}catch(e){}_db=null}
+    const d=await idbAbrir(idbNombre(uid));
+    _db=d;
+    try{await migrarBaseAntigua(uid,d)}catch(e){console.error('migración',e)}
+    return d;
+  })();
+  return _dbAbriendo;
+}
+function idbCerrar(){
+  if(_db){try{_db.close()}catch(e){}}
+  _db=null;_dbUid=undefined;_dbAbriendo=null;
+}
+// deleteDatabase es asíncrono y puede quedar bloqueado si hay otra pestaña
+// abierta. Se espera el resultado, con tope de 3 segundos para no colgar nada.
+function idbBorrarBase(nombre){
+  return new Promise(res=>{
+    let listo=false;
+    const fin=()=>{if(!listo){listo=true;res()}};
+    try{const r=indexedDB.deleteDatabase(nombre);r.onsuccess=fin;r.onerror=fin;r.onblocked=fin}
+    catch(e){fin()}
+    setTimeout(fin,3000);
+  });
+}
+
+// --- Migración desde la base única anterior ---
+function _leerTodo(d,store){
+  return new Promise((res,rej)=>{
+    if(!d.objectStoreNames.contains(store))return res([]);
+    const r=d.transaction(store,'readonly').objectStore(store).getAll();
+    r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);
+  });
+}
+function _leerKV(d){
+  return new Promise((res,rej)=>{
+    if(!d.objectStoreNames.contains('kv'))return res([]);
+    const out=[],r=d.transaction('kv','readonly').objectStore('kv').openCursor();
+    r.onsuccess=e=>{const c=e.target.result;if(!c)return res(out);out.push([c.key,c.value]);c.continue()};
+    r.onerror=()=>rej(r.error);
+  });
+}
+function _escribir(d,store,filas,conClave){
+  return new Promise((res,rej)=>{
+    if(!filas.length)return res(0);
+    const t=d.transaction(store,'readwrite'),s=t.objectStore(store);
+    for(const f of filas){if(conClave)s.put(f[1],f[0]);else s.put(f)}
+    t.oncomplete=()=>res(filas.length);t.onerror=()=>rej(t.error);
+  });
+}
+async function migrarBaseAntigua(uid,destino){
+  let hechas=[];
+  try{hechas=JSON.parse(localStorage.getItem(MIGRA_FLAG))||[]}catch(e){}
+  if(hechas.indexOf(uid)>=0)return;
+  const marcar=()=>{try{hechas.push(uid);localStorage.setItem(MIGRA_FLAG,JSON.stringify(hechas))}catch(e){}};
+
+  let vieja=null;
+  try{vieja=await idbAbrir(IDB_LEGACY)}catch(e){marcar();return}
+
+  try{
+    const esMio=r=>r&&(!r.user_id||r.user_id===uid);
+    let ajenos=0,total=0;
+
+    // La cola de salida se trata primero: es lo único que todavía no está
+    // en el servidor y por lo tanto lo único realmente irrecuperable.
+    const outTodo=await _leerTodo(vieja,'outbox');
+    const outMio=outTodo.filter(p=>p&&p.data&&esMio(p.data));
+    ajenos+=outTodo.length-outMio.length;
+
+    const tablas={};
+    for(const s of ['movs','cats','budgets','plan','goals','recurring','accounts']){
+      const filas=await _leerTodo(vieja,s);
+      const mias=filas.filter(esMio);
+      ajenos+=filas.length-mias.length;
+      tablas[s]=mias;total+=mias.length;
+    }
+
+    // Si aparece cualquier registro de otra persona, no se toca nada.
+    if(ajenos){try{vieja.close()}catch(e){}marcar();return}
+
+    if(!outMio.length&&!total){
+      try{vieja.close()}catch(e){}
+      await idbBorrarBase(IDB_LEGACY);
+      marcar();return;
+    }
+
+    await _escribir(destino,'outbox',outMio);
+    for(const s in tablas)await _escribir(destino,s,tablas[s]);
+    await _escribir(destino,'kv',await _leerKV(vieja),true);
+
+    // Verificación: se relee el destino antes de dar la migración por buena.
+    // Si algo no cuadra, no se marca ni se borra nada y se reintenta al arrancar.
+    let ok=(await _leerTodo(destino,'outbox')).length>=outMio.length;
+    for(const s in tablas){if((await _leerTodo(destino,s)).length<tablas[s].length)ok=false}
+
+    try{vieja.close()}catch(e){}
+    if(ok){marcar();await idbBorrarBase(IDB_LEGACY)}
+  }catch(e){
+    try{vieja.close()}catch(e2){}
+    throw e;
+  }
+}
+
 function tx(store,mode,fn){return idb().then(d=>new Promise((res,rej)=>{const t=d.transaction(store,mode);const s=t.objectStore(store);const out=fn(s);t.oncomplete=()=>res(out&&out.result!==undefined?out.result:out);t.onerror=()=>rej(t.error)}))}
 function idbAll(store){return idb().then(d=>new Promise((res,rej)=>{const r=d.transaction(store,'readonly').objectStore(store).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
 function idbPut(store,val){return tx(store,'readwrite',s=>s.put(val))}
@@ -415,20 +621,76 @@ async function logSyncError(context,message,uidOverride){
     await sb.from('sync_errors').insert({id:uuid(),user_id:uid,context,message:String(message||'').slice(0,500)});
   }catch(e){}
 }
+// Tamaño máximo de registros por envío. Evita que una cola acumulada tras días
+// sin conexión viaje como un único payload gigante que el servidor rechace entero.
+const SYNC_LOTE=400;
 async function trySync(){
   if(S.syncing||!navigator.onLine||!S.uid)return;
   S.syncing=true;updateSyncPill();
   try{
-    const pend=await idbAll('outbox');
-    if(pend.length){
-      const payload={categories:pend.filter(p=>p.kind==='cat').map(p=>p.data),movements:pend.filter(p=>p.kind==='mov').map(p=>p.data),budgets:pend.filter(p=>p.kind==='budget').map(p=>p.data),monthly_plan:pend.filter(p=>p.kind==='plan').map(p=>p.data),goals:pend.filter(p=>p.kind==='goal').map(p=>p.data),recurring:pend.filter(p=>p.kind==='rec').map(p=>p.data),accounts:pend.filter(p=>p.kind==='acc').map(p=>p.data)};
-      const{error}=await sb.rpc('sync_push',{p:payload});
+    // Se procesa por lotes y se borra SOLO lo que el servidor confirmó.
+    // Antes se hacía idbClear('outbox') después del envío: eso borraba también
+    // lo que el usuario registraba MIENTRAS el envío estaba en vuelo, y esos
+    // movimientos quedaban en el teléfono pero no llegaban nunca a la nube.
+    for(let vuelta=0;vuelta<25;vuelta++){
+      const pend=await idbAll('outbox');
+      if(!pend.length)break;
+
+      // Entradas malformadas se descartan: si se quedaran, bloquearían la cola
+      // para siempre porque nunca se podrían dar por enviadas.
+      const sanos=[];
+      for(const p of pend){
+        if(p&&p.data&&p.data.id&&p.kind)sanos.push(p);
+        else if(p&&p.k)await idbDel('outbox',p.k);
+      }
+      if(!sanos.length)break;
+
+      // Una sola versión por registro (la más reciente). Si el usuario editó
+      // cinco veces el mismo movimiento sin conexión, se sube una vez.
+      const ultima=new Map();
+      for(const p of sanos){
+        const ref=p.kind+':'+p.data.id,prev=ultima.get(ref);
+        if(!prev||String(p.data.updated_at||'')>=String(prev.data.updated_at||''))ultima.set(ref,p);
+      }
+      const lote=[...ultima.values()].slice(0,SYNC_LOTE);
+      const enLote=new Set(lote.map(p=>p.kind+':'+p.data.id));
+      const entradasLote=sanos.filter(p=>enLote.has(p.kind+':'+p.data.id));
+
+      const bolsa=k=>lote.filter(p=>p.kind===k).map(p=>p.data);
+      const payload={categories:bolsa('cat'),movements:bolsa('mov'),budgets:bolsa('budget'),monthly_plan:bolsa('plan'),goals:bolsa('goal'),recurring:bolsa('rec'),accounts:bolsa('acc')};
+      const{data,error}=await sb.rpc('sync_push',{p:payload});
       if(error)throw error;
-      await idbClear('outbox');
+
+      // sync_push devuelve ok:true aunque haya rechazado registros uno por uno.
+      // Si se borraran igual, ese registro desaparecería del teléfono y de la
+      // nube a la vez. Lo rechazado se queda en la cola.
+      const fallidos=(data&&Array.isArray(data.fallidos))?data.fallidos:[];
+      const idsFallidos=new Set(fallidos.map(f=>f&&f.id).filter(Boolean));
+      if(fallidos.length){
+        S.rechazados=fallidos.length;
+        S.rechazadosIds=fallidos.map(f=>f&&f.id).filter(Boolean);
+        logSyncError('sync_push_rechazo',JSON.stringify(fallidos).slice(0,480));
+      }
+
+      const aBorrar=entradasLote.filter(p=>!idsFallidos.has(p.data.id));
+      for(const p of aBorrar)await idbDel('outbox',p.k);
+
+      // Sin progreso no se insiste: se evita un bucle sobre lo que el servidor
+      // no acepta. Queda pendiente y se reintenta en la próxima sincronización.
+      if(!aBorrar.length)break;
+      // La vuelta siguiente vuelve a leer la cola. Si el usuario registró algo
+      // durante el envío, sale ahora y no dentro de 45 segundos.
     }
     await pullAll();
   }catch(e){console.error('sync',e);logSyncError('sync_push',e.message||String(e))}
   S.syncing=false;updateSyncPill();
+  avisarRechazos();
+}
+let _avisoRechazo=false;
+function avisarRechazos(){
+  if(!S.rechazados||_avisoRechazo)return;
+  _avisoRechazo=true;
+  toast('Algunos cambios esperan para subir. Míralos en Ajustes → Cambios por subir.');
 }
 
 async function pullAll(completo){
@@ -464,6 +726,7 @@ async function pullAll(completo){
   await kvSet('lastPull',maxT);
   if(completo)await kvSet('lastFull',new Date().toISOString());
   updateSyncPill();
+  if(S.tab==='ajustes')pintarPesoAdjuntos();
   return cambios;
 }
 
@@ -472,6 +735,7 @@ async function sincronizacionCompleta(silenciosa){
   if(!silenciosa)toast('Sincronizando todo…');
   try{
     const cambios=await pullAll(true);
+    if(!silenciosa)await auditEvento('sincronizacion_manual',{cambios});
     if(!silenciosa)toast(cambios?'Sincronización completa: '+cambios+' registro'+(cambios!==1?'s':'')+' actualizado'+(cambios!==1?'s':''):'Todo estaba al día');
     if(!silenciosa&&cambios>0)render(true);
     else updateSyncPill();
@@ -480,11 +744,19 @@ async function sincronizacionCompleta(silenciosa){
   }
 }
 
-function updateSyncPill(){
+function pintarSyncPill(){
   const el=document.getElementById('syncPill');if(!el)return;
-  if(!navigator.onLine){el.textContent='Sin conexión · guardando local';el.className='pill off'}
-  else if(S.syncing){el.textContent='Sincronizando…';el.className='pill syncing'}
-  else{el.textContent='Al día';el.className='pill'}
+  el.style.cursor='pointer';el.onclick=abrirCola;
+  const n=S.pendientes;
+  if(!navigator.onLine){el.textContent=n?('Sin conexión · '+n+' por subir'):'Sin conexión · guardando local';el.className='pill off';return}
+  if(S.syncing){el.textContent='Sincronizando…';el.className='pill syncing';return}
+  if(n){el.textContent=n+' por subir';el.className='pill off';return}
+  el.textContent='Al día';el.className='pill';
+}
+function updateSyncPill(){
+  pintarSyncPill();
+  // El contador se refresca en segundo plano; nunca bloquea el pintado.
+  idbAll('outbox').then(p=>{if(p.length!==S.pendientes){S.pendientes=p.length;pintarSyncPill()}}).catch(()=>{});
 }
 
 const DEFAULT_CATS=[['Salario','ingreso'],['Ventas','ingreso'],['Comisiones','ingreso'],['Otros ingresos','ingreso'],['Comida','gasto'],['Transporte','gasto'],['Servicios','gasto'],['Internet','gasto'],['Educación','gasto'],['Salud','gasto'],['Hogar','gasto'],['Mascotas','gasto'],['Regalos','gasto'],['Entretenimiento','gasto'],['Otros','gasto']];
@@ -509,19 +781,24 @@ function abrirBienvenida(){
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
-    <h2 style="margin-bottom:12px">💰 ¿Se te va el dinero y no sabes en qué?</h2>
-    <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px"><b>NexoBalance</b> es una herramienta profesional de finanzas personales que combina registro, planificación y análisis inteligente en una sola aplicación.</p>
-    <div style="background:var(--chip);border-radius:14px;padding:14px;margin-bottom:16px">
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">📊</span><span style="font-size:.86rem;line-height:1.45;flex:1">Registra tus ingresos y gastos en varias monedas.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">💵</span><span style="font-size:.86rem;line-height:1.45;flex:1">Aparta dinero para el alquiler, remesas, servicios o tu ahorro.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">🔮</span><span style="font-size:.86rem;line-height:1.45;flex:1">Predice cómo cerrarás el mes y te dice cuánto puedes gastar por día.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">🎯</span><span style="font-size:.86rem;line-height:1.45;flex:1">Ponte metas y calcula cuándo las alcanzas con tu ritmo de ahorro.</span></div>
-      <div class="row" style="gap:11px;align-items:flex-start"><span style="font-size:1.3rem;flex-shrink:0">🔔</span><span style="font-size:.86rem;line-height:1.45;flex:1">Recibe alertas antes de exceder tu presupuesto, no después.</span></div>
+    <h2 style="margin-bottom:10px;line-height:1.35">Cobras, pagas, gastas… ¿y a mitad de mes ya no sabes dónde quedó el dinero?</h2>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:14px">Le pasa a casi todo el mundo: el ingreso entra, las cuentas fijas salen, y a mitad de mes el dinero ya no aparece por ningún lado. No es que gastes mal. Es que nadie te dijo cuánto podías gastar.</p>
+    <div style="background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.35);border-radius:14px;padding:13px 14px;margin-bottom:16px">
+      <div style="font-size:.86rem;line-height:1.55">Mientras eso siga así, el ahorro se posterga un mes más, las metas quedan en promesa, y cualquier imprevisto —una reparación, una consulta, un viaje— termina en deuda.</div>
     </div>
-    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="font-size:1.2rem;flex-shrink:0">✨</span><span style="font-size:.85rem;line-height:1.45;flex:1">Análisis inteligente de tus finanzas, con un índice de salud y recomendaciones personalizadas.</span></div>
-    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="font-size:1.2rem;flex-shrink:0">📴</span><span style="font-size:.85rem;line-height:1.45;flex:1">Funciona sin conexión a Internet y sincroniza automáticamente al reconectarte.</span></div>
-    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:18px"><span style="font-size:1.2rem;flex-shrink:0">🔒</span><span style="font-size:.85rem;line-height:1.45;flex:1">Tu información es privada y segura. Solo tú accedes a ella.</span></div>
-    <button class="btn" onclick="closeSheet()">Comenzar</button>
+    <p style="font-size:.9rem;line-height:1.6;margin-bottom:14px"><b>NexoBalance</b> te dice, desde el día 1, cuánto puedes gastar por día sin tocar lo que ya tienes comprometido. Y te avisa antes de pasarte, no cuando ya no hay vuelta.</p>
+    <div style="background:var(--chip);border-radius:14px;padding:14px;margin-bottom:16px">
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">😮‍💨</span><span style="font-size:.86rem;line-height:1.45;flex:1">Llegas a fin de mes sin ese nudo en el estómago.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">🏠</span><span style="font-size:.86rem;line-height:1.45;flex:1">Lo que ya está comprometido queda apartado antes de que te lo gastes sin darte cuenta.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:11px"><span style="font-size:1.3rem;flex-shrink:0">🎯</span><span style="font-size:.86rem;line-height:1.45;flex:1">Ves en cuántos meses juntas para lo que quieres, y dejas de adivinar.</span></div>
+      <div class="row" style="gap:11px;align-items:flex-start"><span style="font-size:1.3rem;flex-shrink:0">💬</span><span style="font-size:.86rem;line-height:1.45;flex:1">Cuando necesitas saber en qué se te fue el mes, tienes la respuesta.</span></div>
+    </div>
+    <div class="sub" style="font-size:.72rem;font-weight:800;letter-spacing:.06em;margin-bottom:8px">POR QUÉ FUNCIONA</div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:9px"><span style="font-size:1.1rem;flex-shrink:0">🧾</span><span style="font-size:.83rem;line-height:1.45;flex:1">Contabilidad real detrás: cada saldo se explica movimiento por movimiento. Nada aparece de la nada.</span></div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:9px"><span style="font-size:1.1rem;flex-shrink:0">💱</span><span style="font-size:.83rem;line-height:1.45;flex:1">Varias monedas a la vez, con el tipo de cambio que realmente usaste.</span></div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:9px"><span style="font-size:1.1rem;flex-shrink:0">📴</span><span style="font-size:.83rem;line-height:1.45;flex:1">Anotas donde estés, aunque no haya señal. Se sincroniza solo después.</span></div>
+    <div class="row" style="gap:11px;align-items:flex-start;margin-bottom:18px"><span style="font-size:1.1rem;flex-shrink:0">🔒</span><span style="font-size:.83rem;line-height:1.45;flex:1">Tus números son tuyos. Nadie más los ve, ni siquiera con el teléfono en la mano.</span></div>
+    <button class="btn" onclick="closeSheet()">Empezar a saber en qué se me va</button>
   </div></div>`;
 }
 function onCountryChange(){
@@ -626,6 +903,7 @@ async function startApp(user,isNew){
       document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===savedTab));
     }
   }catch(e){}
+  try{await autoRegistrarFijos()}catch(e){}
   render();
   // Restaurar posición de scroll tras el render
   try{
@@ -635,7 +913,8 @@ async function startApp(user,isNew){
   const fab=document.getElementById('fabBtn');
   if(fab)fab.classList.toggle('hidden',S.tab==='ajustes'||S.tab==='cats'||S.tab==='presu');
   armExitGuard();
-  if(lockConfig())bloquearApp();
+  if(lockConfig()&&!sesionRecienAbierta())bloquearApp();
+  marcarSesionAbierta();
   if(navigator.onLine){
     await trySync();
     await loadUserName();
@@ -667,14 +946,64 @@ async function loadUserName(){
   }catch(e){console.error('loadUserName excepción:',e)}
 }
 
-async function doLogout(){if(!confirmSheetOpen)openConfirm('¿Cerrar sesión?','Tus datos quedan guardados en tu cuenta.',async()=>{
+async function cerrarSesionAhora(borrarLocal){
+  const uid=S.uid;
   try{await sb.auth.signOut({scope:'local'})}catch(e){}
   try{Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k)})}catch(e){}
-  S.uid=null;S.movs=[];S.cats=[];S.budgets=[];S.plan=[];S.goals=[];S.recurring=[];S.accounts=[];
-  await idbClear('movs');await idbClear('cats');await idbClear('outbox');await idbClear('kv');await idbClear('budgets');await idbClear('plan');await idbClear('goals');await idbClear('recurring');await idbClear('accounts');
+  // Ya no se vacían los almacenes: cada usuario tiene su propia base, así que
+  // salir no obliga a destruir nada. Solo se borra si la persona lo pide.
+  idbCerrar();
+  if(borrarLocal&&uid){
+    try{localStorage.removeItem('nb_lock_'+uid)}catch(e){}
+    try{
+      let hechas=JSON.parse(localStorage.getItem(MIGRA_FLAG))||[];
+      localStorage.setItem(MIGRA_FLAG,JSON.stringify(hechas.filter(x=>x!==uid)));
+    }catch(e){}
+    await idbBorrarBase(idbNombre(uid));
+  }
+  S.uid=null;S.movs=[];S.cats=[];S.budgets=[];S.plan=[];S.goals=[];S.recurring=[];S.accounts=[];S.pendientes=0;
   try{sessionStorage.removeItem('nb_tab');sessionStorage.removeItem('nb_scroll')}catch(e){}
+  limpiarSesionViva();
   location.reload();
-})}
+}
+async function doLogout(){
+  if(confirmSheetOpen)return;
+  let pend=0;
+  try{pend=(await idbAll('outbox')).length}catch(e){}
+  // Si hay conexión se intenta dejar todo subido antes de salir, aunque ya no
+  // sea imprescindible: los pendientes sobreviven al cierre de sesión.
+  if(pend>0&&navigator.onLine){
+    toast('Subiendo '+pend+' cambio'+(pend!==1?'s':'')+' antes de salir…');
+    await trySync();
+    try{pend=(await idbAll('outbox')).length}catch(e){}
+  }
+  abrirHojaSalir(pend);
+}
+function abrirHojaSalir(pend){
+  confirmSheetOpen=true;
+  const aviso=pend?`<div style="background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.4);border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:.82rem;line-height:1.45">Tienes <b>${pend}</b> cambio${pend!==1?'s':''} sin subir. Si dejas tus datos en el teléfono, se suben solos la próxima vez que entres con conexión.</div>`:'';
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <h2 style="margin-bottom:8px">¿Cerrar sesión?</h2>
+    <p class="sub" style="margin-bottom:14px">Tus datos están guardados en tu cuenta. Si los dejas también en este teléfono, vuelves a entrar más rápido y puedes verlos sin conexión.</p>
+    ${aviso}
+    <button class="btn" style="width:100%;margin-bottom:8px" onclick="closeSheet();cerrarSesionAhora(false)">Cerrar sesión</button>
+    <button class="btn danger" style="width:100%;margin-bottom:8px;font-size:.88rem" onclick="pedirBorrarLocal(${pend})">Cerrar sesión y borrar mis datos de este teléfono</button>
+    <button class="link" style="width:100%" onclick="closeSheet()">Cancelar</button>
+  </div></div>`;
+}
+function pedirBorrarLocal(pend){
+  closeSheet();
+  openConfirm(
+    pend?('Se perderán '+pend+' cambio'+(pend!==1?'s':'')):'¿Borrar tus datos de este teléfono?',
+    pend
+      ?'Esos cambios todavía no llegaron a la nube. Si borras ahora, no se pueden recuperar.'
+      :'Tu cuenta no se toca. Lo que ya está sincronizado se vuelve a descargar cuando entres con conexión.',
+    ()=>cerrarSesionAhora(true),
+    'Borrar y salir'
+  );
+}
 
 function go(tab){S.tab=tab;closeFab();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));document.getElementById('fabBtn').classList.toggle('hidden',tab==='ajustes'||tab==='cats'||tab==='presu');render();window.scrollTo(0,0);try{sessionStorage.setItem('nb_tab',tab);sessionStorage.removeItem('nb_scroll')}catch(e){}}
 
@@ -707,13 +1036,14 @@ function viewInicio(){
     saldo+=sign*v;
     if(m.moneda==='USD')saldoUSD+=sign*m.monto;else saldoUYU+=sign*m.monto;
     if(m.fecha>=d1&&m.fecha<=d2){
-      if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto;else ingMesUYU+=m.monto}
+      if(!esNormal(m)){}
+      else if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto;else ingMesUYU+=m.monto}
       else{gasMes+=v;if(m.moneda==='USD')gasMesUSD+=m.monto;else gasMesUYU+=m.monto}
     }
   }
   const bal=ingMes-gasMes;
   const tasa=ingMes>0?Math.max(0,Math.round(bal/ingMes*100)):0;
-  const ult=[...act].sort((a,b)=>(b.fecha+(b.hora||''))<(a.fecha+(a.hora||''))?-1:1).slice(0,6);
+  const ult=[...act].sort(cmpMovDesc).slice(0,6);
   const mesName=new Date().toLocaleDateString('es-UY',{month:'long',year:'numeric'});
   const hoyStr=new Date().toLocaleDateString('es-UY',{day:'numeric',month:'long',year:'numeric'});
   const oculto=S.saldoOculto;
@@ -818,7 +1148,7 @@ function sparkline(act,tipo,varName){
 
 function chart6m(act){
   const now=new Date();const labels=[],ing=[],gas=[];
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const[a,b]=monthRange(d);labels.push(d.toLocaleDateString('es-UY',{month:'short'}));let vi=0,vg=0;for(const m of act){if(m.fecha>=a&&m.fecha<=b){if(m.tipo==='ingreso')vi+=toUYU(m);else vg+=toUYU(m)}}ing.push(vi);gas.push(vg)}
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const[a,b]=monthRange(d);labels.push(d.toLocaleDateString('es-UY',{month:'short'}));let vi=0,vg=0;for(const m of act){if(!esNormal(m))continue;if(m.fecha>=a&&m.fecha<=b){if(m.tipo==='ingreso')vi+=toUYU(m);else vg+=toUYU(m)}}ing.push(vi);gas.push(vg)}
   const max=Math.max(...ing,...gas,1);
   const W=520,H=180,bw=28,g=W/6,top=14,chartH=130;
   const step=Math.pow(10,Math.floor(Math.log10(max||1)));
@@ -982,15 +1312,30 @@ function stackMoney(uyu,usd,cls,oculto){
   </div>`;
 }
 function toggleSaldo(){S.saldoOculto=!S.saldoOculto;render()}
+// Distintivo de moneda (H-006): el usuario maneja dos monedas a la vez,
+// así que la moneda tiene que leerse de un vistazo, no deducirse del símbolo.
+function monBadge(mon){
+  const usd=mon==='USD';
+  const code=usd?'USD':(detectPais().cur||'UYU');
+  return `<span style="display:inline-block;font-size:.58rem;font-weight:800;letter-spacing:.07em;line-height:1;padding:3px 6px;border-radius:6px;`
+    +(usd
+      ?`background:rgba(155,92,255,.16);color:var(--purple);border:1px solid rgba(155,92,255,.38)`
+      :`background:var(--chip);color:var(--sub);border:1px solid var(--line)`)
+    +`">${esc(code)}</span>`;
+}
 function movRow(m){
   const c=catById(m.categoria_id);
   const color=(c?c.color:'#5B6472')+'22';
   const fecha=new Date(m.fecha+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short'});
+  const cu=cuentaById(m.cuenta_id);
   return `<div class="mov" onclick="openMovSheet('${m.id}')">
     <div class="mico" style="background:${color}">${catIcon(c,20)}</div>
     <div class="mtxt"><div>${esc(m.descripcion||(c?c.name:(m.tipo==='ingreso'?'Ingreso':'Gasto')))}</div>
-    <div class="sub">${fecha}${c?' · '+esc(c.name):''}${m.forma_pago?' · '+esc(m.forma_pago):''}</div></div>
-    <div class="mamt ${m.tipo==='ingreso'?'ok':'bad'}">${m.tipo==='ingreso'?'+':'−'}${money(m.monto,m.moneda)}</div>
+    <div class="sub">${CLASE_ETIQUETA[claseDe(m)]?'<b>'+CLASE_ETIQUETA[claseDe(m)]+'</b> · ':''}${fecha}${c?' · '+esc(c.name):''}${cu?' · '+esc(cu.nombre):''}${m.forma_pago?' · '+esc(m.forma_pago):''}</div></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <div class="mamt ${m.tipo==='ingreso'?'ok':'bad'}">${m.tipo==='ingreso'?'+':'−'}${money(m.monto,m.moneda)}</div>
+      ${monBadge(m.moneda)}
+    </div>
     <span style="color:var(--sub)">${ic('chevron',18)}</span>
   </div>`;
 }
@@ -1000,14 +1345,14 @@ function viewMovs(){
   // Base: aplica todos los filtros EXCEPTO el de categorías,
   // para saber qué categorías tienen movimientos en ese periodo/tipo/búsqueda.
   let base=movsActivos();
-  if(f.q){const q=f.q.toLowerCase();base=base.filter(m=>(m.descripcion||'').toLowerCase().includes(q)||(m.notas||'').toLowerCase().includes(q)||(m.etiquetas||[]).join(',').toLowerCase().includes(q)||String(m.monto).includes(q))}
+  if(f.q){const q=f.q;base=base.filter(m=>movMatch(m,q))}
   if(f.tipo)base=base.filter(m=>m.tipo===f.tipo);
   if(f.desde)base=base.filter(m=>m.fecha>=f.desde);
   if(f.hasta)base=base.filter(m=>m.fecha<=f.hasta);
   // Lista final: agrega el filtro de categorías
   let list=base;
   if(f.cats&&f.cats.length)list=list.filter(m=>f.cats.includes(m.categoria_id)||f.cats.includes(m.subcategoria_id));
-  list.sort((a,b)=>(b.fecha+(b.hora||''))<(a.fecha+(a.hora||''))?-1:1);
+  list.sort(cmpMovDesc);
   const groups={};
   for(const m of list){(groups[m.fecha]=groups[m.fecha]||[]).push(m)}
   let tot=0;for(const m of list)tot+=(m.tipo==='ingreso'?1:-1)*toUYU(m);
@@ -1019,7 +1364,7 @@ function viewMovs(){
   return `
   <div class="row spread" style="margin-bottom:18px"><h1>Movimientos</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('movs')}<span class="pill" id="syncPill">…</span></div></div>
   <div class="card">
-    <input class="inp" placeholder="🔍 Buscar por texto, monto o etiqueta" value="${esc(f.q)}" oninput="S.filtro.q=this.value;renderSoon()">
+    <input class="inp" placeholder="🔍 Categoría, cuenta, monto, etiqueta, nota…" value="${esc(f.q)}" oninput="S.filtro.q=this.value;renderSoon()">
     <div class="chips" style="margin-top:10px">
       <button class="chip ${!f.tipo?'on':''}" onclick="S.filtro.tipo='';render()">Todos</button>
       <button class="chip ${f.tipo==='ingreso'?'on':''}" onclick="S.filtro.tipo='ingreso';render()">Ingresos</button>
@@ -1189,7 +1534,12 @@ function cuentaById(id){return S.accounts.find(a=>a.id===id)}
 function saldoCuenta(id){
   const a=cuentaById(id);
   if(!a)return 0;
-  let saldo=Number(a.saldo_inicial)||0;
+  // Puente hacia el asiento de apertura: mientras la cuenta no tenga su
+  // movimiento de apertura se sigue usando saldo_inicial; en cuanto exista, se
+  // ignora el campo. Así el paso 3 (generar aperturas) se puede correr en
+  // cualquier momento sin que nada se cuente dos veces ni desaparezca.
+  const tieneApertura=movsActivos().some(m=>m.cuenta_id===id&&esApertura(m));
+  let saldo=tieneApertura?0:(Number(a.saldo_inicial)||0);
   for(const m of movsActivos()){
     if(m.cuenta_id!==id)continue;
     // Si la moneda del movimiento difiere de la cuenta, convertir
@@ -1203,6 +1553,42 @@ function saldoCuenta(id){
   return saldo;
 }
 function movsSinCuenta(){return movsActivos().filter(m=>!m.cuenta_id).length}
+
+function aperturaDe(cuentaId){return movsActivos().find(m=>m.cuenta_id===cuentaId&&esApertura(m))||null}
+function saldoAperturaDe(cuentaId){
+  const ap=aperturaDe(cuentaId);
+  if(ap)return (ap.tipo==='ingreso'?1:-1)*(Number(ap.monto)||0);
+  const a=cuentaById(cuentaId);
+  return a?(Number(a.saldo_inicial)||0):0;
+}
+function fechaAperturaDe(cuentaId){
+  const ap=aperturaDe(cuentaId);
+  if(ap)return ap.fecha;
+  const a=cuentaById(cuentaId);
+  return (a&&a.created_at)?String(a.created_at).slice(0,10):new Date().toISOString().slice(0,10);
+}
+async function sincronizarApertura(cuentaId,saldo,fecha,moneda){
+  const ap=aperturaDe(cuentaId);
+  const t=nowISO();
+  const monto=Math.round(Math.abs(saldo)*100)/100;
+  if(!monto){
+    if(ap)await enqueue('mov',{...ap,deleted:true,updated_at:t});
+    return;
+  }
+  const base=ap?{...ap}:{
+    id:uuid(),user_id:S.uid,categoria_id:null,subcategoria_id:null,
+    notas:null,forma_pago:null,etiquetas:[],transfer_id:null,
+    hora:'00:00',created_at:t
+  };
+  await enqueue('mov',{...base,
+    cuenta_id:cuentaId,clase:'apertura',
+    tipo:saldo>0?'ingreso':'gasto',
+    monto,moneda:moneda||'UYU',
+    fecha:fecha||new Date().toISOString().slice(0,10),
+    descripcion:'Saldo de apertura',
+    deleted:false,updated_at:t
+  });
+}
 
 function abrirCuentas(){
   const cuentas=cuentasActivas();
@@ -1226,11 +1612,63 @@ function abrirCuentas(){
         </div>
       </div>`;
     }).join(''):'<div class="sub" style="text-align:center;padding:20px 0">Aún no tienes cuentas creadas.</div>'}
-    ${sinAsignar>0?`<div style="background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.35);border-radius:12px;padding:11px 13px;margin-top:12px">
+    ${sinAsignar>0?`<div onclick="abrirSinCuenta()" style="cursor:pointer;background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.35);border-radius:12px;padding:11px 13px;margin-top:12px">
       <div style="font-size:.8rem;line-height:1.45">Tienes <b>${sinAsignar}</b> movimiento${sinAsignar!==1?'s':''} sin cuenta asignada. Siguen contando en tus totales, pero no en el saldo de ninguna cuenta.</div>
+      <div style="font-size:.78rem;font-weight:700;color:var(--pri);margin-top:6px">Asignarlos ahora →</div>
     </div>`:''}
-    <button class="btn" style="margin-top:14px" onclick="editarCuenta()">Agregar cuenta</button>
+    ${cuentas.length>1?`<button class="btn ghost" style="margin-top:14px" onclick="abrirTransferencia()">⇄ Transferir entre cuentas</button>`:''}
+    <button class="btn" style="margin-top:8px" onclick="editarCuenta()">Agregar cuenta</button>
   </div></div>`;
+}
+const PRED_BASES=[
+  {id:'mes',nom:'Todo el mes'},
+  {id:'d7',nom:'Últimos 7 días'},
+  {id:'d30',nom:'Últimos 30 días'}
+];
+function predBase(){return S.settings.predBase||'mes'}
+async function setPredBase(v){S.settings.predBase=v;await kvSet('settings',S.settings);render()}
+function proyectarGasto(pk,diaHoy,diasMes,totalGastado){
+  const base=predBase();
+  const diasRest=Math.max(0,diasMes-diaHoy);
+  if(base==='mes'){
+    const ritmo=diaHoy>0?totalGastado/diaHoy:0;
+    return {total:totalGastado+ritmo*diasRest,ritmo,dias:diaHoy,etiqueta:'tu promedio de todo el mes'};
+  }
+  const n=base==='d7'?7:30;
+  const hasta=new Date();
+  const desde=new Date(hasta.getTime()-(n-1)*86400000);
+  const f=d=>d.toISOString().slice(0,10);
+  const gasto=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=f(desde)&&m.fecha<=f(hasta)).reduce((s,m)=>s+toUYU(m),0);
+  const dias=Math.min(n,diaHoy)||1;
+  const ritmo=gasto/dias;
+  return {total:totalGastado+ritmo*diasRest,ritmo,dias,etiqueta:'tus últimos '+n+' días'};
+}
+function movsSinCuentaLista(){return movsActivos().filter(m=>!m.cuenta_id).sort(cmpMovDesc)}
+function abrirSinCuenta(){
+  const lista=movsSinCuentaLista(),cuentas=cuentasActivas();
+  if(!lista.length)return toast('Todos tus movimientos tienen cuenta');
+  if(!cuentas.length)return toast('Primero crea una cuenta');
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <h2 style="margin-bottom:4px">Movimientos sin cuenta</h2>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:14px">Estos ${lista.length} movimiento${lista.length!==1?'s':''} cuentan en tus totales pero no en el saldo de ninguna cuenta. Asígnalos para que todo cuadre.</p>
+    <div class="field"><label>Asignar todos a</label><select class="inp" id="scCuenta">
+      ${cuentas.map(a=>`<option value="${a.id}">${a.icono||'💵'} ${esc(a.nombre)} · ${a.moneda}</option>`).join('')}
+    </select></div>
+    <button class="btn" style="margin-bottom:14px" onclick="asignarTodosSinCuenta()">Asignar los ${lista.length}</button>
+    <div class="sub" style="font-size:.78rem;margin-bottom:8px">O uno por uno:</div>
+    <div style="max-height:44vh;overflow:auto">${lista.map(m=>movRow(m)).join('')}</div>
+  </div></div>`;
+}
+async function asignarTodosSinCuenta(){
+  const cid=document.getElementById('scCuenta').value;
+  const lista=movsSinCuentaLista();
+  if(!cid||!lista.length)return;
+  closeSheet();
+  const t=nowISO();
+  for(const m of lista)await enqueue('mov',{...m,cuenta_id:cid,updated_at:t});
+  toast(lista.length+' movimiento'+(lista.length!==1?'s':'')+' asignado'+(lista.length!==1?'s':''));
 }
 const ICONOS_CUENTA=['💵','🏦','💳','📱','🗂️','💰','🪙','🏧','💴','🧾'];
 function editarCuenta(id){
@@ -1244,8 +1682,16 @@ function editarCuenta(id){
         ${TIPOS_CUENTA.map(t=>`<option value="${t.id}" ${a&&a.tipo===t.id?'selected':''}>${t.ic} ${t.nom}</option>`).join('')}
       </select>
     </div>
-    <div class="field"><label>Ícono</label>
-      <div class="chips" id="acIconos">${ICONOS_CUENTA.map(i=>`<button class="chip ${(a?a.icono:'💵')===i?'on':''}" onclick="pickIconoCuenta('${i}')" data-ic="${i}" style="font-size:1.1rem">${i}</button>`).join('')}</div>
+    <div class="field">
+      <div class="row spread" style="margin-bottom:6px">
+        <label style="margin-bottom:0">Ícono</label>
+        <button type="button" onclick="toggleIconosCuenta()" style="font-size:.78rem;color:var(--pri);font-weight:700;background:none">Personalizar</button>
+      </div>
+      <div class="sub" style="font-size:.74rem;display:flex;align-items:center;gap:7px">
+        <span id="acIconoActual" style="font-size:1.25rem">${a?a.icono:'💵'}</span>
+        <span>Se elige solo según el tipo de cuenta.</span>
+      </div>
+      <div class="chips hidden" id="acIconos" style="margin-top:9px">${ICONOS_CUENTA.map(i=>`<button class="chip ${(a?a.icono:'💵')===i?'on':''}" onclick="pickIconoCuenta('${i}')" data-ic="${i}" style="font-size:1.1rem">${i}</button>`).join('')}</div>
     </div>
     <div class="field"><label>Moneda</label>
       <div class="seg">
@@ -1253,8 +1699,12 @@ function editarCuenta(id){
         <button class="${a&&a.moneda==='USD'?'on':''}" onclick="_accMon='USD';this.classList.add('on');this.previousElementSibling.classList.remove('on')">${usdFlag()} USD</button>
       </div>
     </div>
-    <div class="field"><label>Saldo actual${a?'':' (opcional)'}</label><input class="inp" id="acSaldo" type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="${a?Number(a.saldo_inicial):''}">
-      <div class="sub" style="font-size:.74rem;margin-top:5px">El dinero que hay hoy en esta cuenta. Los movimientos que registres después se sumarán o restarán de aquí.</div>
+    <div class="field"><label>Saldo de apertura${a?'':' (opcional)'}</label><input class="inp" id="acSaldo" type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="${a?(saldoAperturaDe(a.id)||''):''}">
+      <div class="sub" style="font-size:.74rem;margin-top:5px">El dinero que había en esta cuenta al empezar. Se guarda como un movimiento de apertura, así que puedes verlo y auditarlo en tu historial. Si la cuenta está en negativo, escribe el número con signo menos.</div>
+    </div>
+    <div class="field"><label>Fecha de ese saldo</label>
+      <input class="inp" id="acFecha" type="date" value="${a?fechaAperturaDe(a.id):new Date().toISOString().slice(0,10)}">
+      <div class="sub" style="font-size:.74rem;margin-top:5px">Desde cuándo cuenta ese dinero. Importa para los informes por período.</div>
     </div>
     <label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
       <input type="checkbox" id="acPrincipal" ${a&&a.principal?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
@@ -1270,14 +1720,21 @@ function acSugerirIcono(tipo){
   const t=TIPOS_CUENTA.find(x=>x.id===tipo);
   if(t)pickIconoCuenta(t.ic);
 }
+function toggleIconosCuenta(){
+  const box=document.getElementById('acIconos');
+  if(box)box.classList.toggle('hidden');
+}
 function pickIconoCuenta(i){
   window._accIc=i;
   document.querySelectorAll('#acIconos .chip').forEach(b=>b.classList.toggle('on',b.dataset.ic===i));
+  const prev=document.getElementById('acIconoActual');
+  if(prev)prev.textContent=i;
 }
 async function guardarCuenta(id){
   const nombre=document.getElementById('acNombre').value.trim();
   const tipo=document.getElementById('acTipo').value;
   const saldo=Number(document.getElementById('acSaldo').value)||0;
+  const fechaAp=(document.getElementById('acFecha')||{}).value||new Date().toISOString().slice(0,10);
   const principal=document.getElementById('acPrincipal').checked;
   if(!nombre)return toast('Ponle un nombre a la cuenta');
   const prev=id?cuentaById(id):null;
@@ -1286,21 +1743,25 @@ async function guardarCuenta(id){
     for(const o of cuentasActivas()){if(o.principal&&o.id!==id)await enqueue('acc',{...o,principal:false,updated_at:t})}
   }
   const tc=TIPOS_CUENTA.find(x=>x.id===tipo);
+  const idFinal=id||uuid();
   await enqueue('acc',{
-    id:id||uuid(),user_id:S.uid,nombre,tipo,
+    id:idFinal,user_id:S.uid,nombre,tipo,
     icono:window._accIc||(tc?tc.ic:'💵'),
     color:prev?prev.color:'#1788FF',
-    saldo_inicial:Math.round(saldo*100)/100,
+    saldo_inicial:0,
     moneda:window._accMon||'UYU',
     principal,deleted:false,
     created_at:prev?prev.created_at:t,updated_at:t
   });
+  await sincronizarApertura(idFinal,saldo,fechaAp,window._accMon||'UYU');
   closeSheet();toast(id?'Cuenta actualizada':'Cuenta creada');
 }
 async function eliminarCuenta(id){
   const a=cuentaById(id);if(!a)return;
   const conMovs=movsActivos().filter(m=>m.cuenta_id===id).length;
   openConfirm('¿Eliminar '+a.nombre+'?',conMovs?'Los '+conMovs+' movimientos de esta cuenta se conservan, pero quedarán sin cuenta asignada.':'Esta cuenta se eliminará.',async()=>{
+    const ap=aperturaDe(id);
+    if(ap)await enqueue('mov',{...ap,deleted:true,updated_at:nowISO()});
     await enqueue('acc',{...a,deleted:true,updated_at:nowISO()});
     closeSheet();toast('Cuenta eliminada');
   });
@@ -1333,10 +1794,26 @@ function cuentasCard(oculto){
 
 // ============ BLOQUEO CON PIN / BIOMETRÍA ============
 const LOCK_KEY='nb_lock';
+// El bloqueo pasa a ser por usuario: en un teléfono compartido, el PIN de una
+// persona no debe bloquear la cuenta de la otra.
+function lockKeyUsuario(){return S.uid?('nb_lock_'+S.uid):LOCK_KEY}
 function lockConfig(){
-  try{return JSON.parse(localStorage.getItem(LOCK_KEY))||null}catch(e){return null}
+  try{
+    const propio=localStorage.getItem(lockKeyUsuario());
+    if(propio)return JSON.parse(propio)||null;
+    // Migración del bloqueo antiguo, que era del dispositivo.
+    if(S.uid){
+      const viejo=localStorage.getItem(LOCK_KEY);
+      if(viejo){
+        localStorage.setItem(lockKeyUsuario(),viejo);
+        localStorage.removeItem(LOCK_KEY);
+        return JSON.parse(viejo)||null;
+      }
+    }
+    return null;
+  }catch(e){return null}
 }
-function lockGuardar(cfg){try{localStorage.setItem(LOCK_KEY,JSON.stringify(cfg))}catch(e){}}
+function lockGuardar(cfg){try{localStorage.setItem(lockKeyUsuario(),JSON.stringify(cfg))}catch(e){}}
 async function hashPin(pin,salt){
   const data=new TextEncoder().encode(pin+'::'+salt);
   const buf=await crypto.subtle.digest('SHA-256',data);
@@ -1346,6 +1823,15 @@ function bioDisponible(){
   return !!(window.PublicKeyCredential&&navigator.credentials);
 }
 let _lockBuffer='',_lockIntentos=0,_lockPendiente=false;
+const SESION_CLAVE='nb_sesion_viva';
+// El PIN protege el reingreso a la app, no cada recarga de pantalla. Si la
+// persona acaba de entrar con su contraseña, o solo refrescó dentro de la
+// misma sesión del navegador, no se le vuelve a pedir.
+function marcarSesionAbierta(){try{sessionStorage.setItem(SESION_CLAVE,String(Date.now()))}catch(e){}}
+function sesionRecienAbierta(){
+  try{return !!sessionStorage.getItem(SESION_CLAVE)}catch(e){return false}
+}
+function limpiarSesionViva(){try{sessionStorage.removeItem(SESION_CLAVE)}catch(e){}}
 
 function lockRenderDots(){
   const cont=document.getElementById('lockDots');
@@ -1395,9 +1881,16 @@ function bloquearApp(){
   const msg=document.getElementById('lockMsg');
   if(msg){msg.textContent='Ingresa tu PIN para continuar';msg.style.color=''}
   lockRenderDots();
+  const conBio=!!(cfg.bio&&bioDisponible());
   const bioBtn=document.getElementById('lockBio');
-  if(bioBtn)bioBtn.style.visibility=(cfg.bio&&bioDisponible())?'visible':'hidden';
-  if(cfg.bio&&bioDisponible())setTimeout(desbloquearBiometria,300);
+  const ayudaBtn=document.getElementById('lockAyuda');
+  // La huella ocupa la celda libre del teclado; si no está disponible,
+  // esa celda la usa el manual en vez de quedar como un hueco.
+  if(bioBtn)bioBtn.style.display=conBio?'':'none';
+  if(ayudaBtn)ayudaBtn.style.display=conBio?'none':'';
+  const conf=document.getElementById('lockConfirm');
+  if(conf)conf.classList.add('hidden');
+  if(conBio)setTimeout(desbloquearBiometria,300);
 }
 function desbloquearApp(){
   _lockPendiente=false;
@@ -1425,8 +1918,12 @@ async function desbloquearBiometria(){
   }
 }
 function lockCerrarSesion(){
-  desbloquearApp();
-  doLogout();
+  const el=document.getElementById('lockConfirm');
+  if(el)el.classList.remove('hidden');
+}
+function lockCancelarSalir(){
+  const el=document.getElementById('lockConfirm');
+  if(el)el.classList.add('hidden');
 }
 // Control de inactividad
 let _lockLastActive=Date.now();
@@ -1531,12 +2028,20 @@ async function cambiarBioBloqueo(activar){
 }
 function quitarBloqueo(){
   openConfirm('¿Desactivar el bloqueo?','Tu aplicación quedará accesible sin PIN.',()=>{
-    try{localStorage.removeItem(LOCK_KEY)}catch(e){}
+    try{localStorage.removeItem(lockKeyUsuario())}catch(e){}
     closeSheet();toast('Bloqueo desactivado');render();
   });
 }
 
 function recurrentesActivos(){return S.recurring.filter(r=>!r.deleted&&r.activo)}
+function autoFijos(){return !!S.settings.autoFijos}
+async function setAutoFijos(v){S.settings.autoFijos=v;await kvSet('settings',S.settings);render();toast(v?'Se registrarán solos':'Registro automático desactivado')}
+async function autoRegistrarFijos(){
+  if(!autoFijos())return;
+  const pend=recurrentesPendientes();
+  if(!pend.length)return;
+  for(const r of pend)await registrarRecurrente(r.id);
+}
 function recurrentesPendientes(){
   // Recurrentes cuyo día ya llegó este mes y aún no se registraron
   const pk=periodKey(new Date());
@@ -1558,7 +2063,7 @@ async function registrarRecurrente(id){
   await enqueue('mov',{
     id:uuid(),user_id:S.uid,tipo:r.tipo,monto:Number(r.monto),moneda:r.moneda||'UYU',
     fecha:fechaRecurrente(r,pk),hora:new Date().toTimeString().slice(0,5),
-    categoria_id:r.categoria_id||'',subcategoria_id:r.subcategoria_id||'',cuenta_id:r.cuenta_id||'',
+    categoria_id:r.categoria_id||'',subcategoria_id:r.subcategoria_id||'',cuenta_id:r.cuenta_id||cuentaPorDefecto()||'',
     descripcion:r.descripcion||'',notas:'',forma_pago:'',etiquetas:[],
     deleted:false,created_at:t,updated_at:t
   });
@@ -1574,7 +2079,59 @@ async function registrarTodosRecurrentes(){
 async function omitirRecurrente(id){
   const r=S.recurring.find(x=>x.id===id);if(!r)return;
   await enqueue('rec',{...r,ultimo_periodo:periodKey(new Date()),updated_at:nowISO()});
-  toast('Omitido este mes');
+  closeSheet();toast('Omitido este mes');
+}
+async function pausarRecurrente(id,activo){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  await enqueue('rec',{...r,activo,updated_at:nowISO()});
+  closeSheet();toast(activo?'Reanudado':'Pausado');
+}
+async function duplicarRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  const t=nowISO();
+  await enqueue('rec',{...r,id:uuid(),descripcion:(r.descripcion||'Movimiento fijo')+' (copia)',ultimo_periodo:null,created_at:t,updated_at:t});
+  closeSheet();toast('Copia creada');
+}
+async function reactivarOcurrencia(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  await enqueue('rec',{...r,ultimo_periodo:periodShift(periodKey(new Date()),-1),updated_at:nowISO()});
+  closeSheet();toast('Vuelve a estar pendiente este mes');
+}
+function proximoVencimiento(r){
+  const hoy=new Date(),pk=periodKey(hoy),dia=hoy.getDate();
+  const yaEste=r.ultimo_periodo===pk;
+  const pkObj=(yaEste||Number(r.dia_mes)<dia)?periodShift(pk,1):pk;
+  return fechaRecurrente(r,pkObj);
+}
+function estadoRecurrente(r){
+  if(!r.activo)return {txt:'Pausado',col:'var(--sub)',bg:'var(--chip)'};
+  const pk=periodKey(new Date()),dia=new Date().getDate();
+  if(r.ultimo_periodo===pk)return {txt:'Al día',col:'var(--ok)',bg:'rgba(52,199,89,.14)'};
+  if(Number(r.dia_mes)<=dia)return {txt:'Pendiente',col:'#d97706',bg:'rgba(255,176,32,.16)'};
+  return {txt:'Programado',col:'var(--pri)',bg:'rgba(23,136,255,.14)'};
+}
+function accionesRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  const c=catById(r.categoria_id),e=estadoRecurrente(r);
+  const pk=periodKey(new Date()),pendiente=r.activo&&r.ultimo_periodo!==pk&&Number(r.dia_mes)<=new Date().getDate();
+  const btn=(t,fn,cls)=>'<button class="btn '+(cls||'ghost')+'" style="width:100%;margin-bottom:8px" onclick="'+fn+'">'+t+'</button>';
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<h2 style="margin-bottom:4px">'+esc(r.descripcion||(c?c.name:'Movimiento fijo'))+'</h2>'
+  +'<div class="row" style="gap:8px;align-items:center;margin-bottom:14px">'
+  +'<span class="pill" style="background:'+e.bg+';color:'+e.col+'">'+e.txt+'</span>'
+  +'<span class="sub" style="font-size:.8rem">'+(r.tipo==='ingreso'?'+':'−')+money(r.monto,r.moneda)+' · día '+r.dia_mes+'</span></div>'
+  +'<div class="sub" style="font-size:.82rem;margin-bottom:14px">Próximo vencimiento: <b>'+proximoVencimiento(r)+'</b></div>'
+  +(pendiente?btn('Registrar ahora',"registrarRecurrente('"+id+"');closeSheet()",''):'')
+  +(pendiente?btn('Omitir este mes',"omitirRecurrente('"+id+"')"):'')
+  +(r.activo&&r.ultimo_periodo===pk?btn('Volver a dejarlo pendiente',"reactivarOcurrencia('"+id+"')"):'')
+  +btn(r.activo?'Pausar la serie':'Reanudar la serie',"pausarRecurrente('"+id+"',"+(r.activo?'false':'true')+")")
+  +btn('Duplicar',"duplicarRecurrente('"+id+"')")
+  +btn('Editar',"editarRecurrente('"+id+"')")
+  +btn('Eliminar la serie',"eliminarRecurrente('"+id+"')",'danger')
+  +'<button class="link" style="width:100%" onclick="abrirRecurrentes()">Volver</button>'
+  +'</div></div>';
 }
 function recurrentesPendientesCard(){
   const pend=recurrentesPendientes();
@@ -1591,7 +2148,8 @@ function recurrentesPendientesCard(){
         </div>
         <div class="row" style="gap:8px;align-items:center;flex-shrink:0">
           <span class="${r.tipo==='ingreso'?'ok':'bad'}" style="font-weight:700;font-size:.85rem">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)}</span>
-          <button class="pill" style="background:var(--pri);color:#fff;padding:6px 12px;font-weight:700" onclick="registrarRecurrente('${r.id}')">Registrar</button>
+          <button class="pill" style="background:var(--pri);color:#fff;padding:6px 12px;font-weight:700" onclick="event.stopPropagation();registrarRecurrente('${r.id}')">Registrar</button>
+          <button class="pill" style="background:var(--chip);color:var(--sub);padding:6px 10px;font-weight:700" onclick="event.stopPropagation();accionesRecurrente('${r.id}')">···</button>
         </div>
       </div>`;
     }).join('')}
@@ -1603,19 +2161,24 @@ function viewRecurrentes(){
   return `<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
     <div class="row spread" style="margin-bottom:4px"><h2>🔁 Movimientos fijos</h2></div>
-    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:14px">El alquiler, el teléfono, las remesas o tu salario se repiten cada mes. Regístralos una vez y la app te los recordará.</p>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:14px">El alquiler, el teléfono, las cuotas o tu salario se repiten cada mes. Regístralos una vez y la app te los recordará.</p>
     ${activos.length?activos.map(r=>{
       const c=catById(r.categoria_id);
-      return `<div class="item" onclick="editarRecurrente('${r.id}')" style="cursor:pointer">
+      const e=estadoRecurrente(r);
+      return `<div class="item" onclick="accionesRecurrente('${r.id}')" style="cursor:pointer;${r.activo?'':'opacity:.6'}">
         <div class="iconbadge" style="background:var(--chip);color:${r.tipo==='ingreso'?'var(--ok)':'var(--bad)'}">${c?c.icon:'🔁'}</div>
         <div class="mtxt">
-          <div>${esc(r.descripcion||(c?c.name:'Movimiento fijo'))}</div>
-          <div class="sub">Día ${r.dia_mes} · ${r.tipo==='ingreso'?'Ingreso':'Gasto'} · ${money(r.monto,r.moneda)}${r.activo?'':' · pausado'}</div>
+          <div>${esc(r.descripcion||(c?c.name:'Movimiento fijo'))} <span class="pill" style="background:${e.bg};color:${e.col};font-size:.55rem">${e.txt}</span></div>
+          <div class="sub">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)} · próximo ${proximoVencimiento(r)}${(!r.cuenta_id&&cuentasActivas().length)?' · <b style="color:#d97706">sin cuenta</b>':''}</div>
         </div>
         <span style="color:var(--sub)">${ic('chevron',18)}</span>
       </div>`;
     }).join(''):'<div class="sub" style="text-align:center;padding:20px 0">Aún no tienes movimientos fijos.</div>'}
-    <button class="btn" style="margin-top:14px" onclick="editarRecurrente()">Agregar movimiento fijo</button>
+    <label class="row" style="gap:10px;align-items:center;margin-top:14px;cursor:pointer;background:var(--chip);border-radius:12px;padding:11px 13px">
+      <input type="checkbox" ${autoFijos()?'checked':''} onchange="setAutoFijos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
+      <div><div style="font-weight:600;font-size:.88rem">Registrarlos solos</div><div class="sub" style="font-size:.75rem">Cuando llegue el día, se registran sin que tengas que confirmarlos.</div></div>
+    </label>
+    <button class="btn" style="margin-top:10px" onclick="editarRecurrente()">Agregar movimiento fijo</button>
   </div></div>`;
 }
 function abrirRecurrentes(){document.getElementById('sheetHost').innerHTML=viewRecurrentes()}
@@ -1645,6 +2208,11 @@ function editarRecurrente(id){
         ${cats.map(c=>`<option value="${c.id}" ${r&&r.categoria_id===c.id?'selected':''}>${c.icon} ${esc(c.name)}</option>`).join('')}
       </select>
     </div>
+    ${cuentasActivas().length?`<div class="field"><label>Cuenta</label>
+      <select class="inp" id="rcCuenta">
+        ${cuentasActivas().map(a=>`<option value="${a.id}" ${(r?r.cuenta_id:cuentaPorDefecto())===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)}</option>`).join('')}
+      </select>
+    </div>`:''}
     <div class="field"><label>Día del mes en que ocurre</label><input class="inp" id="rcDia" type="number" inputmode="numeric" min="1" max="31" value="${r?r.dia_mes:1}"></div>
     ${r?`<label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
       <input type="checkbox" id="rcActivo" ${r.activo?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
@@ -1662,13 +2230,16 @@ async function guardarRecurrente(id){
   const cat=document.getElementById('rcCat').value;
   const dia=Math.max(1,Math.min(31,Number(document.getElementById('rcDia').value)||1));
   const activoEl=document.getElementById('rcActivo');
+  const selCta=document.getElementById('rcCuenta');
+  const cuentaRec=selCta?selCta.value:(id?(S.recurring.find(x=>x.id===id)||{}).cuenta_id:cuentaPorDefecto());
   if(!monto||monto<=0)return toast('Ingresa un monto válido');
+  if(cuentasActivas().length&&!cuentaRec)return toast('Elige en qué cuenta va este movimiento fijo');
   const prev=id?S.recurring.find(x=>x.id===id):null;
   const t=nowISO();
   await enqueue('rec',{
     id:id||uuid(),user_id:S.uid,tipo:window._recTipo||'gasto',
     monto:Math.round(monto*100)/100,moneda:window._recMon||'UYU',
-    categoria_id:cat||'',subcategoria_id:'',descripcion:desc,dia_mes:dia,
+    categoria_id:cat||'',subcategoria_id:'',cuenta_id:cuentaRec||'',descripcion:desc,dia_mes:dia,
     activo:activoEl?activoEl.checked:true,
     ultimo_periodo:prev?prev.ultimo_periodo:null,
     deleted:false,created_at:prev?prev.created_at:t,updated_at:t
@@ -1688,6 +2259,7 @@ function ahorroMensualPromedio(){
     const pk=(m.fecha||'').slice(0,7);
     if(!pk)continue;
     if(!porMes[pk])porMes[pk]={ing:0,gas:0};
+    if(!esNormal(m))continue;
     if(m.tipo==='ingreso')porMes[pk].ing+=toUYU(m);else porMes[pk].gas+=toUYU(m);
   }
   const meses=Object.keys(porMes).sort();
@@ -1805,11 +2377,11 @@ function budgetFor(catId,pk){return S.budgets.find(b=>!b.deleted&&b.periodo===pk
 function planMes(pk){return S.plan.find(p=>p.periodo===pk)}
 function gastadoEnCat(catId,pk){
   const[d1,d2]=periodRange(pk);
-  return movsActivos().filter(m=>m.tipo==='gasto'&&m.categoria_id===catId&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  return movsNormales().filter(m=>m.tipo==='gasto'&&m.categoria_id===catId&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 }
 function ingresoRealMes(pk){
   const[d1,d2]=periodRange(pk);
-  return movsActivos().filter(m=>m.tipo==='ingreso'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  return movsNormales().filter(m=>m.tipo==='ingreso'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 }
 
 function viewPresu(){
@@ -1827,16 +2399,19 @@ function viewPresu(){
   let totalPresu=0,totalGastado=0,totalReservado=0;
   for(const b of buds){totalPresu+=Number(b.monto);if(b.reservado)totalReservado+=Number(b.monto)}
   const[rd1,rd2]=periodRange(pk);
-  totalGastado=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=rd1&&m.fecha<=rd2).reduce((s,m)=>s+toUYU(m),0);
-  const disponibleReal=ingresoEsperado-totalGastado-reservadoPendiente(pk);
+  totalGastado=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=rd1&&m.fecha<=rd2).reduce((s,m)=>s+toUYU(m),0);
+  const hayEsperado=ingresoEsperado>0;
+  const baseIngreso=hayEsperado?ingresoEsperado:ingresoRegistrado;
+  const disponibleReal=hayEsperado?(ingresoEsperado-totalGastado-reservadoPendiente(pk)):null;
 
   // Predicción de fin de mes
   const[,d2]=periodRange(pk);
   const diaHoy=esMesActual?hoy.getDate():Number(d2.split('-')[2]);
   const diasMes=Number(d2.split('-')[2]);
   const diasRest=Math.max(0,diasMes-diaHoy);
-  const proyeccion=diaHoy>0?(totalGastado/diaHoy)*diasMes:0;
-  const gastoDiarioRec=diasRest>0?Math.max(0,disponibleReal/diasRest):0;
+  const pred=proyectarGasto(pk,diaHoy,diasMes,totalGastado);
+  const proyeccion=pred.total;
+  const gastoDiarioRec=(disponibleReal!=null&&diasRest>0)?Math.max(0,disponibleReal/diasRest):0;
 
   const selector=`
     <div class="row spread" style="margin-bottom:14px">
@@ -1851,8 +2426,17 @@ function viewPresu(){
         <div style="opacity:.85;font-size:.8rem;font-weight:600">Ingreso esperado</div>
         <button onclick="editarIngresoEsperado()" style="color:#fff;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700">${ingresoEsperado>0?'Editar':'Definir'}</button>
       </div>
-      <div style="font-size:1.7rem;font-weight:800;margin-top:4px;font-size:${fitFont(ingresoEsperado,1.7,0.9,9)}">${localFlag()} ${fmt(ingresoEsperado)}</div>
+      <div style="font-size:1.7rem;font-weight:800;margin-top:4px;font-size:${fitFont(ingresoEsperado,1.7,0.9,9)}">${hayEsperado?localFlag()+' '+fmt(ingresoEsperado):'Sin definir'}</div>
       ${ingresoAnterior>0?`<div style="opacity:.8;font-size:.72rem;margin-top:4px">El mes pasado ingresaste: ${fmt(ingresoAnterior)}</div>`:''}
+      <div onclick="editarSaldoInicialMes()" style="cursor:pointer;background:rgba(255,255,255,.13);border-radius:12px;padding:9px 12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:.76rem;opacity:.9">Saldo inicial del mes${saldoInicialFijado(pk)?' · fijado':''}</div>
+        <div style="font-weight:800;font-size:.92rem">${localFlag()} ${fmt(saldoInicialMes(pk))} ›</div>
+      </div>
+      ${!hayEsperado?`<div style="background:rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:.78rem;line-height:1.5">
+        ${ingresoRegistrado>0
+          ?`Ya registraste <b>${localFlag()} ${fmt(ingresoRegistrado)}</b> de ingresos este mes, pero no declaraste cuánto esperas ganar. Sin ese dato no se puede calcular tu disponible ni avisarte si te estás excediendo.`
+          :'Declara cuánto esperas ingresar este mes. Es lo que permite calcular tu disponible, tu gasto diario y las alertas.'}
+      </div>`:''}
       ${ingresoEsperado>0?(()=>{
         const pctReg=Math.min(999,Math.round(ingresoRegistrado/ingresoEsperado*100));
         const falta=ingresoEsperado-ingresoRegistrado;
@@ -1868,7 +2452,7 @@ function viewPresu(){
       <div style="height:1px;background:rgba(255,255,255,.25);margin:12px 0"></div>
       <div class="row" style="gap:14px">
         <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Apartado sin gastar</div><div style="font-weight:800;font-size:${fitFont(reservadoPendiente(pk),1.05,0.7,9)}">${fmt(reservadoPendiente(pk))}</div></div>
-        <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Disponible real</div><div style="font-weight:800;color:${disponibleReal<0?'#FFB3B8':'#fff'};font-size:${fitFont(disponibleReal,1.05,0.7,9)}">${fmt(disponibleReal)}</div></div>
+        <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Disponible real</div><div style="font-weight:800;color:${disponibleReal!=null&&disponibleReal<0?'#FFB3B8':'#fff'};font-size:${disponibleReal==null?'1.05rem':fitFont(disponibleReal,1.05,0.7,9)}">${disponibleReal==null?'—':fmt(disponibleReal)}</div></div>
       </div>
     </div>`;
 
@@ -1888,8 +2472,12 @@ function viewPresu(){
         <div style="font-size:1.5rem">${estado}</div>
         <div style="flex:1">
           <div style="font-weight:700;color:${color}">${txt}</div>
-          <div class="sub" style="margin-top:4px;font-size:.8rem">Llevas gastado <b>${localFlag()} ${fmt(totalGastado)}</b> en ${diaHoy} día${diaHoy!==1?'s':''}. A ese ritmo, cerrarás el mes cerca de <b>${localFlag()} ${fmt(proyeccion)}</b>, frente a tu ingreso de <b>${fmt(ingresoEsperado)}</b>${exceso>0?` — te pasarías por <b style="color:var(--bad)">${fmt(exceso)}</b>`:''}.</div>
+          <div class="sub" style="margin-top:4px;font-size:.8rem">Si no registras más movimientos, cierras el mes en <b>${localFlag()} ${fmt(totalGastado)}</b>. Al ritmo de ${pred.etiqueta} (<b>${localFlag()} ${fmt(pred.ritmo)}</b> por día), cerrarías cerca de <b>${localFlag()} ${fmt(proyeccion)}</b>, frente a tu ingreso de <b>${fmt(ingresoEsperado)}</b>${exceso>0?` — te pasarías por <b style="color:var(--bad)">${fmt(exceso)}</b>`:''}.</div>
         </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="sub" style="font-size:.72rem;margin-bottom:6px">Predicción basada en</div>
+        <div class="chips">${PRED_BASES.map(b=>`<button class="chip ${predBase()===b.id?'on':''}" onclick="setPredBase('${b.id}')">${b.nom}</button>`).join('')}</div>
       </div>
       ${diasRest>0?`<div style="height:1px;background:var(--line);margin:12px 0"></div>
       <div class="row spread"><div class="sub">Quedan ${diasRest} día${diasRest!==1?'s':''}</div><div style="font-weight:800">Puedes gastar ~${localFlag()} ${fmt(gastoDiarioRec)}/día</div></div>`:''}
@@ -2011,6 +2599,71 @@ function irAAjustarIngreso(){
     }
   },S.tab==='presu'?0:100);
 }
+function saldoInicialAuto(pk){
+  const[d1]=periodRange(pk);
+  return movsActivos().filter(m=>m.fecha<d1).reduce((s,m)=>s+(m.tipo==='ingreso'?1:-1)*toUYU(m),0);
+}
+function saldoInicialMes(pk){return saldoInicialAuto(pk)}
+// El ajuste se fecha el último día del mes anterior: corregir la apertura de un
+// mes es corregir el cierre del anterior. Así entra en el saldo inicial sin
+// excepciones, y el informe del mes previo también cuadra.
+function fechaAjuste(pk){
+  const[,dz]=periodRange(periodShift(pk,-1));
+  return dz;
+}
+function ajusteDe(pk){
+  const f=fechaAjuste(pk);
+  return movsActivos().find(m=>claseDe(m)==='ajuste'&&m.fecha===f)||null;
+}
+function saldoInicialFijado(pk){return !!ajusteDe(pk)}
+function editarSaldoInicialMes(){
+  const pk=S.presuMes,actual=saldoInicialMes(pk),aj=ajusteDe(pk);
+  const sinAjuste=actual-(aj?(aj.tipo==='ingreso'?1:-1)*toUYU(aj):0);
+  const cuentas=cuentasActivas();
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div><h2 style="margin-bottom:4px">Saldo inicial de ${periodLabel(pk)}</h2>
+    <p class="sub" style="margin-bottom:14px">Con cuánto empezaste el mes. Se arrastra solo desde el cierre del anterior. Si lo corriges, se registra un asiento de ajuste por la diferencia, para que cuentas, informes y saldo total sigan cuadrando.</p>
+    <div class="field"><label>Saldo real al empezar el mes</label>
+      <input class="inp" id="sinMonto" type="number" inputmode="decimal" step="0.01" value="${Number(actual.toFixed(2))}"></div>
+    ${cuentas.length?`<div class="field"><label>Cuenta donde cargar el ajuste</label><select class="inp" id="sinCuenta">
+      ${cuentas.map(a=>`<option value="${a.id}" ${(aj?aj.cuenta_id:cuentaPorDefecto())===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)}</option>`).join('')}
+    </select></div>`:'<div class="sub" style="font-size:.78rem;margin-bottom:14px;color:var(--bad)">Necesitas al menos una cuenta para poder ajustar.</div>'}
+    <div class="sub" style="font-size:.78rem;margin-bottom:14px">Sin ajustes daría <b>${localFlag()} ${fmt(sinAjuste)}</b>${aj?' · hoy hay un ajuste de '+money(aj.monto,aj.moneda):''}</div>
+    ${cuentas.length?`<button class="btn" onclick="guardarSaldoInicialMes()">Guardar</button>`:''}
+    ${aj?`<button class="link" style="width:100%;margin-top:10px" onclick="quitarAjusteMes()">Quitar el ajuste</button>`:''}
+  </div></div>`;
+}
+async function guardarSaldoInicialMes(){
+  const pk=S.presuMes,t=nowISO();
+  const cta=document.getElementById('sinCuenta');
+  if(!cta)return toast('Necesitas al menos una cuenta');
+  const v=Number(document.getElementById('sinMonto').value);
+  if(isNaN(v))return toast('Ingresa un monto válido');
+  const aj=ajusteDe(pk);
+  const actual=saldoInicialMes(pk);
+  const previoAjuste=aj?(aj.tipo==='ingreso'?1:-1)*toUYU(aj):0;
+  const diferencia=Math.round((v-(actual-previoAjuste))*100)/100;
+  if(!diferencia){
+    if(aj)await enqueue('mov',{...aj,deleted:true,updated_at:t});
+    closeSheet();return toast('Sin diferencia que ajustar');
+  }
+  const base=aj?{...aj}:{id:uuid(),user_id:S.uid,categoria_id:null,subcategoria_id:null,notas:null,forma_pago:null,etiquetas:[],transfer_id:null,hora:'00:00',created_at:t};
+  await enqueue('mov',{...base,
+    clase:'ajuste',cuenta_id:cta.value,
+    tipo:diferencia>0?'ingreso':'gasto',
+    monto:Math.abs(diferencia),moneda:'UYU',
+    fecha:fechaAjuste(pk),descripcion:'Ajuste de saldo inicial de '+periodLabel(pk),
+    deleted:false,updated_at:t
+  });
+  closeSheet();toast('Ajuste registrado');
+}
+async function quitarAjusteMes(){
+  const aj=ajusteDe(S.presuMes);
+  if(!aj)return closeSheet();
+  await enqueue('mov',{...aj,deleted:true,updated_at:nowISO()});
+  closeSheet();toast('Ajuste quitado');
+}
 function editarIngresoEsperado(){
   const pk=S.presuMes;
   const plan=planMes(pk);
@@ -2032,7 +2685,7 @@ async function guardarIngresoEsperado(){
   if(isNaN(v)||v<0)return toast('Ingresa un monto válido');
   const pk=S.presuMes;const t=nowISO();
   const existing=planMes(pk);
-  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(v*100)/100,created_at:existing?existing.created_at:t,updated_at:t});
+  await enqueue('plan',{id:existing?existing.id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:Math.round(v*100)/100,saldo_inicial:null,created_at:existing?existing.created_at:t,updated_at:t});
   closeSheet();toast('Ingreso esperado guardado');
 }
 
@@ -2049,7 +2702,7 @@ function editarPresupuesto(catId,forzarReserva){
     <div class="field"><label>Monto asignado (moneda local)</label><input class="inp" id="budMonto" type="number" inputmode="decimal" step="0.01" value="${b?Number(b.monto):''}" placeholder="0.00"></div>
     <label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
       <input type="checkbox" id="budReserv" ${(b&&b.reservado)||forzarReserva?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
-      <div><div style="font-weight:600">Obligación reservada</div><div class="sub" style="font-size:.75rem">Se aparta de tu dinero disponible (alquiler, remesas, servicios...)</div></div>
+      <div><div style="font-weight:600">Obligación reservada</div><div class="sub" style="font-size:.75rem">Se aparta de tu dinero disponible (alquiler, cuotas, servicios...)</div></div>
     </label>
     <button class="btn" onclick="guardarPresupuesto('${catId}')">Guardar</button>
     ${b?`<button class="link" style="width:100%;margin-top:8px;color:var(--bad)" onclick="eliminarPresupuesto('${catId}')">Quitar presupuesto</button>`:''}
@@ -2079,7 +2732,7 @@ async function copiarPresupuestoAnterior(){
   }
   const prevPlan=planMes(prev);
   if(prevPlan&&!planMes(pk)){
-    await enqueue('plan',{id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:prevPlan.ingreso_esperado,created_at:t,updated_at:t});
+    await enqueue('plan',{id:uuid(),user_id:S.uid,periodo:pk,ingreso_esperado:prevPlan.ingreso_esperado,saldo_inicial:null,created_at:t,updated_at:t});
   }
   toast('Presupuesto copiado del mes anterior');
 }
@@ -2096,7 +2749,7 @@ function saludDetalle(pk){
   if(ingresoEsp<=0&&buds.length===0)return null;
 
   const[d1,d2]=periodRange(pk);
-  const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const gastoTotal=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 
   const factores=[];
   let score=0,pesoTotal=0;
@@ -2139,7 +2792,7 @@ function generarRecomendaciones(pk){
   const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
   const buds=budgetsMes(pk);
   const[d1,d2]=periodRange(pk);
-  const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const gastoTotal=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 
   // Tendencia multi-mes: categorías excedidas 2-3 meses seguidos
   const catsGasto=S.cats.filter(c=>!c.deleted&&c.tipo==='gasto');
@@ -2226,7 +2879,7 @@ function generarAlertas(){
 
   if(ingresoEsp>0&&diaHoy>=5&&diasRest>0){
     const[a,z]=periodRange(pk);
-    const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=a&&m.fecha<=z).reduce((s,m)=>s+toUYU(m),0);
+    const gastoTotal=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=a&&m.fecha<=z).reduce((s,m)=>s+toUYU(m),0);
     const proyeccion=(gastoTotal/diaHoy)*diasMes;
     if(proyeccion>ingresoEsp*1.05){
       alertas.push({prio:0,exceso:Infinity,nivel:'alto',icon:'⚠️',txt:`Al ritmo actual gastarías ${localFlag()} ${fmt(proyeccion)} este mes, más que tu ingreso de ${fmt(ingresoEsp)}.`});
@@ -2287,8 +2940,9 @@ function tarjetaPresupuestoInicio(oculto){
   let reservado=0;
   for(const b of buds)if(b.reservado)reservado+=Number(b.monto);
   const[d1,d2]=periodRange(pk);
-  const gastoMes=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
-  const disponible=ingresoEsp-gastoMes-reservadoPendiente(pk);
+  const gastoMes=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const hayEsp=ingresoEsp>0;
+  const disponible=hayEsp?(ingresoEsp-gastoMes-reservadoPendiente(pk)):null;
   const salud=saludFinancieraMes(pk);
   const saludColor=salud===null?'var(--sub)':salud>=70?'var(--ok)':salud>=45?'#d97706':'var(--bad)';
   const saludTxt=salud===null?'':salud>=70?'Saludable':salud>=45?'Atención':'En riesgo';
@@ -2298,41 +2952,41 @@ function tarjetaPresupuestoInicio(oculto){
       <h2 style="font-size:1rem">Disponible este mes</h2>
       ${salud!==null?`<span class="pill" style="background:${saludColor}1a;color:${saludColor}">${saludTxt} ${salud}</span>`:''}
     </div>
-    <div class="mid ${disponible>=0?'ok':'bad'}" style="font-size:${fitFont(disponible,1.5,0.9,9)}">${oculto?'••••':localFlag()+' '+fmt(disponible)}</div>
-    <div class="sub" style="font-size:.75rem;margin-top:4px">Ingreso ${localFlag()} ${fmt(ingresoEsp)} · Gastado ${fmt(gastoMes)} · Apartado sin gastar ${fmt(reservadoPendiente(pk))}</div>
+    <div class="mid ${disponible==null?'':(disponible>=0?'ok':'bad')}" style="font-size:${disponible==null?'1.15rem':fitFont(disponible,1.5,0.9,9)}">${disponible==null?'Define tu ingreso':(oculto?'••••':localFlag()+' '+fmt(disponible))}</div>
+    <div class="sub" style="font-size:.75rem;margin-top:4px">${disponible==null?'Sin ingreso esperado no se puede calcular tu disponible. Gastado '+localFlag()+' '+fmt(gastoMes)+' este mes.':'Ingreso '+localFlag()+' '+fmt(ingresoEsp)+' · Gastado '+fmt(gastoMes)+' · Apartado sin gastar '+fmt(reservadoPendiente(pk))}</div>
   </div>`;
 }
 
 const AYUDA={
   inicio:{
     titulo:'Inicio',
-    que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total, cuánto entró y salió este mes, tu disponible según el presupuesto, y las alertas importantes del momento.',
-    ejemplo:'Ejemplo: abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y una alerta te avisa que ya usaste el 90% de tu presupuesto de comida.',
-    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares.','La campana 🔔 muestra un punto azul cuando tienes alertas; tócala para verlas.','Si tienes movimientos fijos pendientes, aparecen arriba para registrarlos con un toque.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Usa el ojito 👁️ para ocultar los montos si estás en público.']
+    que:'Aquí ves de un vistazo tu situación financiera: cuánto tienes en total en pesos y en dólares, cuánto entró y salió este mes, tu disponible según el presupuesto, las alertas del momento y tus últimos movimientos.',
+    ejemplo:'Abres la app y ves que tu saldo es $12.000, que este mes gastaste $4.800, y una alerta te avisa que ya usaste el 90% de tu presupuesto de comida.',
+    pasos:['Mira el "Saldo total" arriba: tu dinero en pesos y en dólares por separado.','La campana 🔔 muestra un punto azul cuando tienes alertas; tócala para verlas.','Si tienes movimientos fijos pendientes, aparecen arriba para registrarlos con un toque.','La tarjeta "Disponible este mes" te lleva al presupuesto con un toque.','Abajo ves tus últimos movimientos; toca cualquiera para abrirlo.','Usa el ojito 👁️ para ocultar los montos si estás en público.','Desliza el dedo a izquierda o derecha para cambiar de pestaña.']
   },
   movs:{
     titulo:'Movimientos',
-    que:'Es el historial de todo tu dinero. Cada ingreso y gasto que registras queda aquí, y puedes buscarlos, filtrarlos y editarlos.',
-    ejemplo:'Ejemplo: quieres ver cuánto gastaste en comida esta semana. Filtras por la categoría "Comida" y ves todos esos gastos sumados.',
-    pasos:['Toca el botón azul + para registrar un ingreso o gasto.','Escribe el monto, elige la categoría y guarda.','Usa el buscador para encontrar un movimiento por texto o monto.','Toca cualquier movimiento para editarlo o eliminarlo.']
+    que:'Es el historial completo de tu dinero, ordenado del más reciente al más antiguo. Cada ingreso y gasto queda aquí, y puedes buscarlo, filtrarlo, editarlo o duplicarlo.',
+    ejemplo:'Quieres ver cuánto gastaste en comida esta semana. Escribes "comida" en el buscador o tocas esa categoría en los filtros, y ves todos esos gastos sumados abajo.',
+    pasos:['Toca el botón azul + para registrar un ingreso o gasto.','Escribe el monto, elige la categoría, la cuenta y guarda.','El buscador encuentra por categoría, cuenta, descripción, etiqueta, nota, forma de pago o monto; no hace falta escribir la palabra completa ni los acentos.','Filtra por tipo (ingreso o gasto), por fechas Desde/Hasta y por varias categorías a la vez.','El total de arriba se recalcula con los filtros que tengas puestos.','Toca cualquier movimiento para editarlo, duplicarlo o eliminarlo.','Los saldos de apertura y las transferencias aparecen marcados: se editan desde su cuenta, no aquí.','Si activaste los adjuntos, puedes guardarle una foto o un PDF a cada movimiento.']
   },
   cats:{
     titulo:'Categorías',
-    que:'Las categorías organizan tu dinero: comida, transporte, salario, etc. Cada movimiento se asigna a una, y así sabes en qué se va tu dinero.',
-    ejemplo:'Ejemplo: creas la categoría "Farmacia" con un ícono 💊. A partir de ahí, cada gasto de medicinas lo clasificas ahí y ves cuánto sumas al mes.',
-    pasos:['Toca "Nueva categoría" para crear una.','Elige si es de ingreso o de gasto, ponle nombre e ícono.','Puedes crear subcategorías dentro de una categoría.','Las categorías que ya usaste no se pueden borrar, para no perder el historial.']
+    que:'Las categorías organizan tu dinero: comida, transporte, salario, etc. Cada movimiento se asigna a una, y de ahí salen el presupuesto, los filtros y los informes de en qué se te va el dinero.',
+    ejemplo:'Creas la categoría "Farmacia" con un ícono 💊. A partir de ahí, cada gasto de medicinas lo clasificas ahí y ves cuánto sumas al mes.',
+    pasos:['Toca "Nueva categoría" para crear una.','Elige si es de ingreso o de gasto, ponle nombre, ícono y color.','Puedes crear subcategorías dentro de una categoría para más detalle.','Las categorías que ya usaste no se pueden borrar, para no perder el historial.']
   },
   presu:{
     titulo:'Presupuesto',
     que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, proteges el dinero de tus obligaciones y te pones metas de ahorro. La app predice si te excederás, te dice cuánto puedes gastar por día y calcula tu salud financiera.',
-    ejemplo:'Ejemplo: declaras un ingreso de $44.000, apartas $12.500 para la renta y $3.000 para ahorro. La app te dice que puedes gastar $850 por día, y que a tu ritmo de ahorro tendrás el televisor que quieres en 4 meses.',
-    pasos:['Toca "Definir" y declara tu ingreso esperado del mes.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler, remesas o ahorro.','Mira "Puedes gastar hasta X/día" para no excederte.','Ponte una meta (un TV, unas vacaciones) y la app calcula cuándo la alcanzas.','Revisa el semáforo 🟢🟡🔴, tu salud financiera y las recomendaciones.']
+    ejemplo:'Declaras un ingreso de $44.000, apartas $12.500 para la renta y $3.000 para ahorro. La app te dice que puedes gastar $850 por día, y que a tu ritmo de ahorro tendrás el televisor que quieres en 4 meses.',
+    pasos:['Toca "Definir" y declara tu ingreso esperado del mes: sin ese dato no se puede calcular tu disponible.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler, cuotas o ahorro.','Mira "Puedes gastar hasta X/día" para no excederte.','En la predicción, elige la base del cálculo: todo el mes, los últimos 7 días o los últimos 30.','Cambia de mes con el selector de arriba para revisar o planificar otro período.','Ponte una meta (un TV, unas vacaciones) y la app calcula cuándo la alcanzas.','Revisa el semáforo 🟢🟡🔴, tu salud financiera y las recomendaciones.']
   },
   ajustes:{
     titulo:'Ajustes',
-    que:'Configuras la app a tu gusto: tema claro u oscuro, tipo de cambio del dólar, tu contraseña, y puedes descargar una copia de tus datos.',
-    ejemplo:'Ejemplo: activas el tipo de cambio automático para que el valor del dólar se actualice solo, y cambias al tema oscuro para usar la app de noche.',
-    pasos:['Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Crea tus cuentas (efectivo, banco, tarjeta) para saber cuánto tienes en cada lugar.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos cada mes.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Si un dispositivo muestra datos distintos a otro, usa "Sincronizar todo".','Descarga tus datos como respaldo personal cuando quieras.','Únete al grupo de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
+    que:'Configuras la app y administras tus datos: cuentas, transferencias, movimientos fijos, informes, bitácora, adjuntos, tipo de cambio, tema, seguridad, respaldos y sincronización.',
+    ejemplo:'Creas tus cuentas, programas el alquiler como movimiento fijo, y a fin de mes sacas un informe filtrado por cuenta y período para ver en qué se fue el dinero.',
+    pasos:['Crea tus cuentas (efectivo, banco, tarjeta) y marca cuál es la principal: es la que se preselecciona al registrar.','Dentro de Cuentas tienes "Transferir entre cuentas": mueve dinero de una a otra sin que cuente como ingreso ni gasto.','Cada cuenta guarda su saldo de apertura con su fecha; queda registrado como un movimiento que puedes auditar.','Configura tus movimientos fijos y elige si quieres que se registren solos al llegar el día.','En Informes sacas balance, categorías, cuentas, monedas, formas de pago y flujo de caja, filtrado y exportable.','La Bitácora guarda todo lo que pasó con tus datos. La escribe el servidor, así que no se puede alterar.','"Cambios por subir" te muestra qué está esperando para sincronizar.','Activa los adjuntos si quieres guardarle fotos o PDFs a tus movimientos: quedan solo en este teléfono.','Ajusta el tipo de cambio manual o actívalo en automático, y cambia entre tema claro y oscuro.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Si un dispositivo muestra datos distintos a otro, usa "Sincronizar todo".','Descarga tus datos como respaldo, instala la app y compártela con quien la necesite.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
   }
 };
 function ayudaBtn(tab){
@@ -2350,7 +3004,7 @@ function abrirAyuda(tab){
     <p style="font-size:.9rem;line-height:1.6;margin-bottom:16px">${a.que}</p>
     <div style="background:var(--chip);border-radius:16px;padding:14px 16px;margin-bottom:18px;border-left:3px solid var(--pri)">
       <div style="font-size:.68rem;font-weight:800;letter-spacing:.08em;color:var(--pri);margin-bottom:5px">EJEMPLO</div>
-      <div style="font-size:.82rem;line-height:1.55;color:var(--sub)">${a.ejemplo}</div>
+      <div style="font-size:.82rem;line-height:1.55;color:var(--sub)">${String(a.ejemplo||'').replace(/^\s*ejemplo\s*:\s*/i,'')}</div>
     </div>
     <div style="font-weight:800;margin-bottom:12px;font-size:.95rem">Cómo proceder</div>
     ${a.pasos.map((p,i)=>`<div class="row" style="gap:12px;align-items:flex-start;padding-bottom:14px;position:relative">
@@ -2391,9 +3045,15 @@ function viewAjustes(){
     <div class="item" onclick="shareApp()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('share',19)}</div><div class="mtxt"><div>Compartir aplicación</div><div class="sub">Comparte NexoBalance con quien lo necesite</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="triggerInstall()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('phone',19)}</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirCuentas()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">💳</div><div class="mtxt"><div>Cuentas y medios de pago</div><div class="sub">${cuentasActivas().length?cuentasActivas().length+' cuenta'+(cuentasActivas().length!==1?'s':''):'Efectivo, banco, tarjeta…'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
-    <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
-    <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, cuotas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Qué cambia en tu mes cuando lo usas bien</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub" id="adjPeso">Fotos y PDFs guardados solo en este teléfono</div></div>
+      <input type="checkbox" ${adjuntosOn()?'checked':''} onchange="setAdjuntos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"></label>
+    <div class="item" onclick="abrirAsistente()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📘</div><div class="mtxt"><div>Manual y asistente</div><div class="sub">Pregunta cómo hacer algo y te lo explica</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirCola()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📤</div><div class="mtxt"><div>Cambios por subir</div><div class="sub">${S.pendientes?S.pendientes+' esperando':'Todo sincronizado'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirBitacora()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🗒️</div><div class="mtxt"><div>Bitácora</div><div class="sub">Todo lo que pasó con tus datos, solo lectura</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirInformes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📊</div><div class="mtxt"><div>Informes</div><div class="sub">Balance, categorías, cuentas y flujo de caja con filtros</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirConfigBloqueo()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔐</div><div class="mtxt"><div>Bloqueo de la aplicación</div><div class="sub">${lockConfig()?'Activado · PIN'+(lockConfig().bio?' y biometría':''):'Protege tus datos con un PIN'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -2624,6 +3284,739 @@ async function zonaRojaEjecutar(){
     toast('No se pudieron eliminar los datos. Intenta de nuevo.');
   }
 }
+
+// ===== Informes (H-004 / H-013) =====
+const INF={desde:'',hasta:'',cuentas:[],cats:[],moneda:'',pago:'',tag:''};
+function infInicializar(){
+  if(INF.desde)return;
+  const[d1,d2]=periodRange(periodKey(new Date()));
+  INF.desde=d1;INF.hasta=d2;
+}
+function infPreset(tipo){
+  const h=new Date(),p=n=>String(n).padStart(2,'0');
+  const f=d=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  if(tipo==='mes'){const[a,b]=periodRange(periodKey(h));INF.desde=a;INF.hasta=b}
+  if(tipo==='mesant'){const[a,b]=periodRange(periodShift(periodKey(h),-1));INF.desde=a;INF.hasta=b}
+  if(tipo==='trim'){INF.desde=f(new Date(h.getFullYear(),h.getMonth()-2,1));INF.hasta=f(h)}
+  if(tipo==='anio'){INF.desde=h.getFullYear()+'-01-01';INF.hasta=f(h)}
+  // Se repinta sin releer los campos: si no, los inputs viejos pisarían
+  // las fechas que acaba de fijar el atajo.
+  dibujarInformes(true);
+}
+function infToggle(campo,valor){
+  const arr=INF[campo],i=arr.indexOf(valor);
+  i>=0?arr.splice(i,1):arr.push(valor);
+  dibujarInformes();
+}
+async function guardarTitular(v){
+  S.settings.titular=String(v||'').trim();
+  await kvSet('settings',S.settings);
+  toast('Titular actualizado');
+}
+function infLeerCampos(){
+  const g=id=>document.getElementById(id);
+  if(g('infDesde'))INF.desde=g('infDesde').value;
+  if(g('infHasta'))INF.hasta=g('infHasta').value;
+  if(g('infMoneda'))INF.moneda=g('infMoneda').value;
+  if(g('infPago'))INF.pago=g('infPago').value;
+  if(g('infTag'))INF.tag=g('infTag').value.trim();
+}
+function infFiltrar(hastaFecha){
+  const hasta=hastaFecha||INF.hasta;
+  return movsActivos().filter(m=>{
+    if(INF.desde&&m.fecha<INF.desde&&!hastaFecha)return false;
+    if(hasta&&m.fecha>hasta)return false;
+    if(INF.cuentas.length&&INF.cuentas.indexOf(m.cuenta_id||'')<0)return false;
+    if(INF.cats.length&&INF.cats.indexOf(m.categoria_id||'')<0)return false;
+    if(INF.moneda&&m.moneda!==INF.moneda)return false;
+    if(INF.pago&&(m.forma_pago||'')!==INF.pago)return false;
+    if(INF.tag&&!(m.etiquetas||[]).some(t=>norm(t).includes(norm(INF.tag))))return false;
+    return true;
+  });
+}
+function calcularInforme(){
+  const enRango=infFiltrar();
+  const previos=infFiltrar('9999-12-31').filter(m=>INF.desde&&m.fecha<INF.desde);
+  const sgn=m=>(m.tipo==='ingreso'?1:-1)*toUYU(m);
+  const saldoInicial=previos.reduce((s,m)=>s+sgn(m),0);
+  const normales=enRango.filter(esNormal);
+  const ingresos=normales.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+toUYU(m),0);
+  const gastos=normales.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+toUYU(m),0);
+  const aperturas=enRango.filter(esApertura).reduce((s,m)=>s+sgn(m),0);
+  const transfer=enRango.filter(m=>claseDe(m)==='transferencia');
+  const saldoFinal=saldoInicial+enRango.reduce((s,m)=>s+sgn(m),0);
+  const agrupar=(lista,clave,nombre)=>{
+    const map=new Map();
+    for(const m of lista){
+      const k=clave(m)||'—';
+      if(!map.has(k))map.set(k,{nombre:nombre(m,k),ing:0,gas:0,n:0});
+      const o=map.get(k);
+      m.tipo==='ingreso'?o.ing+=toUYU(m):o.gas+=toUYU(m);o.n++;
+    }
+    return [...map.values()].sort((a,b)=>(b.ing+b.gas)-(a.ing+a.gas));
+  };
+  const meses=new Map();
+  for(const m of normales){
+    const k=m.fecha.slice(0,7);
+    if(!meses.has(k))meses.set(k,{nombre:k,ing:0,gas:0,n:0});
+    const o=meses.get(k);
+    m.tipo==='ingreso'?o.ing+=toUYU(m):o.gas+=toUYU(m);o.n++;
+  }
+  return {
+    saldoInicial,ingresos,gastos,resultado:ingresos-gastos,saldoFinal,aperturas,
+    nTransfer:transfer.length/2,
+    porCategoria:agrupar(normales,m=>m.categoria_id,(m)=>{const c=catById(m.categoria_id);return c?c.name:'Sin categoría'}),
+    porCuenta:agrupar(enRango,m=>m.cuenta_id,(m)=>{const c=cuentaById(m.cuenta_id);return c?c.nombre:'Sin cuenta'}),
+    porMoneda:agrupar(normales,m=>m.moneda,(m,k)=>k),
+    porPago:agrupar(normales,m=>m.forma_pago,(m,k)=>k),
+    porMes:[...meses.values()].sort((a,b)=>a.nombre<b.nombre?-1:1),
+    movimientos:enRango.sort(cmpMovDesc)
+  };
+}
+function infTabla(titulo,filas){
+  if(!filas.length)return '';
+  return '<div style="margin-top:16px"><div style="font-weight:800;font-size:.85rem;margin-bottom:7px">'+esc(titulo)+'</div>'
+    +filas.map(f=>'<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line);font-size:.82rem">'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f.nombre)+' <span class="sub" style="font-size:.72rem">('+f.n+')</span></span>'
+      +(f.ing?'<span class="ok" style="font-weight:700;margin-left:8px">+'+fmt(f.ing)+'</span>':'')
+      +(f.gas?'<span class="bad" style="font-weight:700;margin-left:8px">−'+fmt(f.gas)+'</span>':'')
+      +'</div>').join('')+'</div>';
+}
+function abrirInformes(){
+  infInicializar();
+  dibujarInformes();
+}
+function dibujarInformes(saltarLectura){
+  if(!saltarLectura)infLeerCampos();
+  const r=calcularInforme();
+  const cuentas=cuentasActivas();
+  const cats=activeCats().filter(c=>!c.parent_id);
+  const pagos=[...new Set(movsActivos().map(m=>m.forma_pago).filter(Boolean))];
+  const fila=(et,val,cls)=>'<div class="row spread" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="sub" style="font-size:.83rem">'+et+'</span><span class="'+(cls||'')+'" style="font-weight:800">'+localFlag()+' '+fmt(val)+'</span></div>';
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<div class="row spread" style="margin-bottom:12px"><h2>Informes</h2>'
+  +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="exportarInformePDF()">PDF</button><button class="btn sm ghost" onclick="exportarInforme()">CSV</button></div></div>'
+  +'<div style="text-align:right;margin-bottom:8px"><button class="link" style="font-size:.76rem" onclick="exportarInformeHTML()">¿El PDF no abre? Descargar como página</button></div>'
+  +'<div class="chips" style="margin-bottom:10px">'
+  +'<button class="chip" onclick="infPreset(\'mes\')">Este mes</button>'
+  +'<button class="chip" onclick="infPreset(\'mesant\')">Mes pasado</button>'
+  +'<button class="chip" onclick="infPreset(\'trim\')">3 meses</button>'
+  +'<button class="chip" onclick="infPreset(\'anio\')">Este año</button></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:10px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Desde</label><input class="inp" id="infDesde" type="date" value="'+INF.desde+'" onchange="dibujarInformes()"></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Hasta</label><input class="inp" id="infHasta" type="date" value="'+INF.hasta+'" onchange="dibujarInformes()"></div></div>'
+  +(cuentas.length?'<div class="field"><label>Cuentas</label><div class="chips">'
+    +cuentas.map(a=>'<button class="chip '+(INF.cuentas.indexOf(a.id)>=0?'on':'')+'" onclick="infToggle(\'cuentas\',\''+a.id+'\')">'+(a.icono||'💵')+' '+esc(a.nombre)+'</button>').join('')
+    +'</div><div class="sub" style="font-size:.72rem;margin-top:5px">'+(INF.cuentas.length?'Filtrando '+INF.cuentas.length+' cuenta(s)':'Consolidado: todas las cuentas')+'</div></div>':'')
+  +'<div class="field"><label>Categorías</label><div class="chips">'
+    +cats.map(c=>'<button class="chip '+(INF.cats.indexOf(c.id)>=0?'on':'')+'" onclick="infToggle(\'cats\',\''+c.id+'\')">'+esc(c.name)+'</button>').join('')+'</div></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:10px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Moneda</label><select class="inp" id="infMoneda" onchange="dibujarInformes()">'
+    +'<option value="">Todas</option><option value="UYU"'+(INF.moneda==='UYU'?' selected':'')+'>'+(detectPais().cur||'UYU')+'</option><option value="USD"'+(INF.moneda==='USD'?' selected':'')+'>USD</option></select></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Forma de pago</label><select class="inp" id="infPago" onchange="dibujarInformes()">'
+    +'<option value="">Todas</option>'+pagos.map(p=>'<option value="'+esc(p)+'"'+(INF.pago===p?' selected':'')+'>'+esc(p)+'</option>').join('')+'</select></div></div>'
+  +'<div class="field"><label>Etiqueta</label><input class="inp" id="infTag" placeholder="Opcional" value="'+esc(INF.tag)+'" onchange="dibujarInformes()"></div>'
+  +'<div class="field"><label>Titular del informe</label><input class="inp" id="infTitular" placeholder="'+esc(S.userName||'Tu nombre, entidad o empresa')+'" value="'+esc(S.settings.titular||'')+'" onchange="guardarTitular(this.value)">'
+  +'<div class="sub" style="font-size:.72rem;margin-top:5px">Encabeza tus informes exportados. Puede ser tu nombre, tu entidad o tu empresa.</div></div>'
+  +'<div class="card" style="margin-top:6px">'
+  +'<div style="font-weight:800;margin-bottom:6px">Balance financiero</div>'
+  +fila('Saldo inicial',r.saldoInicial)
+  +fila('Ingresos',r.ingresos,'ok')
+  +fila('Gastos',r.gastos,'bad')
+  +fila('Resultado',r.resultado,r.resultado>=0?'ok':'bad')
+  +(r.aperturas?fila('Saldos de apertura',r.aperturas):'')
+  +fila('Saldo final',r.saldoFinal,r.saldoFinal>=0?'ok':'bad')
+  +(r.nTransfer?'<div class="sub" style="font-size:.75rem;margin-top:8px">'+r.nTransfer+' transferencia(s) interna(s) en el período. No afectan ingresos, gastos ni resultado.</div>':'')
+  +'</div>'
+  +'<div class="card">'
+  +infTabla('Por categoría',r.porCategoria)
+  +infTabla('Por cuenta',r.porCuenta)
+  +infTabla('Por moneda',r.porMoneda)
+  +infTabla('Por forma de pago',r.porPago)
+  +infTabla('Flujo de caja por mes',r.porMes)
+  +'</div>'
+  +'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>'
+  +'</div></div>';
+}
+
+function infHTMLImpresion(){
+  const r=calcularInforme();
+  const cur=detectPais().cur||'UYU';
+  const filtros=[];
+  if(INF.cuentas.length)filtros.push('Cuentas: '+INF.cuentas.map(id=>{const c=cuentaById(id);return c?c.nombre:''}).filter(Boolean).join(', '));
+  else filtros.push('Cuentas: consolidado');
+  if(INF.cats.length)filtros.push('Categorías: '+INF.cats.map(id=>{const c=catById(id);return c?c.name:''}).filter(Boolean).join(', '));
+  if(INF.moneda)filtros.push('Moneda: '+INF.moneda);
+  if(INF.pago)filtros.push('Forma de pago: '+INF.pago);
+  if(INF.tag)filtros.push('Etiqueta: '+INF.tag);
+  const n=v=>fmt(v);
+  const tabla=(t,filas)=>filas.length?('<h2>'+esc(t)+'</h2><table><thead><tr><th>Concepto</th><th class="c">Cant.</th><th class="r">Ingresos</th><th class="r">Gastos</th><th class="r">Neto</th></tr></thead><tbody>'
+    +filas.map(f=>'<tr><td>'+esc(f.nombre)+'</td><td class="c">'+f.n+'</td><td class="r">'+(f.ing?n(f.ing):'—')+'</td><td class="r">'+(f.gas?n(f.gas):'—')+'</td><td class="r">'+n(f.ing-f.gas)+'</td></tr>').join('')
+    +'</tbody></table>'):'';
+  const detalle='<h2>Detalle de movimientos</h2><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Cuenta</th><th class="r">Monto</th></tr></thead><tbody>'
+    +r.movimientos.map(m=>{
+      const c=catById(m.categoria_id),cu=cuentaById(m.cuenta_id),cl=CLASE_ETIQUETA[claseDe(m)];
+      return '<tr><td>'+m.fecha+'</td><td>'+esc(m.descripcion||(c?c.name:''))+(c?' <i>('+esc(c.name)+')</i>':'')+(cl?' <b>['+cl+']</b>':'')+'</td><td>'+esc(cu?cu.nombre:'—')+'</td>'
+        +'<td class="r '+(m.tipo==='ingreso'?'ok':'bad')+'">'+(m.tipo==='ingreso'?'+':'−')+money(m.monto,m.moneda)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexoBalance — Informe</title><style>'
+    +'*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#101828;margin:0;padding:24px;font-size:12px}'
+    +'h1{font-size:19px;margin:0 0 2px}h2{font-size:13px;margin:20px 0 6px;padding-bottom:4px;border-bottom:2px solid #1788FF}'
+    +'.meta{color:#667085;font-size:11px;line-height:1.5;margin-bottom:14px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:6px}'
+    +'th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#667085;border-bottom:1px solid #d0d5dd;padding:5px 4px}'
+    +'td{padding:5px 4px;border-bottom:1px solid #eaecf0}'
+    +'.r{text-align:right}.c{text-align:center}.ok{color:#027A48}.bad{color:#B42318}'
+    +'.bal td{font-size:13px}.bal .tot{font-weight:800;border-top:2px solid #101828}'
+    +'.titular{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#1788FF;font-weight:800;margin-bottom:3px}'
+    +'.pie{margin-top:26px;padding-top:10px;border-top:1px solid #d0d5dd;text-align:center;font-size:10px;color:#667085;letter-spacing:.04em}'
+    +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}.pie{position:relative}}'
+    +'</style></head><body>'
+    +(titularInforme()?'<div class="titular">'+esc(titularInforme())+'</div>':'')
+    +'<h1>Informe financiero</h1>'
+    +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString()+'</div>'
+    +'<h2>Balance financiero</h2><table class="bal"><tbody>'
+    +'<tr><td>Saldo inicial</td><td class="r">'+n(r.saldoInicial)+'</td></tr>'
+    +'<tr><td>Ingresos</td><td class="r ok">'+n(r.ingresos)+'</td></tr>'
+    +'<tr><td>Gastos</td><td class="r bad">'+n(r.gastos)+'</td></tr>'
+    +'<tr><td>Resultado</td><td class="r">'+n(r.resultado)+'</td></tr>'
+    +(r.aperturas?'<tr><td>Saldos de apertura</td><td class="r">'+n(r.aperturas)+'</td></tr>':'')
+    +'<tr class="tot"><td>Saldo final</td><td class="r">'+n(r.saldoFinal)+'</td></tr>'
+    +'</tbody></table>'
+    +(r.nTransfer?'<div class="meta">'+r.nTransfer+' transferencia(s) interna(s) en el período. No afectan ingresos, gastos ni resultado.</div>':'')
+    +tabla('Por categoría',r.porCategoria)
+    +tabla('Por cuenta',r.porCuenta)
+    +tabla('Por moneda',r.porMoneda)
+    +tabla('Por forma de pago',r.porPago)
+    +tabla('Flujo de caja por mes',r.porMes)
+    +detalle
+    +piePDF()
+    +'</body></html>';
+}
+// El iframe necesita medidas reales: con 0x0 el motor de impresión no tiene
+// qué maquetar y genera un PDF vacío o corrupto. Se lo saca de la vista
+// moviéndolo fuera de pantalla, no ocultándolo.
+function imprimirDocumento(html,alTerminar){
+  const previo=document.getElementById('printFrame');
+  if(previo)previo.remove();
+  const f=document.createElement('iframe');
+  f.id='printFrame';
+  f.setAttribute('aria-hidden','true');
+  f.style.cssText='position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;opacity:0;pointer-events:none';
+  document.body.appendChild(f);
+  const d=f.contentWindow.document;
+  d.open();d.write(html);d.close();
+  const lanzar=()=>{
+    try{
+      f.contentWindow.focus();
+      f.contentWindow.print();
+      if(alTerminar)alTerminar();
+    }catch(e){toast('No se pudo abrir la impresión')}
+  };
+  // Se espera a que carguen estilos y fuentes antes de imprimir.
+  if(d.readyState==='complete')setTimeout(lanzar,400);
+  else f.onload=()=>setTimeout(lanzar,400);
+  toast('Elige "Guardar como PDF" en el destino');
+}
+function descargarHTML(nombre,html){
+  if(descargarArchivo(nombre,html,'text/html;charset=utf-8'))toast('Descargado ✓ Ábrelo y usa Compartir → Imprimir');
+}
+function exportarInformePDF(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  imprimirDocumento(infHTMLImpresion(),()=>auditEvento('informe_pdf',{desde:INF.desde,hasta:INF.hasta}));
+}
+function exportarInformeHTML(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  descargarHTML(infNombreArchivo().replace(/\.csv$/,'.html'),infHTMLImpresion());
+}
+
+
+// ===== Manual de instrucciones y procedimientos =====
+const MANUAL=[["Primeros pasos","🚀",[["Qué es NexoBalance","Si cobras, pagas tus cuentas y aun así llegas a mitad de mes sin saber dónde quedó el dinero, esta app existe para eso. Te dice cuánto puedes gastar por día sin tocar lo que ya está comprometido, y te avisa antes de pasarte. Para que funcione hay contabilidad real detrás: cada saldo se explica movimiento por movimiento, nada aparece de la nada. Funciona sin Internet, sincroniza sola en cuanto hay conexión, y se instala en tu teléfono como cualquier otra app."],["Cómo empezar bien","El orden recomendado es este: 1) crea tus cuentas con el saldo que tienes hoy en cada una; 2) revisa las categorías y ajústalas a tu realidad; 3) declara tu ingreso esperado del mes en Presupuesto; 4) carga tus movimientos fijos como el alquiler o las cuotas. Con esa base montada, el día a día es solo registrar lo que gastas: el resto lo calcula la app."],["Instalarla en el teléfono","En Ajustes encuentras la opción para instalarla. Una vez instalada abre como cualquier otra app, sin barra del navegador, y sigue funcionando sin señal."],["Qué la distingue","Una libreta de gastos te dice cuánto gastaste. Esta te dice si vas a llegar. La diferencia es que los números cuadran de verdad: cada cuenta tiene su saldo de apertura fechado, las transferencias entre tus cuentas no se cuentan como gasto, los ajustes quedan como asientos, y una bitácora escrita en el servidor deja constancia de cada cambio. Por eso puedes confiar en lo que te dice, auditarlo tú mismo, y sacarlo en PDF o CSV cuando alguien te lo pida."]]],["Cuentas y saldos","🏦",[["Qué es una cuenta","Un lugar donde tienes dinero: efectivo, una cuenta bancaria, una tarjeta, una billetera digital. Cada movimiento se asigna a una, y así sabes cuánto hay realmente en cada sitio, no solo cuánto tienes en total."],["Cuenta principal","La que se preselecciona cada vez que registras algo. Marca como principal la que más uses para ahorrarte toques."],["Saldo de apertura","Es el dinero que había en la cuenta cuando empezaste a usarla en la app. No es un campo suelto: se guarda como un movimiento con su fecha, que puedes ver en tu historial marcado como Apertura. Por eso el saldo de la cuenta siempre se puede explicar sumando movimientos, sin números que aparezcan de la nada."],["Cuentas en negativo","Si es una tarjeta de crédito con saldo en contra, escribe el saldo de apertura con signo menos. Por ejemplo −1500."],["Editar el saldo de apertura","Se edita desde la cuenta, en Ajustes → Cuentas. Si lo abres desde el historial de movimientos, la app te lleva ahí: es el único lugar desde donde se puede cambiar sin descuadrar nada."],["Eliminar una cuenta","Al eliminarla, su saldo de apertura se elimina con ella. Los movimientos que tenía quedan sin cuenta asignada, y la app te avisa para que los reasignes."]]],["Movimientos","💸",[["Registrar un ingreso o un gasto","Toca el botón azul + en Movimientos o en Inicio. Escribe el monto, elige categoría y cuenta, y guarda. La fecha y la hora se ponen solas, pero puedes cambiarlas."],["Elegir la cuenta es obligatorio","Si tienes cuentas creadas, todo movimiento debe ir a una. Si no, el dinero cuenta en tu total pero no en el saldo de ninguna cuenta, y los números dejan de cuadrar."],["Moneda","Puedes registrar en tu moneda local o en dólares. La app convierte usando el tipo de cambio que tengas configurado, y en la lista cada movimiento muestra su moneda de forma visible."],["Buscar","El buscador encuentra por categoría, cuenta, descripción, etiqueta, nota, forma de pago, moneda o monto. No hace falta escribir la palabra completa ni poner los acentos: escribir 'reg' encuentra 'Regalos', y 'cafe' encuentra 'Café'."],["Filtrar","Puedes filtrar por tipo, por rango de fechas y por varias categorías a la vez. El total que ves arriba se recalcula con los filtros puestos."],["Duplicar","Abre un movimiento y toca Duplicar. Copia categoría, cuenta, importe, etiquetas y notas, y le pone la fecha y hora de ahora. Útil para gastos que se repiten pero no son fijos."],["Eliminar","Los movimientos eliminados no desaparecen del todo: quedan marcados como dados de baja, y la bitácora guarda constancia."]]],["Transferencias","⇄",[["Para qué sirven","Para mover dinero entre tus propias cuentas: sacar del banco para tener efectivo, pasar pesos a dólares, cargar una billetera digital. No es un gasto ni un ingreso, porque tu patrimonio no cambia: el dinero solo cambia de lugar."],["Cómo se hace","Ajustes → Cuentas → Transferir entre cuentas. Eliges desde qué cuenta sale, hacia cuál entra, el monto y la fecha."],["Entre monedas distintas","Si las cuentas tienen monedas diferentes, la app te pide cuánto entra realmente en la cuenta destino. Escribe lo que te dieron de verdad: así queda registrado el tipo de cambio de esa operación concreta, no un promedio."],["Qué no afectan","No aparecen en tus ingresos ni en tus gastos, no consumen presupuesto y no cambian tu resultado del mes. Solo mueven saldos entre cuentas."],["Editarlas o borrarlas","Una transferencia son dos movimientos que van siempre juntos. Al abrir cualquiera de los dos se abre el editor completo, y al eliminarla se eliminan los dos lados. Nunca queda uno suelto."]]],["Presupuesto","🎯",[["Ingreso esperado","Es lo primero que hay que declarar: cuánto esperas ingresar este mes, aunque todavía no lo hayas cobrado. Sin ese dato no se puede calcular tu disponible ni avisarte si te estás pasando."],["Esperado no es lo mismo que registrado","El esperado es tu plan. El registrado es lo que efectivamente entró. Si ya registraste ingresos pero no declaraste el esperado, la app te lo advierte en vez de mostrarte un disponible equivocado."],["Presupuesto por categoría","Toca cada categoría y asígnale un límite. Verás el porcentaje consumido y la app te avisa cuando te acercas o te pasas."],["Obligación reservada","Marca así los gastos que ya tienes comprometidos: alquiler, cuotas, ahorro. Ese dinero se aparta de tu disponible aunque todavía no lo hayas pagado, para que no lo gastes sin querer."],["Saldo inicial del mes","Con cuánto empezaste el mes. Se arrastra solo desde el cierre del mes anterior. Si no coincide con la realidad, tócalo y escribe el saldo real: la app registra un asiento de ajuste por la diferencia en la cuenta que elijas. Ten en cuenta que corregir la apertura de un mes cambia el cierre del anterior; contablemente es lo correcto."],["Predicción del mes","Estima cómo vas a cerrar el mes si sigues al ritmo actual. Puedes elegir sobre qué base calcularla: todo el mes, los últimos 7 días o los últimos 30. Los últimos 7 días sirven cuando cambiaste de hábitos hace poco; todo el mes sirve cuando tu gasto es parejo."],["Metas","Ponte un objetivo con un monto y la app calcula en cuántos meses lo alcanzas según tu ritmo de ahorro."],["Salud financiera","Un puntaje que resume si tus gastos están bajo control respecto a tus ingresos y a lo que presupuestaste."]]],["Categorías","🏷️",[["Para qué sirven","Clasifican tu dinero y son la base del presupuesto, los filtros y los informes. Sin categorías puedes registrar, pero no puedes analizar."],["Crear y organizar","Elige si es de ingreso o de gasto, ponle nombre, ícono y color. Puedes crear subcategorías dentro de una categoría para tener más detalle sin llenar la lista principal."],["Por qué algunas no se borran","Las categorías que ya usaste no se pueden eliminar. Si se borraran, los movimientos viejos quedarían sin clasificar y tu historial perdería sentido."]]],["Movimientos fijos","🔁",[["Qué son","Gastos o ingresos que se repiten todos los meses el mismo día: alquiler, salario, cuotas, suscripciones. Se configuran una vez y no hay que escribirlos cada mes."],["Configurarlos","Ajustes → Movimientos fijos. Define tipo, monto, categoría, cuenta y el día del mes en que ocurre."],["Estados","Al día significa que ya lo registraste este mes. Pendiente que ya venció y falta registrarlo. Programado que aún no llega su día. Pausado que está detenido sin borrarse."],["Acciones","Al tocar uno puedes registrarlo ahora, omitirlo solo este mes, volver a dejarlo pendiente si lo registraste por error, pausarlo, reanudarlo, duplicarlo, editarlo o eliminar toda la serie."],["Registro automático","Si activas 'Registrarlos solos', al abrir la app se registran los que ya vencieron, sin preguntarte. Conviene si tus fijos son siempre por el mismo monto; si suelen variar, es mejor dejarlo apagado y confirmarlos a mano."]]],["Informes","📊",[["Cómo llegar","Ajustes → Informes."],["Período","Tienes atajos para este mes, el mes pasado, los últimos tres meses y el año, o puedes poner las fechas exactas que quieras."],["Filtros","Puedes cruzar cuentas, categorías, moneda, forma de pago y etiqueta. Si no seleccionas ninguna cuenta, el informe es consolidado: todas juntas."],["Balance financiero","Muestra saldo inicial, ingresos, gastos, resultado y saldo final del período. Las transferencias internas se cuentan aparte y no afectan el resultado, porque no son ni ingreso ni gasto."],["Desgloses","El informe incluye el detalle por categoría, por cuenta, por moneda, por forma de pago y el flujo de caja mes a mes, además del listado completo de movimientos."],["Exportar","CSV para abrirlo en una planilla y seguir trabajando. PDF para imprimirlo o enviarlo: elige 'Guardar como PDF' en el destino de impresión. El nombre del archivo incluye los filtros y el período, así no se te mezclan."]]],["Sincronización y offline","☁️",[["Cómo funciona","Todo se guarda primero en tu teléfono. Lo que registras sin conexión queda en una cola de salida y sube solo cuando vuelve el Internet. Nunca tienes que esperar a tener señal para anotar un gasto."],["Cambios por subir","Ajustes → Cambios por subir, o toca la etiqueta de estado arriba en Inicio. Ahí ves exactamente qué está esperando. Si algo no logra subir, aparece marcado y puedes reintentarlo o descartarlo."],["Varios dispositivos","Puedes usar la misma cuenta en varios teléfonos. Si uno muestra datos distintos a otro, usa Ajustes → Sincronizar todo para forzar la puesta al día."],["Varias personas en un mismo teléfono","Cada cuenta guarda sus datos por separado. Al cerrar sesión puedes dejarlos en el teléfono para volver a entrar más rápido, o borrarlos. Una persona nunca ve los datos de la otra."],["Cerrar sesión con cambios sin subir","Si eliges borrar tus datos del teléfono y hay cambios que no llegaron a la nube, la app te dice cuántos son y te pide confirmar. Si eliges solo cerrar sesión, no se pierde nada."]]],["Seguridad","🔒",[["Bloqueo con PIN o huella","Ajustes te permite exigir un PIN cada vez que abres la app, y usar la huella si tu teléfono la tiene. El bloqueo es por cuenta: en un teléfono compartido, tu PIN no bloquea a la otra persona."],["Si olvidas el PIN","Desde la pantalla de bloqueo puedes cerrar sesión y volver a entrar con tu cuenta y contraseña. Tus datos no se pierden: están en la nube."],["Ocultar los montos","El ícono del ojo en Inicio esconde todas las cifras. Útil si estás en la calle o alguien mira tu pantalla."],["Bitácora","Ajustes → Bitácora. Registra cada alta, baja y modificación de tus datos, con el valor anterior y el nuevo. La escribe el servidor, no la app, así que no se puede alterar desde el teléfono. Es de solo lectura y se puede exportar."]]],["Adjuntos","📎",[["Activarlos","Ajustes → Adjuntos en movimientos. Vienen apagados."],["Cómo usarlos","Con la opción activada, cada movimiento tiene una sección para agregar una foto o un PDF: una boleta, una factura, un comprobante."],["Las fotos se reducen","Para no llenarte el teléfono, las imágenes se reducen antes de guardarse. El límite por archivo es de 5 MB, y en Ajustes ves cuánto ocupan en total."],["Advertencia importante","Los adjuntos se guardan solo en este teléfono. No suben a la nube, no aparecen en otro dispositivo y no van incluidos en el respaldo. Si borras la app o cierras sesión eligiendo borrar tus datos, se pierden."]]],["Respaldos y datos","💾",[["Descargar tus datos","Ajustes → Descargar mis datos genera un CSV con todos tus movimientos. Guárdalo donde quieras: es tuyo."],["Qué no incluye","El respaldo no incluye los adjuntos, porque son archivos y no datos de planilla."],["Borrar todo","En la Zona Roja de Ajustes puedes eliminar todos tus datos y empezar de cero. Es permanente y no hay forma de deshacerlo. Descarga un respaldo antes."]]],["Problemas frecuentes","🛠️",[["El saldo total no coincide con la suma de mis cuentas","Casi siempre es porque hay movimientos sin cuenta asignada: cuentan en el total pero no en ninguna cuenta. Ve a Ajustes → Cuentas; si hay un aviso naranja, tócalo y asígnalos. Revisa también que tus movimientos fijos tengan cuenta."],["Registré algo y no aparece en otro teléfono","Revisa Ajustes → Cambios por subir. Si hay algo esperando, conéctate y usa Reintentar. En el otro teléfono, usa Sincronizar todo."],["Mi disponible sale en cero o raro","Falta declarar el ingreso esperado del mes en Presupuesto. Sin ese dato no hay contra qué comparar."],["Un ingreso aparece en el saldo pero no en los ingresos del mes","Probablemente sea un saldo de apertura o una transferencia. Los dos suman al saldo porque son dinero real, pero no son ingresos del mes: no ganaste ese dinero este mes, ya lo tenías o lo moviste de lugar."],["No veo la versión nueva","Cierra la app por completo y vuelve a abrirla. La versión que estás usando aparece al final de Ajustes."]]]];
+
+let _manualAbierto=-1;
+function manualToggle(i){
+  _manualAbierto=(_manualAbierto===i)?-1:i;
+  dibujarManual();
+}
+function dibujarManual(){
+  const secs=MANUAL.map((s,i)=>{
+    const abierto=_manualAbierto===i;
+    return '<div style="border:1px solid var(--line);border-radius:14px;margin-bottom:8px;overflow:hidden">'
+    +'<div onclick="manualToggle('+i+')" style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;gap:11px;background:'+(abierto?'var(--chip)':'transparent')+'">'
+    +'<span style="font-size:1.15rem">'+s[1]+'</span>'
+    +'<span style="flex:1;font-weight:700;font-size:.92rem">'+esc(s[0])+'</span>'
+    +'<span class="sub" style="font-size:.72rem">'+s[2].length+'</span>'
+    +'<span style="color:var(--sub);transform:rotate('+(abierto?'90':'0')+'deg);transition:transform .15s">'+ic('chevron',17)+'</span></div>'
+    +(abierto?'<div style="padding:2px 14px 12px">'+s[2].map(t=>
+        '<div style="padding:10px 0;border-top:1px solid var(--line)">'
+        +'<div style="font-weight:700;font-size:.85rem;margin-bottom:4px">'+esc(t[0])+'</div>'
+        +'<div class="sub" style="font-size:.83rem;line-height:1.6">'+esc(t[1])+'</div></div>').join('')+'</div>':'')
+    +'</div>';
+  }).join('');
+  const host=document.getElementById('sheetHost');
+  host.innerHTML='<div class="sheet-bg" style="z-index:220" onclick="if(event.target===this)cerrarManual()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<div class="row spread" style="margin-bottom:4px"><h2>Manual de uso</h2>'
+  +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="abrirAsistente()">Preguntar</button><button class="btn sm ghost" onclick="manualPDF()">PDF</button></div></div>'
+  +'<div style="text-align:right;margin-bottom:4px"><button class="link" style="font-size:.76rem" onclick="manualHTMLDescarga()">¿El PDF no abre? Descargar como página</button></div>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:14px">Instrucciones y procedimientos de NexoBalance. Disponible sin conexión.</p>'
+  +secs
+  +'<button class="btn ghost" style="width:100%;margin-top:10px" onclick="cerrarManual()">Cerrar</button>'
+  +'</div></div>';
+}
+function abrirManual(){_manualAbierto=-1;dibujarManual()}
+function cerrarManual(){
+  const host=document.getElementById('sheetHost');
+  if(host)host.innerHTML='';
+  confirmSheetOpen=false;
+}
+function manualHTML(){
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexoBalance — Manual de uso</title><style>'
+  +'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#101828;margin:0;padding:26px;font-size:12.5px;line-height:1.6}'
+  +'h1{font-size:20px;margin:0 0 4px}.sub{color:#667085;font-size:11px;margin-bottom:20px}'
+  +'h2{font-size:14px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #1788FF;page-break-after:avoid}'
+  +'h3{font-size:12.5px;margin:12px 0 3px}p{margin:0 0 10px;color:#344054}'
+  +'.pie{margin-top:26px;padding-top:10px;border-top:1px solid #d0d5dd;text-align:center;font-size:10px;color:#667085;letter-spacing:.04em}'
+  +'@media print{body{padding:0}h3,p{page-break-inside:avoid}}'
+  +'</style></head><body>'
+  +(titularInforme()?'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#1788FF;font-weight:800;margin-bottom:3px">'+esc(titularInforme())+'</div>':'')
+  +'<h1>NexoBalance — Manual de instrucciones y procedimientos</h1>'
+  +'<div class="sub">Tecnología JosmaTech · Versión '+APP_VERSION+'</div>'
+  +MANUAL.map(s=>'<h2>'+esc(s[0])+'</h2>'+s[2].map(t=>'<h3>'+esc(t[0])+'</h3><p>'+esc(t[1])+'</p>').join('')).join('')
+  +piePDF()
+  +'</body></html>';
+}
+function manualPDF(){imprimirDocumento(manualHTML())}
+function manualHTMLDescarga(){descargarHTML('nexobalance_manual_'+APP_VERSION+'.html',manualHTML())}
+
+function titularInforme(){
+  return (S.settings.titular||'').trim()||S.userName||'';
+}
+function piePDF(){
+  return '<div class="pie">NexoBalance · Tecnología JosmaTech · v'+APP_VERSION+'</div>';
+}
+
+// ===== Asistente del manual =====
+// Primero busca en el manual local (funciona sin conexión y no gasta cuota).
+// La IA solo entra cuando la búsqueda no alcanza, y nunca recibe datos financieros.
+const ASIS={q:'',resultados:[],respuesta:'',pensando:false,error:''};
+const ASIS_VACIAS=['como','cómo','que','qué','para','por','con','los','las','del','una','uno','mi','mis','the','de','en','el','la','y','o','a','se','es','un','al','lo','me','te','si','no'];
+function asisTokens(q){
+  return norm(q).split(/[^a-z0-9]+/).filter(t=>t.length>2&&ASIS_VACIAS.indexOf(t)<0);
+}
+function asisRaiz(t){return t.length>6?t.slice(0,6):t}
+// Palabras que la gente usa y no están escritas así en el manual.
+const ASIS_SINONIMOS={cuadra:['coinci','suma','total'],cuadre:['coinci','total'],plata:['dinero'],
+ huella:['biomet'],clave:['contra','pin'],borrar:['elimin'],quitar:['elimin'],
+ fijo:['repite','recurr','fijos'],mensual:['cada mes','repite'],
+ factura:['adjunt','comprob'],foto:['adjunt','imagen'],
+ respaldo:['descar','copia'],copia:['respal','descar'],
+ error:['problem','falla'],falla:['problem','error'],
+ traspa:['transf'],mover:['transf'],cambiar:['edita','modific']};
+function asisExpandir(raices,q){
+  const out=raices.slice();
+  raices.forEach(r=>{const ex=ASIS_SINONIMOS[r];if(ex)ex.forEach(e=>{if(out.indexOf(e)<0)out.push(e)})});
+  return out;
+}
+// Si la pregunta suena a queja o a algo que no funciona, pesa más el
+// apartado de problemas frecuentes.
+function asisEsProblema(q){return /\bno\b|por qu|porqu|error|falla|problema|anda|funciona|desapare|perd/i.test(q)}
+function buscarManual(q){
+  const terms=asisTokens(q);
+  if(!terms.length)return [];
+  const raices=asisExpandir(terms.map(asisRaiz),q);
+  const problema=asisEsProblema(q);
+  const out=[];
+  MANUAL.forEach((sec,si)=>sec[2].forEach((t,ti)=>{
+    const titulo=norm(t[0]),cuerpo=norm(t[1]),seccion=norm(sec[0]);
+    let p=0,cubiertos=0;
+    raices.forEach(r=>{
+      let hit=false;
+      if(titulo.includes(r)){p+=6;hit=true}
+      if(seccion.includes(r)){p+=3;hit=true}
+      if(cuerpo.includes(r)){p+=2;hit=true}
+      if(hit)cubiertos++;
+    });
+    if(!p)return;
+    // Premia cubrir más palabras de la pregunta antes que repetir una sola.
+    p+=(cubiertos/raices.length)*8;
+    if(problema&&sec[0]==='Problemas frecuentes')p+=5;
+    out.push({p,si,ti,sec:sec[0],ic:sec[1],titulo:t[0],texto:t[1]});
+  }));
+  return out.sort((a,b)=>b.p-a.p).slice(0,5);
+}
+function abrirAsistente(){
+  ASIS.q='';ASIS.resultados=[];ASIS.respuesta='';ASIS.error='';ASIS.pensando=false;
+  dibujarAsistente();
+}
+function asisBuscar(){
+  const el=document.getElementById('asisQ');
+  ASIS.q=el?el.value:'';
+  ASIS.respuesta='';ASIS.error='';
+  ASIS.resultados=buscarManual(ASIS.q);
+  dibujarAsistente();
+}
+function asisSugerencia(t){
+  ASIS.q=t;ASIS.respuesta='';ASIS.error='';
+  ASIS.resultados=buscarManual(t);
+  dibujarAsistente();
+}
+async function asisPreguntarIA(){
+  if(!ASIS.q.trim())return toast('Escribe tu pregunta');
+  if(!navigator.onLine)return toast('El asistente necesita conexión. La búsqueda del manual funciona sin ella.');
+  ASIS.pensando=true;ASIS.error='';ASIS.respuesta='';dibujarAsistente();
+  try{
+    const base=ASIS.resultados.length?ASIS.resultados:buscarManual(ASIS.q);
+    const contexto=(base.length?base:MANUAL[0][2].map(t=>({sec:MANUAL[0][0],titulo:t[0],texto:t[1]})))
+      .slice(0,5).map(r=>'['+r.sec+' — '+r.titulo+'] '+r.texto).join('\n\n').slice(0,6000);
+    const{data,error}=await sb.functions.invoke('asistente-manual',{body:{pregunta:ASIS.q.slice(0,400),contexto}});
+    if(error)throw error;
+    if(data&&data.limite){ASIS.error='Alcanzaste el límite de consultas de hoy. La búsqueda del manual sigue disponible.'}
+    else if(data&&data.respuesta)ASIS.respuesta=data.respuesta;
+    else ASIS.error='No se pudo obtener una respuesta. Revisa los temas del manual aquí abajo.';
+  }catch(e){
+    ASIS.error='El asistente no está disponible ahora. Los temas del manual siguen funcionando.';
+  }
+  ASIS.pensando=false;dibujarAsistente();
+}
+function dibujarAsistente(){
+  const sug=['¿Cómo hago una transferencia?','¿Por qué mi saldo no cuadra?','¿Qué es el saldo de apertura?','¿Cómo saco un informe?'];
+  const res=ASIS.resultados.map(r=>
+    '<div style="border-bottom:1px solid var(--line);padding:10px 0">'
+    +'<div style="font-weight:700;font-size:.86rem;margin-bottom:3px">'+r.ic+' '+esc(r.titulo)+'</div>'
+    +'<div class="sub" style="font-size:.82rem;line-height:1.55">'+esc(r.texto)+'</div></div>').join('');
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" style="z-index:220" onclick="if(event.target===this)cerrarManual()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<h2 style="margin-bottom:4px">¿En qué te ayudo?</h2>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:12px">Pregunta cómo hacer algo en la app. Busca en el manual sin conexión; si no encuentra, puede consultar al asistente.</p>'
+  +'<div class="field"><input class="inp" id="asisQ" placeholder="Ej: cómo transfiero entre mis cuentas" value="'+esc(ASIS.q)+'" oninput="ASIS.q=this.value" onkeydown="if(event.key===\'Enter\')asisBuscar()"></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:12px">'
+  +'<button class="btn" style="flex:1" onclick="asisBuscar()">Buscar</button>'
+  +'<button class="btn ghost" style="flex:1" onclick="asisPreguntarIA()"'+(ASIS.pensando?' disabled':'')+'>'+(ASIS.pensando?'Pensando…':'Preguntar')+'</button></div>'
+  +(!ASIS.q&&!ASIS.resultados.length
+    ?'<div class="chips" style="margin-bottom:10px">'+sug.map(t=>'<button class="chip" onclick="asisSugerencia('+JSON.stringify(t).replace(/"/g,'&quot;')+')">'+esc(t)+'</button>').join('')+'</div>'
+    :'')
+  +(ASIS.respuesta
+    ?'<div style="background:var(--chip);border-radius:14px;padding:13px 14px;margin-bottom:12px;font-size:.86rem;line-height:1.6;white-space:pre-wrap">'+esc(ASIS.respuesta)
+     +'<div class="sub" style="font-size:.7rem;margin-top:9px">Respuesta generada a partir del manual. Ante cualquier duda, manda lo que dice el manual.</div></div>'
+    :'')
+  +(ASIS.error?'<div style="background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.35);border-radius:12px;padding:11px 13px;margin-bottom:12px;font-size:.82rem;line-height:1.5">'+esc(ASIS.error)+'</div>':'')
+  +(ASIS.resultados.length?'<div class="sub" style="font-size:.72rem;font-weight:800;letter-spacing:.06em;margin-bottom:4px">EN EL MANUAL</div>'+res:'')
+  +(ASIS.q&&!ASIS.resultados.length&&!ASIS.pensando?'<div class="sub" style="text-align:center;padding:18px 0;font-size:.84rem">No encontré ese tema en el manual. Prueba con otras palabras o toca Preguntar.</div>':'')
+  +'<button class="btn ghost" style="width:100%;margin-top:12px" onclick="abrirManual()">Ver el manual completo</button>'
+  +'<button class="link" style="width:100%;margin-top:8px" onclick="cerrarManual()">Cerrar</button>'
+  +'</div></div>';
+  const el=document.getElementById('asisQ');
+  if(el&&!ASIS.pensando)el.focus();
+}
+
+function infNombreArchivo(){
+  const p=[];
+  if(INF.cuentas.length===1){const c=cuentaById(INF.cuentas[0]);if(c)p.push(norm(c.nombre).replace(/[^a-z0-9]+/g,'-'))}
+  else if(INF.cuentas.length>1)p.push(INF.cuentas.length+'cuentas');
+  else p.push('consolidado');
+  if(INF.moneda)p.push(norm(INF.moneda));
+  if(INF.cats.length)p.push(INF.cats.length+'cat');
+  if(INF.tag)p.push(norm(INF.tag).replace(/[^a-z0-9]+/g,'-'));
+  return 'nexobalance_informe_'+p.join('_')+'_'+INF.desde+'_a_'+INF.hasta+'.csv';
+}
+function exportarInforme(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  const cur=detectPais().cur||'UYU';
+  const rows=[];
+  const sec=t=>rows.push({seccion:t,concepto:'',cantidad:'',ingresos:'',gastos:'',neto:''});
+  if(titularInforme())sec(titularInforme().toUpperCase());
+  sec('BALANCE FINANCIERO ('+INF.desde+' a '+INF.hasta+')');
+  rows.push({seccion:'','concepto':'Saldo inicial',cantidad:'',ingresos:'',gastos:'',neto:r.saldoInicial.toFixed(2)});
+  rows.push({seccion:'',concepto:'Ingresos',cantidad:'',ingresos:r.ingresos.toFixed(2),gastos:'',neto:''});
+  rows.push({seccion:'',concepto:'Gastos',cantidad:'',ingresos:'',gastos:r.gastos.toFixed(2),neto:''});
+  rows.push({seccion:'',concepto:'Resultado',cantidad:'',ingresos:'',gastos:'',neto:r.resultado.toFixed(2)});
+  rows.push({seccion:'',concepto:'Saldo final',cantidad:'',ingresos:'',gastos:'',neto:r.saldoFinal.toFixed(2)});
+  const bloque=(t,filas)=>{
+    if(!filas.length)return;
+    sec(t);
+    for(const f of filas)rows.push({seccion:'',concepto:f.nombre,cantidad:f.n,ingresos:f.ing.toFixed(2),gastos:f.gas.toFixed(2),neto:(f.ing-f.gas).toFixed(2)});
+  };
+  bloque('POR CATEGORIA',r.porCategoria);
+  bloque('POR CUENTA',r.porCuenta);
+  bloque('POR MONEDA',r.porMoneda);
+  bloque('POR FORMA DE PAGO',r.porPago);
+  bloque('FLUJO DE CAJA POR MES',r.porMes);
+  sec('DETALLE DE MOVIMIENTOS');
+  for(const m of r.movimientos){
+    const c=catById(m.categoria_id),cu=cuentaById(m.cuenta_id);
+    rows.push({
+      seccion:m.fecha,
+      concepto:(m.descripcion||'')+(c?' ['+c.name+']':'')+(cu?' ['+cu.nombre+']':'')+(claseDe(m)!=='normal'?' ('+CLASE_ETIQUETA[claseDe(m)]+')':''),
+      cantidad:m.moneda,
+      ingresos:m.tipo==='ingreso'?Number(m.monto).toFixed(2):'',
+      gastos:m.tipo==='gasto'?Number(m.monto).toFixed(2):'',
+      neto:toUYU(m).toFixed(2)
+    });
+  }
+  sec('NexoBalance · Tecnología JosmaTech · v'+APP_VERSION);
+  const csv=toCSV(rows,['seccion','concepto','cantidad','ingresos','gastos','neto']);
+  if(descargarArchivo(infNombreArchivo(),csv)){auditEvento('informe',{desde:INF.desde,hasta:INF.hasta,filas:r.movimientos.length});toast('Informe descargado ✓')}
+}
+
+
+// ===== Bitácora (H-018) — solo lectura, escrita por triggers en el servidor =====
+const BIT={filas:[],cargando:false,tabla:'',accion:'',desde:'',hasta:''};
+const BIT_TABLAS={movements:'Movimientos',accounts:'Cuentas',categories:'Categorías',budgets:'Presupuestos',monthly_plan:'Ingreso esperado',goals:'Metas',recurring:'Movimientos fijos',app:'Aplicación'};
+const BIT_ACCIONES={alta:'Alta',baja:'Baja',cambio:'Cambio'};
+async function auditEvento(tipo,detalle){
+  try{if(navigator.onLine&&S.uid)await sb.rpc('audit_evento',{p_tipo:tipo,p_detalle:detalle||null})}catch(e){}
+}
+async function abrirBitacora(){
+  BIT.cargando=true;dibujarBitacora();
+  try{
+    let q=sb.from('audit_log').select('*').order('creado_en',{ascending:false}).limit(400);
+    if(BIT.tabla)q=q.eq('tabla',BIT.tabla);
+    if(BIT.accion)q=q.eq('accion',BIT.accion);
+    if(BIT.desde)q=q.gte('creado_en',BIT.desde+'T00:00:00Z');
+    if(BIT.hasta)q=q.lte('creado_en',BIT.hasta+'T23:59:59Z');
+    const{data,error}=await q;
+    if(error)throw error;
+    BIT.filas=data||[];
+  }catch(e){
+    BIT.filas=[];
+    if(!navigator.onLine)toast('La bitácora vive en la nube: conéctate para verla');
+    else toast('No se pudo cargar la bitácora');
+  }
+  BIT.cargando=false;dibujarBitacora();
+}
+function bitLeer(){
+  const g=id=>document.getElementById(id);
+  if(g('bitTabla'))BIT.tabla=g('bitTabla').value;
+  if(g('bitAccion'))BIT.accion=g('bitAccion').value;
+  if(g('bitDesde'))BIT.desde=g('bitDesde').value;
+  if(g('bitHasta'))BIT.hasta=g('bitHasta').value;
+}
+function bitAplicar(){bitLeer();abrirBitacora()}
+function bitFecha(iso){
+  try{return new Date(iso).toLocaleString('es-UY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return iso}
+}
+function bitValor(v){
+  if(v===null||v===undefined||v==='')return '—';
+  if(typeof v==='object')return esc(JSON.stringify(v));
+  return esc(String(v));
+}
+function bitResumen(f){
+  const d=f.detalle||{};
+  if(f.accion==='cambio'){
+    const claves=Object.keys(d).filter(k=>d[k]&&typeof d[k]==='object'&&'ahora' in d[k]);
+    return claves.length?claves.slice(0,4).join(', ')+(claves.length>4?' y '+(claves.length-4)+' más':''):'sin detalle';
+  }
+  return d.descripcion||d.nombre||d.name||d.periodo||'—';
+}
+function bitDetalle(f){
+  const d=f.detalle||{};
+  if(f.accion==='cambio'){
+    return Object.keys(d).filter(k=>d[k]&&typeof d[k]==='object'&&'ahora' in d[k]).map(k=>
+      '<div class="row spread" style="font-size:.75rem;padding:4px 0;gap:8px"><span class="sub" style="flex-shrink:0">'+esc(k)+'</span>'
+      +'<span style="text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis">'+bitValor(d[k].antes)+' → <b>'+bitValor(d[k].ahora)+'</b></span></div>').join('');
+  }
+  return Object.keys(d).slice(0,14).map(k=>
+    '<div class="row spread" style="font-size:.75rem;padding:4px 0;gap:8px"><span class="sub">'+esc(k)+'</span>'
+    +'<span style="text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis">'+bitValor(d[k])+'</span></div>').join('');
+}
+function bitToggle(i){
+  const el=document.getElementById('bitD'+i);
+  if(el)el.classList.toggle('hidden');
+}
+function dibujarBitacora(){
+  const opt=(v,t,sel)=>'<option value="'+v+'"'+(sel===v?' selected':'')+'>'+t+'</option>';
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<div class="row spread" style="margin-bottom:4px"><h2>Bitácora</h2>'
+  +'<button class="btn sm ghost" onclick="exportarBitacora()">Exportar</button></div>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:12px">Registro de todo lo que pasó con tus datos. Lo escribe el servidor, no la app: no se puede alterar desde el teléfono.</p>'
+  +'<div class="row" style="gap:8px;margin-bottom:8px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Módulo</label><select class="inp" id="bitTabla" onchange="bitAplicar()">'
+  +opt('','Todos',BIT.tabla)+Object.keys(BIT_TABLAS).map(k=>opt(k,BIT_TABLAS[k],BIT.tabla)).join('')+'</select></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Acción</label><select class="inp" id="bitAccion" onchange="bitAplicar()">'
+  +opt('','Todas',BIT.accion)+Object.keys(BIT_ACCIONES).map(k=>opt(k,BIT_ACCIONES[k],BIT.accion)).join('')+'</select></div></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:12px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Desde</label><input class="inp" id="bitDesde" type="date" value="'+BIT.desde+'" onchange="bitAplicar()"></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Hasta</label><input class="inp" id="bitHasta" type="date" value="'+BIT.hasta+'" onchange="bitAplicar()"></div></div>'
+  +(BIT.cargando
+    ?'<div class="sub" style="text-align:center;padding:26px 0">Cargando…</div>'
+    :(BIT.filas.length
+      ?BIT.filas.map((f,i)=>{
+        const col=f.accion==='alta'?'var(--ok)':(f.accion==='baja'?'var(--bad)':'var(--pri)');
+        return '<div style="border-bottom:1px solid var(--line);padding:9px 0">'
+        +'<div class="row spread" style="gap:8px;cursor:pointer" onclick="bitToggle('+i+')">'
+        +'<div style="min-width:0;flex:1">'
+        +'<div style="font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        +(BIT_TABLAS[f.tabla]||esc(f.tabla))+' · '+esc(bitResumen(f))+'</div>'
+        +'<div class="sub" style="font-size:.73rem">'+bitFecha(f.creado_en)+'</div></div>'
+        +'<span class="pill" style="background:'+col+'1a;color:'+col+';flex-shrink:0">'+(BIT_ACCIONES[f.accion]||esc(f.accion))+'</span></div>'
+        +'<div class="hidden" id="bitD'+i+'" style="margin-top:7px;background:var(--chip);border-radius:10px;padding:8px 10px">'+bitDetalle(f)+'</div>'
+        +'</div>';
+      }).join('')
+      :'<div class="sub" style="text-align:center;padding:26px 0">Sin registros para esos filtros.</div>'))
+  +(BIT.filas.length>=400?'<div class="sub" style="font-size:.73rem;text-align:center;padding:10px 0">Mostrando los 400 más recientes. Acota las fechas para ver más atrás.</div>':'')
+  +'</div></div>';
+}
+function exportarBitacora(){
+  if(!BIT.filas.length)return toast('No hay registros para exportar');
+  const rows=BIT.filas.map(f=>({
+    fecha:f.creado_en,
+    modulo:BIT_TABLAS[f.tabla]||f.tabla,
+    accion:BIT_ACCIONES[f.accion]||f.accion,
+    registro:f.registro_id||'',
+    resumen:bitResumen(f),
+    detalle:JSON.stringify(f.detalle||{})
+  }));
+  const csv=toCSV(rows,['fecha','modulo','accion','registro','resumen','detalle']);
+  if(descargarArchivo('nexobalance_bitacora_'+stamp()+'.csv',csv))toast('Bitácora descargada ✓');
+}
+
+
+// ===== Adjuntos (H-020) — solo en este teléfono, nunca se suben =====
+const ADJ_MAX=5*1024*1024;
+function adjuntosOn(){return !!S.settings.adjuntos}
+async function setAdjuntos(v){S.settings.adjuntos=v;await kvSet('settings',S.settings);render();toast(v?'Adjuntos activados':'Adjuntos desactivados')}
+async function adjuntosDe(movId){
+  try{return (await idbAll('adjuntos')).filter(a=>a.mov_id===movId)}catch(e){return[]}
+}
+async function adjuntosPeso(){
+  try{return (await idbAll('adjuntos')).reduce((s,a)=>s+(a.tam||0),0)}catch(e){return 0}
+}
+function pesoLegible(b){
+  if(b<1024)return b+' B';
+  if(b<1048576)return (b/1024).toFixed(0)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+function comprimirImagen(file){
+  return new Promise(res=>{
+    try{
+      const img=new Image(),url=URL.createObjectURL(file);
+      img.onload=()=>{
+        const max=1600;
+        let{width:w,height:h}=img;
+        if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r)}
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        c.toBlob(b=>{URL.revokeObjectURL(url);res(b||file)},'image/jpeg',0.8);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);res(file)};
+      img.src=url;
+    }catch(e){res(file)}
+  });
+}
+async function adjuntarArchivo(movId,input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  if(!file)return;
+  let blob=file;
+  if(file.type.startsWith('image/'))blob=await comprimirImagen(file);
+  if(blob.size>ADJ_MAX)return toast('El archivo es muy grande (máximo '+pesoLegible(ADJ_MAX)+')');
+  try{
+    await idbPut('adjuntos',{id:uuid(),mov_id:movId,nombre:file.name||'adjunto',tipo:blob.type||file.type||'application/octet-stream',tam:blob.size,blob,created_at:nowISO()});
+    toast('Adjunto guardado');
+    await pintarAdjuntos(movId);
+  }catch(e){toast('No se pudo guardar el adjunto')}
+}
+async function verAdjunto(id){
+  try{
+    const a=(await idbAll('adjuntos')).find(x=>x.id===id);
+    if(!a)return;
+    const url=URL.createObjectURL(a.blob);
+    window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(e){toast('No se pudo abrir el adjunto')}
+}
+async function borrarAdjunto(id,movId){
+  try{await idbDel('adjuntos',id);await pintarAdjuntos(movId);toast('Adjunto eliminado')}
+  catch(e){toast('No se pudo eliminar')}
+}
+async function borrarAdjuntosDe(movId){
+  try{for(const a of await adjuntosDe(movId))await idbDel('adjuntos',a.id)}catch(e){}
+}
+async function pintarAdjuntos(movId){
+  const box=document.getElementById('adjBox');
+  if(!box)return;
+  const lista=await adjuntosDe(movId);
+  box.innerHTML=lista.length
+    ?lista.map(a=>'<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line);gap:8px">'
+      +'<div style="min-width:0;flex:1;cursor:pointer" onclick="verAdjunto(\''+a.id+'\')">'
+      +'<div style="font-size:.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.tipo.startsWith('image/')?'🖼️ ':'📄 ')+esc(a.nombre)+'</div>'
+      +'<div class="sub" style="font-size:.72rem">'+pesoLegible(a.tam||0)+'</div></div>'
+      +'<button class="pill" style="background:var(--chip);color:var(--bad);padding:5px 10px;font-weight:700;flex-shrink:0" onclick="borrarAdjunto(\''+a.id+'\',\''+movId+'\')">Quitar</button></div>').join('')
+    :'<div class="sub" style="font-size:.75rem;padding:4px 0">Sin adjuntos.</div>';
+}
+async function pintarPesoAdjuntos(){
+  const el=document.getElementById('adjPeso');if(!el)return;
+  const b=await adjuntosPeso();
+  el.textContent=b?('Ocupan '+pesoLegible(b)+' en este teléfono · no se sincronizan'):'Fotos y PDFs guardados solo en este teléfono';
+}
+function adjuntosCampo(movId){
+  if(!adjuntosOn())return '';
+  setTimeout(()=>pintarAdjuntos(movId),30);
+  return '<div class="field"><label>Adjuntos</label>'
+    +'<div id="adjBox"></div>'
+    +'<input type="file" id="adjInput" accept="image/*,application/pdf" style="display:none" onchange="adjuntarArchivo(\''+movId+'\',this)">'
+    +'<button class="btn ghost" style="width:100%;margin-top:8px" onclick="document.getElementById(\'adjInput\').click()">Agregar foto o PDF</button>'
+    +'<div class="sub" style="font-size:.72rem;margin-top:6px">Se guardan solo en este teléfono. No se suben ni se sincronizan: si borras la app o cierras sesión borrando tus datos, se van con ellos.</div>'
+    +'</div>';
+}
+
+
+// ===== Cola de sincronización (visor) =====
+const COLA_TIPOS={mov:'Movimiento',acc:'Cuenta',cat:'Categoría',budget:'Presupuesto',plan:'Ingreso esperado',goal:'Meta',rec:'Movimiento fijo'};
+function colaResumen(p){
+  const d=p.data||{};
+  if(p.kind==='mov'){
+    const c=catById(d.categoria_id);
+    return (d.descripcion||(c?c.name:'Movimiento'))+' · '+money(d.monto,d.moneda)+' · '+(d.fecha||'');
+  }
+  return d.descripcion||d.nombre||d.name||d.periodo||d.id||'—';
+}
+async function abrirCola(){
+  let pend=[];
+  try{pend=await idbAll('outbox')}catch(e){}
+  const rech=S.rechazadosIds||[];
+  const fila=p=>{
+    const trabado=rech.indexOf(p.data&&p.data.id)>=0;
+    return '<div style="border-bottom:1px solid var(--line);padding:9px 0">'
+    +'<div class="row spread" style="gap:8px">'
+    +'<div style="min-width:0;flex:1"><div style="font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(colaResumen(p))+'</div>'
+    +'<div class="sub" style="font-size:.73rem">'+(COLA_TIPOS[p.kind]||p.kind)+(trabado?' · el servidor lo rechazó':'')+'</div></div>'
+    +(trabado?'<button class="pill" style="background:var(--chip);color:var(--bad);padding:5px 10px;font-weight:700;flex-shrink:0" onclick="descartarDeCola(\''+p.k+'\')">Descartar</button>':'<span class="pill" style="background:rgba(23,136,255,.14);color:var(--pri);flex-shrink:0">En espera</span>')
+    +'</div></div>';
+  };
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div><h2 style="margin-bottom:4px">Cambios por subir</h2>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:12px">'
+  +(pend.length?'Estos cambios están guardados en tu teléfono y esperan para subir a la nube. No se pierden.':'Todo está subido. No hay nada esperando.')
+  +'</p>'
+  +(pend.length?pend.map(fila).join(''):'')
+  +(pend.length?'<button class="btn" style="margin-top:14px" onclick="closeSheet();sincronizarAhora()">Reintentar ahora</button>':'')
+  +'</div></div>';
+}
+async function sincronizarAhora(){
+  if(!navigator.onLine)return toast('Necesitas Internet para subir tus cambios');
+  toast('Subiendo…');
+  await trySync();
+  const n=S.pendientes;
+  toast(n?n+' cambio(s) siguen esperando':'Todo subido ✓');
+}
+async function descartarDeCola(k){
+  openConfirm('¿Descartar este cambio?','El servidor lo rechazó y no va a poder subir. Si lo descartas, se pierde para siempre.',async()=>{
+    try{await idbDel('outbox',k);updateSyncPill();toast('Descartado');abrirCola()}catch(e){toast('No se pudo descartar')}
+  },'Descartar');
+}
+
 function csvEscape(v){
   const s=(v===null||v===undefined)?'':String(v);
   return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
@@ -2663,7 +4056,7 @@ function exportarMisDatos(){
     };
   }).sort((a,b)=>a.fecha<b.fecha?-1:1);
   const csv=toCSV(rows,['fecha','hora','tipo','monto','moneda','categoria','subcategoria','descripcion','forma_pago','notas']);
-  if(descargarArchivo('nexobalance_mis_movimientos_'+stamp()+'.csv',csv))toast('Archivo descargado ✓');
+  if(descargarArchivo('nexobalance_mis_movimientos_'+stamp()+'.csv',csv)){auditEvento('respaldo',{filas:rows.length});toast('Archivo descargado ✓')}
 }
 async function descargarRespaldoCompleto(){
   if(!navigator.onLine)return toast('Necesitas Internet para generar el respaldo');
@@ -2756,21 +4149,31 @@ document.addEventListener('touchend',e=>{
   else{el.style.transform='';if(bg)bg.classList.remove('dragging')}
 },{passive:true});
 let confirmSheetOpen=false;
-function openConfirm(title,msg,onYes){
+function openConfirm(title,msg,onYes,labelSi){
   confirmSheetOpen=true;
   const h=document.getElementById('sheetHost');
   h.innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div><h2 style="margin-bottom:8px">${esc(title)}</h2>
     <p class="sub" style="margin-bottom:16px">${esc(msg)}</p>
-    <div class="row"><button class="btn ghost" onclick="closeSheet()">Cancelar</button><button class="btn danger" id="confYes">Confirmar</button></div>
+    <div class="row"><button class="btn ghost" onclick="closeSheet()">Cancelar</button><button class="btn danger" id="confYes">${esc(labelSi||'Confirmar')}</button></div>
   </div></div>`;
   document.getElementById('confYes').onclick=async()=>{closeSheet();await onYes()};
 }
 
+function cuentaPorDefecto(){
+  const c=cuentasActivas();
+  if(!c.length)return null;
+  return (c.find(a=>a.principal)||c[0]).id;
+}
 function openMovSheet(id,tipoPreset){
   const m=id?S.movs.find(x=>x.id===id):null;
-  const _accPrin=cuentasActivas().find(a=>a.principal);
-  S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',cuenta_id:_accPrin?_accPrin.id:'',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
+  if(m&&esApertura(m)){
+    if(m.cuenta_id)return editarCuenta(m.cuenta_id);
+    return toast('Este saldo de apertura se edita desde su cuenta');
+  }
+  if(m&&claseDe(m)==='transferencia'&&m.transfer_id)return abrirTransferencia(m.transfer_id);
+  if(m&&claseDe(m)==='ajuste')return toast('Este ajuste se edita desde el saldo inicial del mes, en Presupuesto');
+  S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',cuenta_id:cuentaPorDefecto()||'',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
   drawMovSheet();
 }
 function openMovSheetType(tipo){closeFab();openMovSheet(null,tipo)}
@@ -2795,7 +4198,10 @@ function drawMovSheet(){
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
     <div class="row spread" style="margin-bottom:14px"><h2>${isEdit?'Editar movimiento':'Nuevo movimiento'}</h2>
-    ${isEdit?`<button class="btn sm danger" onclick="delMov('${e.id}')">Eliminar</button>`:''}</div>
+    ${isEdit?`<div class="row" style="gap:7px;flex-shrink:0">
+      <button class="btn sm ghost" onclick="duplicarMov()">Duplicar</button>
+      <button class="btn sm danger" onclick="delMov('${e.id}')">Eliminar</button>
+    </div>`:''}</div>
     <div class="seg" style="margin-bottom:14px">
       <button class="${e.tipo==='gasto'?'on gas':''}" onclick="movTipo('gasto')">Gasto</button>
       <button class="${e.tipo==='ingreso'?'on ing':''}" onclick="movTipo('ingreso')">Ingreso</button>
@@ -2822,7 +4228,7 @@ function drawMovSheet(){
     </div></div>`:''}
     <div class="field"><label>Descripción</label><input class="inp" id="mDesc" placeholder="Ej: Pan tortuga" value="${esc(e.descripcion)}"></div>
     ${cuentasActivas().length?`<div class="field"><label>Cuenta</label><select class="inp" id="mCuenta">
-      <option value="">Sin asignar</option>
+      ${e.cuenta_id?'':'<option value="">Elige una cuenta</option>'}
       ${cuentasActivas().map(a=>`<option value="${a.id}" ${e.cuenta_id===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)}</option>`).join('')}
     </select></div>`:''}
     <div class="row">
@@ -2833,8 +4239,9 @@ function drawMovSheet(){
       <option value="">Sin especificar</option>
       ${PAGOS.map(p=>`<option ${e.forma_pago===p?'selected':''}>${p}</option>`).join('')}
     </select></div>
-    <div class="field"><label>Etiquetas (separadas por coma)</label><input class="inp" id="mTags" placeholder="Ej: feria, niños" value="${esc((e.etiquetas||[]).join(', '))}"></div>
+    <div class="field"><label>Etiquetas (separadas por coma)</label><input class="inp" id="mTags" placeholder="Ej: viaje, casa" value="${esc((e.etiquetas||[]).join(', '))}"></div>
     <div class="field"><label>Notas</label><textarea class="inp" id="mNotas" placeholder="Opcional">${esc(e.notas||'')}</textarea></div>
+    ${adjuntosCampo(e.id)}
     <button class="btn" onclick="saveMov()">${isEdit?'Guardar cambios':'Guardar movimiento'}</button>
     ${isEdit?'':`<button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveMov(true)">Guardar y agregar otro</button>`}
   </div></div>`;
@@ -2845,7 +4252,31 @@ function stageMov(){
   if(!g('mMonto'))return;
   e.monto=g('mMonto').value;e.descripcion=g('mDesc').value;e.fecha=g('mFecha').value;e.hora=g('mHora').value;
   e.forma_pago=g('mPago').value;e.notas=g('mNotas').value;
+  // La cuenta también se conserva: sin esto, cambiar de tipo o de moneda
+  // volvía a dibujar el select y perdía la cuenta que el usuario ya había elegido.
+  if(g('mCuenta'))e.cuenta_id=g('mCuenta').value;
   e.etiquetas=g('mTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+}
+// Duplicar movimiento (H-019): copia lo que hay en pantalla —categoría, cuenta,
+// importe, etiquetas y notas— con id nuevo y fecha/hora de ahora. No guarda solo:
+// deja el formulario listo para revisar antes de confirmar.
+function duplicarMov(){
+  stageMov();
+  const e=S.editingMov;
+  const now=new Date();
+  const copia={...e,
+    id:uuid(),
+    fecha:now.toISOString().slice(0,10),
+    hora:now.toTimeString().slice(0,5),
+    etiquetas:[...(e.etiquetas||[])],
+    clase:'normal',transfer_id:null,
+    deleted:false
+  };
+  delete copia.created_at;delete copia.updated_at;
+  S.editingMov=copia;
+  drawMovSheet();
+  setTimeout(actualizarSimulador,50);
+  toast('Copia lista — revisa y guarda');
 }
 function movTipo(t){stageMov();S.editingMov.tipo=t;S.editingMov.categoria_id='';S.editingMov.subcategoria_id='';drawMovSheet()}
 function movMoneda(m){stageMov();S.editingMov.moneda=m;drawMovSheet();setTimeout(actualizarSimulador,50)}
@@ -2896,6 +4327,8 @@ async function saveMov(seguirAgregando){
   const monto=Number(document.getElementById('mMonto').value);
   if(!monto||monto<=0)return toast('Ingresa un monto mayor a 0');
   if(!document.getElementById('mFecha').value)return toast('Selecciona la fecha');
+  const selCuenta=document.getElementById('mCuenta');
+  if(selCuenta&&cuentasActivas().length&&!selCuenta.value)return toast('Elige en qué cuenta va este movimiento');
   const isEdit=S.movs.some(x=>x.id===e.id);
   const rec={
     id:e.id,user_id:S.uid,tipo:e.tipo,monto:Math.round(monto*100)/100,moneda:e.moneda,
@@ -2906,6 +4339,7 @@ async function saveMov(seguirAgregando){
     notas:document.getElementById('mNotas').value.trim()||null,
     forma_pago:document.getElementById('mPago').value||null,
     etiquetas:document.getElementById('mTags').value.split(',').map(t=>t.trim()).filter(Boolean),
+    clase:claseDe(e),transfer_id:e.transfer_id||null,
     deleted:false,created_at:isEdit?e.created_at:nowISO(),updated_at:nowISO()
   };
   // Actualizar el estado en memoria y persistir en IndexedDB ANTES de cerrar,
@@ -2934,12 +4368,112 @@ async function saveMov(seguirAgregando){
   trySync();
   toast(isEdit?'Movimiento actualizado':'Movimiento guardado'+(navigator.onLine?'':' (se sincronizará al volver la conexión)'));
 }
+function patasTransfer(transferId){
+  return transferId?movsActivos().filter(m=>m.transfer_id===transferId):[];
+}
 function delMov(id){
-  openConfirm('¿Eliminar este movimiento?','Tus totales se actualizarán al instante.',async()=>{
-    const m=S.movs.find(x=>x.id===id);if(!m)return;
-    await enqueue('mov',{...m,deleted:true,updated_at:nowISO()});
-    toast('Movimiento eliminado');
-  });
+  const m0=S.movs.find(x=>x.id===id);
+  const esTransfer=m0&&claseDe(m0)==='transferencia'&&m0.transfer_id;
+  openConfirm(
+    esTransfer?'¿Eliminar esta transferencia?':'¿Eliminar este movimiento?',
+    esTransfer?'Se eliminan las dos patas: la salida y la entrada. Los saldos de ambas cuentas se corrigen al instante.':'Tus totales se actualizarán al instante.',
+    async()=>{
+      const m=S.movs.find(x=>x.id===id);if(!m)return;
+      const t=nowISO();
+      // Las dos patas se van juntas.
+      if(esTransfer){
+        for(const p of patasTransfer(m.transfer_id)){await enqueue('mov',{...p,deleted:true,updated_at:t});await borrarAdjuntosDe(p.id)}
+        toast('Transferencia eliminada');
+        return;
+      }
+      await enqueue('mov',{...m,deleted:true,updated_at:t});
+      await borrarAdjuntosDe(m.id);
+      toast('Movimiento eliminado');
+    });
+}
+
+// Transferencia = dos patas con el mismo transfer_id.
+function abrirTransferencia(transferId){
+  const cuentas=cuentasActivas();
+  if(cuentas.length<2)return toast('Necesitas al menos dos cuentas');
+  const patas=patasTransfer(transferId);
+  const sale=patas.find(m=>m.tipo==='gasto'),entra=patas.find(m=>m.tipo==='ingreso');
+  const hoy=new Date().toISOString().slice(0,10);
+  const origen=sale?sale.cuenta_id:cuentas[0].id;
+  const destino=entra?entra.cuenta_id:(cuentas.find(c=>c.id!==origen)||cuentas[1]).id;
+  window._trEdit=transferId||null;
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row spread" style="margin-bottom:12px"><h2>${transferId?'Editar transferencia':'Transferir entre cuentas'}</h2>
+    ${transferId&&sale?`<button class="btn sm danger" onclick="delMov('${sale.id}')">Eliminar</button>`:''}</div>
+    <p class="sub" style="font-size:.82rem;line-height:1.5;margin-bottom:14px">Mover dinero de una cuenta a otra. No cuenta como ingreso ni como gasto: tu presupuesto y tu balance no se tocan.</p>
+    <div class="field"><label>Desde</label><select class="inp" id="trOrigen" onchange="trRefrescar()">
+      ${cuentas.map(a=>`<option value="${a.id}" ${origen===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)} · ${a.moneda}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Hacia</label><select class="inp" id="trDestino" onchange="trRefrescar()">
+      ${cuentas.map(a=>`<option value="${a.id}" ${destino===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)} · ${a.moneda}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Monto que sale</label>
+      <input class="inp" id="trMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${sale?Number(sale.monto):''}" style="font-size:1.2rem;font-weight:700" oninput="trRefrescar()">
+    </div>
+    <div id="trDestinoBox"></div>
+    <div class="field"><label>Fecha</label><input class="inp" id="trFecha" type="date" value="${sale?sale.fecha:hoy}"></div>
+    <div class="field"><label>Nota</label><input class="inp" id="trDesc" placeholder="Opcional" value="${sale?esc(sale.descripcion||''):''}"></div>
+    <button class="btn" onclick="guardarTransferencia()">${transferId?'Guardar cambios':'Transferir'}</button>
+  </div></div>`;
+  trRefrescar(entra?Number(entra.monto):null);
+}
+function trRefrescar(montoDestinoPrevio){
+  const box=document.getElementById('trDestinoBox');if(!box)return;
+  const o=cuentaById(document.getElementById('trOrigen').value);
+  const d=cuentaById(document.getElementById('trDestino').value);
+  if(!o||!d)return;
+  if(o.id===d.id){box.innerHTML='<div class="sub" style="color:var(--bad);font-weight:600;margin-bottom:12px">Elige dos cuentas distintas.</div>';return}
+  if(o.moneda===d.moneda){box.innerHTML='';return}
+  const monto=Number(document.getElementById('trMonto').value)||0;
+  const tc=Number(S.settings.tc)||40;
+  const sugerido=montoDestinoPrevio!=null?montoDestinoPrevio:(monto?Math.round((o.moneda==='USD'?monto*tc:monto/tc)*100)/100:'');
+  const previo=document.getElementById('trMontoDestino');
+  const valor=previo&&previo.dataset.tocado==='1'?previo.value:sugerido;
+  box.innerHTML=`<div class="field"><label>Monto que entra en ${esc(d.nombre)} (${d.moneda})</label>
+    <input class="inp" id="trMontoDestino" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${valor}" oninput="this.dataset.tocado='1'">
+    <div class="sub" style="font-size:.74rem;margin-top:5px">Las monedas son distintas. Escribe lo que realmente entra: así queda guardado el cambio que te hicieron.</div>
+  </div>`;
+}
+async function guardarTransferencia(){
+  const oid=document.getElementById('trOrigen').value;
+  const did=document.getElementById('trDestino').value;
+  if(oid===did)return toast('Elige dos cuentas distintas');
+  const o=cuentaById(oid),d=cuentaById(did);
+  if(!o||!d)return toast('Selecciona las dos cuentas');
+  const monto=Number(document.getElementById('trMonto').value);
+  if(!monto||monto<=0)return toast('Ingresa un monto mayor a 0');
+  const fecha=document.getElementById('trFecha').value;
+  if(!fecha)return toast('Selecciona la fecha');
+  const elD=document.getElementById('trMontoDestino');
+  let montoDestino=monto;
+  if(o.moneda!==d.moneda){
+    montoDestino=Number(elD?elD.value:0);
+    if(!montoDestino||montoDestino<=0)return toast('Ingresa cuánto entra en la cuenta destino');
+  }
+  const desc=document.getElementById('trDesc').value.trim();
+  const t=nowISO();
+  const tid=window._trEdit||uuid();
+  const patas=patasTransfer(window._trEdit);
+  const viejoSale=patas.find(m=>m.tipo==='gasto'),viejoEntra=patas.find(m=>m.tipo==='ingreso');
+  const base={user_id:S.uid,clase:'transferencia',transfer_id:tid,categoria_id:null,subcategoria_id:null,
+    notas:null,forma_pago:null,etiquetas:[],hora:new Date().toTimeString().slice(0,5),deleted:false,updated_at:t};
+  await enqueue('mov',{...base,
+    id:viejoSale?viejoSale.id:uuid(),created_at:viejoSale?viejoSale.created_at:t,
+    tipo:'gasto',cuenta_id:oid,monto:Math.round(monto*100)/100,moneda:o.moneda,fecha,
+    descripcion:desc||('Transferencia a '+d.nombre)});
+  await enqueue('mov',{...base,
+    id:viejoEntra?viejoEntra.id:uuid(),created_at:viejoEntra?viejoEntra.created_at:t,
+    tipo:'ingreso',cuenta_id:did,monto:Math.round(montoDestino*100)/100,moneda:d.moneda,fecha,
+    descripcion:desc||('Transferencia desde '+o.nombre)});
+  window._trEdit=null;
+  closeSheet();toast('Transferencia registrada');
 }
 
 function openCatSheet(id){
@@ -3025,6 +4559,7 @@ async function doChangePass(){
   if(a!==b)return toast('Las contraseñas no coinciden');
   const{error}=await sb.auth.updateUser({password:a});
   if(error)return toast('No se pudo actualizar. Intenta de nuevo.');
+  await auditEvento('cambio_password');
   closeSheet();toast('Contraseña actualizada');
 }
 
@@ -3249,7 +4784,7 @@ setInterval(()=>{if(navigator.onLine&&S.uid&&!S.syncing)trySync()},45000);
 
 async function shareApp(){
   const url=location.origin+location.pathname;
-  const text='NexoBalance — tus finanzas personales, simples y privadas:';
+  const text='¿Llegas a mitad de mes sin saber en qué se te fue el dinero? NexoBalance te dice cuánto puedes gastar por día y te avisa antes de pasarte:';
   if(navigator.share){
     try{await navigator.share({title:'NexoBalance',text,url})}catch(e){}
   }else{
