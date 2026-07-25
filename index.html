@@ -301,7 +301,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.42.0';
+const APP_VERSION='1.46.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -887,6 +887,7 @@ async function startApp(user,isNew){
       document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===savedTab));
     }
   }catch(e){}
+  try{await autoRegistrarFijos()}catch(e){}
   render();
   // Restaurar posición de scroll tras el render
   try{
@@ -1535,13 +1536,10 @@ function saldoCuenta(id){
 }
 function movsSinCuenta(){return movsActivos().filter(m=>!m.cuenta_id).length}
 
-// El saldo inicial de una cuenta ya no es un campo: es su movimiento de apertura.
-// Estas funciones son el único punto por donde se lee y se escribe.
 function aperturaDe(cuentaId){return movsActivos().find(m=>m.cuenta_id===cuentaId&&esApertura(m))||null}
 function saldoAperturaDe(cuentaId){
   const ap=aperturaDe(cuentaId);
   if(ap)return (ap.tipo==='ingreso'?1:-1)*(Number(ap.monto)||0);
-  // Cuenta todavía sin migrar: se sigue leyendo el campo viejo.
   const a=cuentaById(cuentaId);
   return a?(Number(a.saldo_inicial)||0):0;
 }
@@ -1551,8 +1549,6 @@ function fechaAperturaDe(cuentaId){
   const a=cuentaById(cuentaId);
   return (a&&a.created_at)?String(a.created_at).slice(0,10):new Date().toISOString().slice(0,10);
 }
-// Deja el movimiento de apertura igual al saldo pedido: lo crea, lo actualiza
-// o lo da de baja si el saldo pasa a cero.
 async function sincronizarApertura(cuentaId,saldo,fecha,moneda){
   const ap=aperturaDe(cuentaId);
   const t=nowISO();
@@ -1598,11 +1594,63 @@ function abrirCuentas(){
         </div>
       </div>`;
     }).join(''):'<div class="sub" style="text-align:center;padding:20px 0">Aún no tienes cuentas creadas.</div>'}
-    ${sinAsignar>0?`<div style="background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.35);border-radius:12px;padding:11px 13px;margin-top:12px">
+    ${sinAsignar>0?`<div onclick="abrirSinCuenta()" style="cursor:pointer;background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.35);border-radius:12px;padding:11px 13px;margin-top:12px">
       <div style="font-size:.8rem;line-height:1.45">Tienes <b>${sinAsignar}</b> movimiento${sinAsignar!==1?'s':''} sin cuenta asignada. Siguen contando en tus totales, pero no en el saldo de ninguna cuenta.</div>
+      <div style="font-size:.78rem;font-weight:700;color:var(--pri);margin-top:6px">Asignarlos ahora →</div>
     </div>`:''}
-    <button class="btn" style="margin-top:14px" onclick="editarCuenta()">Agregar cuenta</button>
+    ${cuentas.length>1?`<button class="btn ghost" style="margin-top:14px" onclick="abrirTransferencia()">⇄ Transferir entre cuentas</button>`:''}
+    <button class="btn" style="margin-top:8px" onclick="editarCuenta()">Agregar cuenta</button>
   </div></div>`;
+}
+const PRED_BASES=[
+  {id:'mes',nom:'Todo el mes'},
+  {id:'d7',nom:'Últimos 7 días'},
+  {id:'d30',nom:'Últimos 30 días'}
+];
+function predBase(){return S.settings.predBase||'mes'}
+async function setPredBase(v){S.settings.predBase=v;await kvSet('settings',S.settings);render()}
+function proyectarGasto(pk,diaHoy,diasMes,totalGastado){
+  const base=predBase();
+  const diasRest=Math.max(0,diasMes-diaHoy);
+  if(base==='mes'){
+    const ritmo=diaHoy>0?totalGastado/diaHoy:0;
+    return {total:totalGastado+ritmo*diasRest,ritmo,dias:diaHoy,etiqueta:'tu promedio de todo el mes'};
+  }
+  const n=base==='d7'?7:30;
+  const hasta=new Date();
+  const desde=new Date(hasta.getTime()-(n-1)*86400000);
+  const f=d=>d.toISOString().slice(0,10);
+  const gasto=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=f(desde)&&m.fecha<=f(hasta)).reduce((s,m)=>s+toUYU(m),0);
+  const dias=Math.min(n,diaHoy)||1;
+  const ritmo=gasto/dias;
+  return {total:totalGastado+ritmo*diasRest,ritmo,dias,etiqueta:'tus últimos '+n+' días'};
+}
+function movsSinCuentaLista(){return movsActivos().filter(m=>!m.cuenta_id).sort(cmpMovDesc)}
+function abrirSinCuenta(){
+  const lista=movsSinCuentaLista(),cuentas=cuentasActivas();
+  if(!lista.length)return toast('Todos tus movimientos tienen cuenta');
+  if(!cuentas.length)return toast('Primero crea una cuenta');
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <h2 style="margin-bottom:4px">Movimientos sin cuenta</h2>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:14px">Estos ${lista.length} movimiento${lista.length!==1?'s':''} cuentan en tus totales pero no en el saldo de ninguna cuenta. Asígnalos para que todo cuadre.</p>
+    <div class="field"><label>Asignar todos a</label><select class="inp" id="scCuenta">
+      ${cuentas.map(a=>`<option value="${a.id}">${a.icono||'💵'} ${esc(a.nombre)} · ${a.moneda}</option>`).join('')}
+    </select></div>
+    <button class="btn" style="margin-bottom:14px" onclick="asignarTodosSinCuenta()">Asignar los ${lista.length}</button>
+    <div class="sub" style="font-size:.78rem;margin-bottom:8px">O uno por uno:</div>
+    <div style="max-height:44vh;overflow:auto">${lista.map(m=>movRow(m)).join('')}</div>
+  </div></div>`;
+}
+async function asignarTodosSinCuenta(){
+  const cid=document.getElementById('scCuenta').value;
+  const lista=movsSinCuentaLista();
+  if(!cid||!lista.length)return;
+  closeSheet();
+  const t=nowISO();
+  for(const m of lista)await enqueue('mov',{...m,cuenta_id:cid,updated_at:t});
+  toast(lista.length+' movimiento'+(lista.length!==1?'s':'')+' asignado'+(lista.length!==1?'s':''));
 }
 const ICONOS_CUENTA=['💵','🏦','💳','📱','🗂️','💰','🪙','🏧','💴','🧾'];
 function editarCuenta(id){
@@ -1687,8 +1735,6 @@ async function guardarCuenta(id){
     principal,deleted:false,
     created_at:prev?prev.created_at:t,updated_at:t
   });
-  // El saldo vive en el movimiento de apertura, no en la cuenta. Guardar
-  // siempre reconcilia los dos, así una cuenta sin migrar se corrige sola.
   await sincronizarApertura(idFinal,saldo,fechaAp,window._accMon||'UYU');
   closeSheet();toast(id?'Cuenta actualizada':'Cuenta creada');
 }
@@ -1696,8 +1742,6 @@ async function eliminarCuenta(id){
   const a=cuentaById(id);if(!a)return;
   const conMovs=movsActivos().filter(m=>m.cuenta_id===id).length;
   openConfirm('¿Eliminar '+a.nombre+'?',conMovs?'Los '+conMovs+' movimientos de esta cuenta se conservan, pero quedarán sin cuenta asignada.':'Esta cuenta se eliminará.',async()=>{
-    // La apertura pertenece a la cuenta: si la cuenta se va, se va con ella.
-    // Si no, quedaría sumando al saldo total sin pertenecer a ningún lado.
     const ap=aperturaDe(id);
     if(ap)await enqueue('mov',{...ap,deleted:true,updated_at:nowISO()});
     await enqueue('acc',{...a,deleted:true,updated_at:nowISO()});
@@ -1952,6 +1996,14 @@ function quitarBloqueo(){
 }
 
 function recurrentesActivos(){return S.recurring.filter(r=>!r.deleted&&r.activo)}
+function autoFijos(){return !!S.settings.autoFijos}
+async function setAutoFijos(v){S.settings.autoFijos=v;await kvSet('settings',S.settings);render();toast(v?'Se registrarán solos':'Registro automático desactivado')}
+async function autoRegistrarFijos(){
+  if(!autoFijos())return;
+  const pend=recurrentesPendientes();
+  if(!pend.length)return;
+  for(const r of pend)await registrarRecurrente(r.id);
+}
 function recurrentesPendientes(){
   // Recurrentes cuyo día ya llegó este mes y aún no se registraron
   const pk=periodKey(new Date());
@@ -1989,7 +2041,59 @@ async function registrarTodosRecurrentes(){
 async function omitirRecurrente(id){
   const r=S.recurring.find(x=>x.id===id);if(!r)return;
   await enqueue('rec',{...r,ultimo_periodo:periodKey(new Date()),updated_at:nowISO()});
-  toast('Omitido este mes');
+  closeSheet();toast('Omitido este mes');
+}
+async function pausarRecurrente(id,activo){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  await enqueue('rec',{...r,activo,updated_at:nowISO()});
+  closeSheet();toast(activo?'Reanudado':'Pausado');
+}
+async function duplicarRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  const t=nowISO();
+  await enqueue('rec',{...r,id:uuid(),descripcion:(r.descripcion||'Movimiento fijo')+' (copia)',ultimo_periodo:null,created_at:t,updated_at:t});
+  closeSheet();toast('Copia creada');
+}
+async function reactivarOcurrencia(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  await enqueue('rec',{...r,ultimo_periodo:periodShift(periodKey(new Date()),-1),updated_at:nowISO()});
+  closeSheet();toast('Vuelve a estar pendiente este mes');
+}
+function proximoVencimiento(r){
+  const hoy=new Date(),pk=periodKey(hoy),dia=hoy.getDate();
+  const yaEste=r.ultimo_periodo===pk;
+  const pkObj=(yaEste||Number(r.dia_mes)<dia)?periodShift(pk,1):pk;
+  return fechaRecurrente(r,pkObj);
+}
+function estadoRecurrente(r){
+  if(!r.activo)return {txt:'Pausado',col:'var(--sub)',bg:'var(--chip)'};
+  const pk=periodKey(new Date()),dia=new Date().getDate();
+  if(r.ultimo_periodo===pk)return {txt:'Al día',col:'var(--ok)',bg:'rgba(52,199,89,.14)'};
+  if(Number(r.dia_mes)<=dia)return {txt:'Pendiente',col:'#d97706',bg:'rgba(255,176,32,.16)'};
+  return {txt:'Programado',col:'var(--pri)',bg:'rgba(23,136,255,.14)'};
+}
+function accionesRecurrente(id){
+  const r=S.recurring.find(x=>x.id===id);if(!r)return;
+  const c=catById(r.categoria_id),e=estadoRecurrente(r);
+  const pk=periodKey(new Date()),pendiente=r.activo&&r.ultimo_periodo!==pk&&Number(r.dia_mes)<=new Date().getDate();
+  const btn=(t,fn,cls)=>'<button class="btn '+(cls||'ghost')+'" style="width:100%;margin-bottom:8px" onclick="'+fn+'">'+t+'</button>';
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<h2 style="margin-bottom:4px">'+esc(r.descripcion||(c?c.name:'Movimiento fijo'))+'</h2>'
+  +'<div class="row" style="gap:8px;align-items:center;margin-bottom:14px">'
+  +'<span class="pill" style="background:'+e.bg+';color:'+e.col+'">'+e.txt+'</span>'
+  +'<span class="sub" style="font-size:.8rem">'+(r.tipo==='ingreso'?'+':'−')+money(r.monto,r.moneda)+' · día '+r.dia_mes+'</span></div>'
+  +'<div class="sub" style="font-size:.82rem;margin-bottom:14px">Próximo vencimiento: <b>'+proximoVencimiento(r)+'</b></div>'
+  +(pendiente?btn('Registrar ahora',"registrarRecurrente('"+id+"');closeSheet()",''):'')
+  +(pendiente?btn('Omitir este mes',"omitirRecurrente('"+id+"')"):'')
+  +(r.activo&&r.ultimo_periodo===pk?btn('Volver a dejarlo pendiente',"reactivarOcurrencia('"+id+"')"):'')
+  +btn(r.activo?'Pausar la serie':'Reanudar la serie',"pausarRecurrente('"+id+"',"+(r.activo?'false':'true')+")")
+  +btn('Duplicar',"duplicarRecurrente('"+id+"')")
+  +btn('Editar',"editarRecurrente('"+id+"')")
+  +btn('Eliminar la serie',"eliminarRecurrente('"+id+"')",'danger')
+  +'<button class="link" style="width:100%" onclick="abrirRecurrentes()">Volver</button>'
+  +'</div></div>';
 }
 function recurrentesPendientesCard(){
   const pend=recurrentesPendientes();
@@ -2006,7 +2110,8 @@ function recurrentesPendientesCard(){
         </div>
         <div class="row" style="gap:8px;align-items:center;flex-shrink:0">
           <span class="${r.tipo==='ingreso'?'ok':'bad'}" style="font-weight:700;font-size:.85rem">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)}</span>
-          <button class="pill" style="background:var(--pri);color:#fff;padding:6px 12px;font-weight:700" onclick="registrarRecurrente('${r.id}')">Registrar</button>
+          <button class="pill" style="background:var(--pri);color:#fff;padding:6px 12px;font-weight:700" onclick="event.stopPropagation();registrarRecurrente('${r.id}')">Registrar</button>
+          <button class="pill" style="background:var(--chip);color:var(--sub);padding:6px 10px;font-weight:700" onclick="event.stopPropagation();accionesRecurrente('${r.id}')">···</button>
         </div>
       </div>`;
     }).join('')}
@@ -2021,16 +2126,21 @@ function viewRecurrentes(){
     <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:14px">El alquiler, el teléfono, las remesas o tu salario se repiten cada mes. Regístralos una vez y la app te los recordará.</p>
     ${activos.length?activos.map(r=>{
       const c=catById(r.categoria_id);
-      return `<div class="item" onclick="editarRecurrente('${r.id}')" style="cursor:pointer">
+      const e=estadoRecurrente(r);
+      return `<div class="item" onclick="accionesRecurrente('${r.id}')" style="cursor:pointer;${r.activo?'':'opacity:.6'}">
         <div class="iconbadge" style="background:var(--chip);color:${r.tipo==='ingreso'?'var(--ok)':'var(--bad)'}">${c?c.icon:'🔁'}</div>
         <div class="mtxt">
-          <div>${esc(r.descripcion||(c?c.name:'Movimiento fijo'))}</div>
-          <div class="sub">Día ${r.dia_mes} · ${r.tipo==='ingreso'?'Ingreso':'Gasto'} · ${money(r.monto,r.moneda)}${r.activo?'':' · pausado'}</div>
+          <div>${esc(r.descripcion||(c?c.name:'Movimiento fijo'))} <span class="pill" style="background:${e.bg};color:${e.col};font-size:.55rem">${e.txt}</span></div>
+          <div class="sub">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)} · próximo ${proximoVencimiento(r)}</div>
         </div>
         <span style="color:var(--sub)">${ic('chevron',18)}</span>
       </div>`;
     }).join(''):'<div class="sub" style="text-align:center;padding:20px 0">Aún no tienes movimientos fijos.</div>'}
-    <button class="btn" style="margin-top:14px" onclick="editarRecurrente()">Agregar movimiento fijo</button>
+    <label class="row" style="gap:10px;align-items:center;margin-top:14px;cursor:pointer;background:var(--chip);border-radius:12px;padding:11px 13px">
+      <input type="checkbox" ${autoFijos()?'checked':''} onchange="setAutoFijos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
+      <div><div style="font-weight:600;font-size:.88rem">Registrarlos solos</div><div class="sub" style="font-size:.75rem">Cuando llegue el día, se registran sin que tengas que confirmarlos.</div></div>
+    </label>
+    <button class="btn" style="margin-top:10px" onclick="editarRecurrente()">Agregar movimiento fijo</button>
   </div></div>`;
 }
 function abrirRecurrentes(){document.getElementById('sheetHost').innerHTML=viewRecurrentes()}
@@ -2244,15 +2354,18 @@ function viewPresu(){
   for(const b of buds){totalPresu+=Number(b.monto);if(b.reservado)totalReservado+=Number(b.monto)}
   const[rd1,rd2]=periodRange(pk);
   totalGastado=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=rd1&&m.fecha<=rd2).reduce((s,m)=>s+toUYU(m),0);
-  const disponibleReal=ingresoEsperado-totalGastado-reservadoPendiente(pk);
+  const hayEsperado=ingresoEsperado>0;
+  const baseIngreso=hayEsperado?ingresoEsperado:ingresoRegistrado;
+  const disponibleReal=hayEsperado?(ingresoEsperado-totalGastado-reservadoPendiente(pk)):null;
 
   // Predicción de fin de mes
   const[,d2]=periodRange(pk);
   const diaHoy=esMesActual?hoy.getDate():Number(d2.split('-')[2]);
   const diasMes=Number(d2.split('-')[2]);
   const diasRest=Math.max(0,diasMes-diaHoy);
-  const proyeccion=diaHoy>0?(totalGastado/diaHoy)*diasMes:0;
-  const gastoDiarioRec=diasRest>0?Math.max(0,disponibleReal/diasRest):0;
+  const pred=proyectarGasto(pk,diaHoy,diasMes,totalGastado);
+  const proyeccion=pred.total;
+  const gastoDiarioRec=(disponibleReal!=null&&diasRest>0)?Math.max(0,disponibleReal/diasRest):0;
 
   const selector=`
     <div class="row spread" style="margin-bottom:14px">
@@ -2267,8 +2380,13 @@ function viewPresu(){
         <div style="opacity:.85;font-size:.8rem;font-weight:600">Ingreso esperado</div>
         <button onclick="editarIngresoEsperado()" style="color:#fff;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700">${ingresoEsperado>0?'Editar':'Definir'}</button>
       </div>
-      <div style="font-size:1.7rem;font-weight:800;margin-top:4px;font-size:${fitFont(ingresoEsperado,1.7,0.9,9)}">${localFlag()} ${fmt(ingresoEsperado)}</div>
+      <div style="font-size:1.7rem;font-weight:800;margin-top:4px;font-size:${fitFont(ingresoEsperado,1.7,0.9,9)}">${hayEsperado?localFlag()+' '+fmt(ingresoEsperado):'Sin definir'}</div>
       ${ingresoAnterior>0?`<div style="opacity:.8;font-size:.72rem;margin-top:4px">El mes pasado ingresaste: ${fmt(ingresoAnterior)}</div>`:''}
+      ${!hayEsperado?`<div style="background:rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:.78rem;line-height:1.5">
+        ${ingresoRegistrado>0
+          ?`Ya registraste <b>${localFlag()} ${fmt(ingresoRegistrado)}</b> de ingresos este mes, pero no declaraste cuánto esperas ganar. Sin ese dato no se puede calcular tu disponible ni avisarte si te estás excediendo.`
+          :'Declara cuánto esperas ingresar este mes. Es lo que permite calcular tu disponible, tu gasto diario y las alertas.'}
+      </div>`:''}
       ${ingresoEsperado>0?(()=>{
         const pctReg=Math.min(999,Math.round(ingresoRegistrado/ingresoEsperado*100));
         const falta=ingresoEsperado-ingresoRegistrado;
@@ -2284,7 +2402,7 @@ function viewPresu(){
       <div style="height:1px;background:rgba(255,255,255,.25);margin:12px 0"></div>
       <div class="row" style="gap:14px">
         <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Apartado sin gastar</div><div style="font-weight:800;font-size:${fitFont(reservadoPendiente(pk),1.05,0.7,9)}">${fmt(reservadoPendiente(pk))}</div></div>
-        <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Disponible real</div><div style="font-weight:800;color:${disponibleReal<0?'#FFB3B8':'#fff'};font-size:${fitFont(disponibleReal,1.05,0.7,9)}">${fmt(disponibleReal)}</div></div>
+        <div style="flex:1"><div style="opacity:.8;font-size:.68rem">Disponible real</div><div style="font-weight:800;color:${disponibleReal!=null&&disponibleReal<0?'#FFB3B8':'#fff'};font-size:${disponibleReal==null?'1.05rem':fitFont(disponibleReal,1.05,0.7,9)}">${disponibleReal==null?'—':fmt(disponibleReal)}</div></div>
       </div>
     </div>`;
 
@@ -2304,8 +2422,12 @@ function viewPresu(){
         <div style="font-size:1.5rem">${estado}</div>
         <div style="flex:1">
           <div style="font-weight:700;color:${color}">${txt}</div>
-          <div class="sub" style="margin-top:4px;font-size:.8rem">Llevas gastado <b>${localFlag()} ${fmt(totalGastado)}</b> en ${diaHoy} día${diaHoy!==1?'s':''}. A ese ritmo, cerrarás el mes cerca de <b>${localFlag()} ${fmt(proyeccion)}</b>, frente a tu ingreso de <b>${fmt(ingresoEsperado)}</b>${exceso>0?` — te pasarías por <b style="color:var(--bad)">${fmt(exceso)}</b>`:''}.</div>
+          <div class="sub" style="margin-top:4px;font-size:.8rem">Si no registras más movimientos, cierras el mes en <b>${localFlag()} ${fmt(totalGastado)}</b>. Al ritmo de ${pred.etiqueta} (<b>${localFlag()} ${fmt(pred.ritmo)}</b> por día), cerrarías cerca de <b>${localFlag()} ${fmt(proyeccion)}</b>, frente a tu ingreso de <b>${fmt(ingresoEsperado)}</b>${exceso>0?` — te pasarías por <b style="color:var(--bad)">${fmt(exceso)}</b>`:''}.</div>
         </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="sub" style="font-size:.72rem;margin-bottom:6px">Predicción basada en</div>
+        <div class="chips">${PRED_BASES.map(b=>`<button class="chip ${predBase()===b.id?'on':''}" onclick="setPredBase('${b.id}')">${b.nom}</button>`).join('')}</div>
       </div>
       ${diasRest>0?`<div style="height:1px;background:var(--line);margin:12px 0"></div>
       <div class="row spread"><div class="sub">Quedan ${diasRest} día${diasRest!==1?'s':''}</div><div style="font-weight:800">Puedes gastar ~${localFlag()} ${fmt(gastoDiarioRec)}/día</div></div>`:''}
@@ -2704,7 +2826,8 @@ function tarjetaPresupuestoInicio(oculto){
   for(const b of buds)if(b.reservado)reservado+=Number(b.monto);
   const[d1,d2]=periodRange(pk);
   const gastoMes=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
-  const disponible=ingresoEsp-gastoMes-reservadoPendiente(pk);
+  const hayEsp=ingresoEsp>0;
+  const disponible=hayEsp?(ingresoEsp-gastoMes-reservadoPendiente(pk)):null;
   const salud=saludFinancieraMes(pk);
   const saludColor=salud===null?'var(--sub)':salud>=70?'var(--ok)':salud>=45?'#d97706':'var(--bad)';
   const saludTxt=salud===null?'':salud>=70?'Saludable':salud>=45?'Atención':'En riesgo';
@@ -2714,8 +2837,8 @@ function tarjetaPresupuestoInicio(oculto){
       <h2 style="font-size:1rem">Disponible este mes</h2>
       ${salud!==null?`<span class="pill" style="background:${saludColor}1a;color:${saludColor}">${saludTxt} ${salud}</span>`:''}
     </div>
-    <div class="mid ${disponible>=0?'ok':'bad'}" style="font-size:${fitFont(disponible,1.5,0.9,9)}">${oculto?'••••':localFlag()+' '+fmt(disponible)}</div>
-    <div class="sub" style="font-size:.75rem;margin-top:4px">Ingreso ${localFlag()} ${fmt(ingresoEsp)} · Gastado ${fmt(gastoMes)} · Apartado sin gastar ${fmt(reservadoPendiente(pk))}</div>
+    <div class="mid ${disponible==null?'':(disponible>=0?'ok':'bad')}" style="font-size:${disponible==null?'1.15rem':fitFont(disponible,1.5,0.9,9)}">${disponible==null?'Define tu ingreso':(oculto?'••••':localFlag()+' '+fmt(disponible))}</div>
+    <div class="sub" style="font-size:.75rem;margin-top:4px">${disponible==null?'Sin ingreso esperado no se puede calcular tu disponible. Gastado '+localFlag()+' '+fmt(gastoMes)+' este mes.':'Ingreso '+localFlag()+' '+fmt(ingresoEsp)+' · Gastado '+fmt(gastoMes)+' · Apartado sin gastar '+fmt(reservadoPendiente(pk))}</div>
   </div>`;
 }
 
@@ -2810,6 +2933,7 @@ function viewAjustes(){
     <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirInformes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📊</div><div class="mtxt"><div>Informes</div><div class="sub">Balance, categorías, cuentas y flujo de caja con filtros</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirConfigBloqueo()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔐</div><div class="mtxt"><div>Bloqueo de la aplicación</div><div class="sub">${lockConfig()?'Activado · PIN'+(lockConfig().bio?' y biometría':''):'Protege tus datos con un PIN'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="openPassSheet()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('key',19)}</div><div class="mtxt"><div>Cambiar contraseña</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -3040,6 +3164,200 @@ async function zonaRojaEjecutar(){
     toast('No se pudieron eliminar los datos. Intenta de nuevo.');
   }
 }
+
+// ===== Informes (H-004 / H-013) =====
+const INF={desde:'',hasta:'',cuentas:[],cats:[],moneda:'',pago:'',tag:''};
+function infInicializar(){
+  if(INF.desde)return;
+  const[d1,d2]=periodRange(periodKey(new Date()));
+  INF.desde=d1;INF.hasta=d2;
+}
+function infPreset(tipo){
+  const h=new Date(),p=n=>String(n).padStart(2,'0');
+  const f=d=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  if(tipo==='mes'){const[a,b]=periodRange(periodKey(h));INF.desde=a;INF.hasta=b}
+  if(tipo==='mesant'){const[a,b]=periodRange(periodShift(periodKey(h),-1));INF.desde=a;INF.hasta=b}
+  if(tipo==='trim'){INF.desde=f(new Date(h.getFullYear(),h.getMonth()-2,1));INF.hasta=f(h)}
+  if(tipo==='anio'){INF.desde=h.getFullYear()+'-01-01';INF.hasta=f(h)}
+  dibujarInformes();
+}
+function infToggle(campo,valor){
+  const arr=INF[campo],i=arr.indexOf(valor);
+  i>=0?arr.splice(i,1):arr.push(valor);
+  dibujarInformes();
+}
+function infLeerCampos(){
+  const g=id=>document.getElementById(id);
+  if(g('infDesde'))INF.desde=g('infDesde').value;
+  if(g('infHasta'))INF.hasta=g('infHasta').value;
+  if(g('infMoneda'))INF.moneda=g('infMoneda').value;
+  if(g('infPago'))INF.pago=g('infPago').value;
+  if(g('infTag'))INF.tag=g('infTag').value.trim();
+}
+function infFiltrar(hastaFecha){
+  const hasta=hastaFecha||INF.hasta;
+  return movsActivos().filter(m=>{
+    if(INF.desde&&m.fecha<INF.desde&&!hastaFecha)return false;
+    if(hasta&&m.fecha>hasta)return false;
+    if(INF.cuentas.length&&INF.cuentas.indexOf(m.cuenta_id||'')<0)return false;
+    if(INF.cats.length&&INF.cats.indexOf(m.categoria_id||'')<0)return false;
+    if(INF.moneda&&m.moneda!==INF.moneda)return false;
+    if(INF.pago&&(m.forma_pago||'')!==INF.pago)return false;
+    if(INF.tag&&!(m.etiquetas||[]).some(t=>norm(t).includes(norm(INF.tag))))return false;
+    return true;
+  });
+}
+function calcularInforme(){
+  const enRango=infFiltrar();
+  const previos=infFiltrar('9999-12-31').filter(m=>INF.desde&&m.fecha<INF.desde);
+  const sgn=m=>(m.tipo==='ingreso'?1:-1)*toUYU(m);
+  const saldoInicial=previos.reduce((s,m)=>s+sgn(m),0);
+  const normales=enRango.filter(esNormal);
+  const ingresos=normales.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+toUYU(m),0);
+  const gastos=normales.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+toUYU(m),0);
+  const aperturas=enRango.filter(esApertura).reduce((s,m)=>s+sgn(m),0);
+  const transfer=enRango.filter(m=>claseDe(m)==='transferencia');
+  const saldoFinal=saldoInicial+enRango.reduce((s,m)=>s+sgn(m),0);
+  const agrupar=(lista,clave,nombre)=>{
+    const map=new Map();
+    for(const m of lista){
+      const k=clave(m)||'—';
+      if(!map.has(k))map.set(k,{nombre:nombre(m,k),ing:0,gas:0,n:0});
+      const o=map.get(k);
+      m.tipo==='ingreso'?o.ing+=toUYU(m):o.gas+=toUYU(m);o.n++;
+    }
+    return [...map.values()].sort((a,b)=>(b.ing+b.gas)-(a.ing+a.gas));
+  };
+  const meses=new Map();
+  for(const m of normales){
+    const k=m.fecha.slice(0,7);
+    if(!meses.has(k))meses.set(k,{nombre:k,ing:0,gas:0,n:0});
+    const o=meses.get(k);
+    m.tipo==='ingreso'?o.ing+=toUYU(m):o.gas+=toUYU(m);o.n++;
+  }
+  return {
+    saldoInicial,ingresos,gastos,resultado:ingresos-gastos,saldoFinal,aperturas,
+    nTransfer:transfer.length/2,
+    porCategoria:agrupar(normales,m=>m.categoria_id,(m)=>{const c=catById(m.categoria_id);return c?c.name:'Sin categoría'}),
+    porCuenta:agrupar(enRango,m=>m.cuenta_id,(m)=>{const c=cuentaById(m.cuenta_id);return c?c.nombre:'Sin cuenta'}),
+    porMoneda:agrupar(normales,m=>m.moneda,(m,k)=>k),
+    porPago:agrupar(normales,m=>m.forma_pago,(m,k)=>k),
+    porMes:[...meses.values()].sort((a,b)=>a.nombre<b.nombre?-1:1),
+    movimientos:enRango.sort(cmpMovDesc)
+  };
+}
+function infTabla(titulo,filas){
+  if(!filas.length)return '';
+  return '<div style="margin-top:16px"><div style="font-weight:800;font-size:.85rem;margin-bottom:7px">'+esc(titulo)+'</div>'
+    +filas.map(f=>'<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line);font-size:.82rem">'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f.nombre)+' <span class="sub" style="font-size:.72rem">('+f.n+')</span></span>'
+      +(f.ing?'<span class="ok" style="font-weight:700;margin-left:8px">+'+fmt(f.ing)+'</span>':'')
+      +(f.gas?'<span class="bad" style="font-weight:700;margin-left:8px">−'+fmt(f.gas)+'</span>':'')
+      +'</div>').join('')+'</div>';
+}
+function abrirInformes(){
+  infInicializar();
+  dibujarInformes();
+}
+function dibujarInformes(){
+  infLeerCampos();
+  const r=calcularInforme();
+  const cuentas=cuentasActivas();
+  const cats=activeCats().filter(c=>!c.parent_id);
+  const pagos=[...new Set(movsActivos().map(m=>m.forma_pago).filter(Boolean))];
+  const fila=(et,val,cls)=>'<div class="row spread" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="sub" style="font-size:.83rem">'+et+'</span><span class="'+(cls||'')+'" style="font-weight:800">'+localFlag()+' '+fmt(val)+'</span></div>';
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div>'
+  +'<div class="row spread" style="margin-bottom:12px"><h2>Informes</h2>'
+  +'<button class="btn sm ghost" onclick="exportarInforme()">Exportar</button></div>'
+  +'<div class="chips" style="margin-bottom:10px">'
+  +'<button class="chip" onclick="infPreset(\'mes\')">Este mes</button>'
+  +'<button class="chip" onclick="infPreset(\'mesant\')">Mes pasado</button>'
+  +'<button class="chip" onclick="infPreset(\'trim\')">3 meses</button>'
+  +'<button class="chip" onclick="infPreset(\'anio\')">Este año</button></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:10px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Desde</label><input class="inp" id="infDesde" type="date" value="'+INF.desde+'" onchange="dibujarInformes()"></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Hasta</label><input class="inp" id="infHasta" type="date" value="'+INF.hasta+'" onchange="dibujarInformes()"></div></div>'
+  +(cuentas.length?'<div class="field"><label>Cuentas</label><div class="chips">'
+    +cuentas.map(a=>'<button class="chip '+(INF.cuentas.indexOf(a.id)>=0?'on':'')+'" onclick="infToggle(\'cuentas\',\''+a.id+'\')">'+(a.icono||'💵')+' '+esc(a.nombre)+'</button>').join('')
+    +'</div><div class="sub" style="font-size:.72rem;margin-top:5px">'+(INF.cuentas.length?'Filtrando '+INF.cuentas.length+' cuenta(s)':'Consolidado: todas las cuentas')+'</div></div>':'')
+  +'<div class="field"><label>Categorías</label><div class="chips">'
+    +cats.map(c=>'<button class="chip '+(INF.cats.indexOf(c.id)>=0?'on':'')+'" onclick="infToggle(\'cats\',\''+c.id+'\')">'+esc(c.name)+'</button>').join('')+'</div></div>'
+  +'<div class="row" style="gap:8px;margin-bottom:10px">'
+  +'<div class="field" style="flex:1;margin:0"><label>Moneda</label><select class="inp" id="infMoneda" onchange="dibujarInformes()">'
+    +'<option value="">Todas</option><option value="UYU"'+(INF.moneda==='UYU'?' selected':'')+'>'+(detectPais().cur||'UYU')+'</option><option value="USD"'+(INF.moneda==='USD'?' selected':'')+'>USD</option></select></div>'
+  +'<div class="field" style="flex:1;margin:0"><label>Forma de pago</label><select class="inp" id="infPago" onchange="dibujarInformes()">'
+    +'<option value="">Todas</option>'+pagos.map(p=>'<option value="'+esc(p)+'"'+(INF.pago===p?' selected':'')+'>'+esc(p)+'</option>').join('')+'</select></div></div>'
+  +'<div class="field"><label>Etiqueta</label><input class="inp" id="infTag" placeholder="Opcional" value="'+esc(INF.tag)+'" onchange="dibujarInformes()"></div>'
+  +'<div class="card" style="margin-top:6px">'
+  +'<div style="font-weight:800;margin-bottom:6px">Balance financiero</div>'
+  +fila('Saldo inicial',r.saldoInicial)
+  +fila('Ingresos',r.ingresos,'ok')
+  +fila('Gastos',r.gastos,'bad')
+  +fila('Resultado',r.resultado,r.resultado>=0?'ok':'bad')
+  +(r.aperturas?fila('Saldos de apertura',r.aperturas):'')
+  +fila('Saldo final',r.saldoFinal,r.saldoFinal>=0?'ok':'bad')
+  +(r.nTransfer?'<div class="sub" style="font-size:.75rem;margin-top:8px">'+r.nTransfer+' transferencia(s) interna(s) en el período. No afectan ingresos, gastos ni resultado.</div>':'')
+  +'</div>'
+  +'<div class="card">'
+  +infTabla('Por categoría',r.porCategoria)
+  +infTabla('Por cuenta',r.porCuenta)
+  +infTabla('Por moneda',r.porMoneda)
+  +infTabla('Por forma de pago',r.porPago)
+  +infTabla('Flujo de caja por mes',r.porMes)
+  +'</div>'
+  +'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>'
+  +'</div></div>';
+}
+function infNombreArchivo(){
+  const p=[];
+  if(INF.cuentas.length===1){const c=cuentaById(INF.cuentas[0]);if(c)p.push(norm(c.nombre).replace(/[^a-z0-9]+/g,'-'))}
+  else if(INF.cuentas.length>1)p.push(INF.cuentas.length+'cuentas');
+  else p.push('consolidado');
+  if(INF.moneda)p.push(norm(INF.moneda));
+  if(INF.cats.length)p.push(INF.cats.length+'cat');
+  if(INF.tag)p.push(norm(INF.tag).replace(/[^a-z0-9]+/g,'-'));
+  return 'nexobalance_informe_'+p.join('_')+'_'+INF.desde+'_a_'+INF.hasta+'.csv';
+}
+function exportarInforme(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  const cur=detectPais().cur||'UYU';
+  const rows=[];
+  const sec=t=>rows.push({seccion:t,concepto:'',cantidad:'',ingresos:'',gastos:'',neto:''});
+  sec('BALANCE FINANCIERO ('+INF.desde+' a '+INF.hasta+')');
+  rows.push({seccion:'','concepto':'Saldo inicial',cantidad:'',ingresos:'',gastos:'',neto:r.saldoInicial.toFixed(2)});
+  rows.push({seccion:'',concepto:'Ingresos',cantidad:'',ingresos:r.ingresos.toFixed(2),gastos:'',neto:''});
+  rows.push({seccion:'',concepto:'Gastos',cantidad:'',ingresos:'',gastos:r.gastos.toFixed(2),neto:''});
+  rows.push({seccion:'',concepto:'Resultado',cantidad:'',ingresos:'',gastos:'',neto:r.resultado.toFixed(2)});
+  rows.push({seccion:'',concepto:'Saldo final',cantidad:'',ingresos:'',gastos:'',neto:r.saldoFinal.toFixed(2)});
+  const bloque=(t,filas)=>{
+    if(!filas.length)return;
+    sec(t);
+    for(const f of filas)rows.push({seccion:'',concepto:f.nombre,cantidad:f.n,ingresos:f.ing.toFixed(2),gastos:f.gas.toFixed(2),neto:(f.ing-f.gas).toFixed(2)});
+  };
+  bloque('POR CATEGORIA',r.porCategoria);
+  bloque('POR CUENTA',r.porCuenta);
+  bloque('POR MONEDA',r.porMoneda);
+  bloque('POR FORMA DE PAGO',r.porPago);
+  bloque('FLUJO DE CAJA POR MES',r.porMes);
+  sec('DETALLE DE MOVIMIENTOS');
+  for(const m of r.movimientos){
+    const c=catById(m.categoria_id),cu=cuentaById(m.cuenta_id);
+    rows.push({
+      seccion:m.fecha,
+      concepto:(m.descripcion||'')+(c?' ['+c.name+']':'')+(cu?' ['+cu.nombre+']':'')+(claseDe(m)!=='normal'?' ('+CLASE_ETIQUETA[claseDe(m)]+')':''),
+      cantidad:m.moneda,
+      ingresos:m.tipo==='ingreso'?Number(m.monto).toFixed(2):'',
+      gastos:m.tipo==='gasto'?Number(m.monto).toFixed(2):'',
+      neto:toUYU(m).toFixed(2)
+    });
+  }
+  const csv=toCSV(rows,['seccion','concepto','cantidad','ingresos','gastos','neto']);
+  if(descargarArchivo(infNombreArchivo(),csv))toast('Informe descargado ✓');
+}
+
 function csvEscape(v){
   const s=(v===null||v===undefined)?'':String(v);
   return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
@@ -3183,16 +3501,19 @@ function openConfirm(title,msg,onYes,labelSi){
   document.getElementById('confYes').onclick=async()=>{closeSheet();await onYes()};
 }
 
+function cuentaPorDefecto(){
+  const c=cuentasActivas();
+  if(!c.length)return null;
+  return (c.find(a=>a.principal)||c[0]).id;
+}
 function openMovSheet(id,tipoPreset){
   const m=id?S.movs.find(x=>x.id===id):null;
-  // Una apertura no se edita como un movimiento suelto: quitarle la cuenta o
-  // cambiarle la clase la volvería inválida y el servidor la rechazaría.
   if(m&&esApertura(m)){
     if(m.cuenta_id)return editarCuenta(m.cuenta_id);
     return toast('Este saldo de apertura se edita desde su cuenta');
   }
-  const _accPrin=cuentasActivas().find(a=>a.principal);
-  S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',cuenta_id:_accPrin?_accPrin.id:'',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
+  if(m&&claseDe(m)==='transferencia'&&m.transfer_id)return abrirTransferencia(m.transfer_id);
+  S.editingMov=m?{...m}:{id:uuid(),tipo:tipoPreset||'gasto',monto:'',moneda:'UYU',cuenta_id:cuentaPorDefecto()||'',fecha:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5),categoria_id:'',subcategoria_id:'',descripcion:'',notas:'',forma_pago:'',etiquetas:[]};
   drawMovSheet();
 }
 function openMovSheetType(tipo){closeFab();openMovSheet(null,tipo)}
@@ -3247,7 +3568,7 @@ function drawMovSheet(){
     </div></div>`:''}
     <div class="field"><label>Descripción</label><input class="inp" id="mDesc" placeholder="Ej: Pan tortuga" value="${esc(e.descripcion)}"></div>
     ${cuentasActivas().length?`<div class="field"><label>Cuenta</label><select class="inp" id="mCuenta">
-      <option value="">Sin asignar</option>
+      ${e.cuenta_id?'':'<option value="">Elige una cuenta</option>'}
       ${cuentasActivas().map(a=>`<option value="${a.id}" ${e.cuenta_id===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)}</option>`).join('')}
     </select></div>`:''}
     <div class="row">
@@ -3345,6 +3666,8 @@ async function saveMov(seguirAgregando){
   const monto=Number(document.getElementById('mMonto').value);
   if(!monto||monto<=0)return toast('Ingresa un monto mayor a 0');
   if(!document.getElementById('mFecha').value)return toast('Selecciona la fecha');
+  const selCuenta=document.getElementById('mCuenta');
+  if(selCuenta&&cuentasActivas().length&&!selCuenta.value)return toast('Elige en qué cuenta va este movimiento');
   const isEdit=S.movs.some(x=>x.id===e.id);
   const rec={
     id:e.id,user_id:S.uid,tipo:e.tipo,monto:Math.round(monto*100)/100,moneda:e.moneda,
@@ -3384,12 +3707,111 @@ async function saveMov(seguirAgregando){
   trySync();
   toast(isEdit?'Movimiento actualizado':'Movimiento guardado'+(navigator.onLine?'':' (se sincronizará al volver la conexión)'));
 }
+function patasTransfer(transferId){
+  return transferId?movsActivos().filter(m=>m.transfer_id===transferId):[];
+}
 function delMov(id){
-  openConfirm('¿Eliminar este movimiento?','Tus totales se actualizarán al instante.',async()=>{
-    const m=S.movs.find(x=>x.id===id);if(!m)return;
-    await enqueue('mov',{...m,deleted:true,updated_at:nowISO()});
-    toast('Movimiento eliminado');
-  });
+  const m0=S.movs.find(x=>x.id===id);
+  const esTransfer=m0&&claseDe(m0)==='transferencia'&&m0.transfer_id;
+  openConfirm(
+    esTransfer?'¿Eliminar esta transferencia?':'¿Eliminar este movimiento?',
+    esTransfer?'Se eliminan las dos patas: la salida y la entrada. Los saldos de ambas cuentas se corrigen al instante.':'Tus totales se actualizarán al instante.',
+    async()=>{
+      const m=S.movs.find(x=>x.id===id);if(!m)return;
+      const t=nowISO();
+      // Las dos patas se van juntas.
+      if(esTransfer){
+        for(const p of patasTransfer(m.transfer_id))await enqueue('mov',{...p,deleted:true,updated_at:t});
+        toast('Transferencia eliminada');
+        return;
+      }
+      await enqueue('mov',{...m,deleted:true,updated_at:t});
+      toast('Movimiento eliminado');
+    });
+}
+
+// Transferencia = dos patas con el mismo transfer_id.
+function abrirTransferencia(transferId){
+  const cuentas=cuentasActivas();
+  if(cuentas.length<2)return toast('Necesitas al menos dos cuentas');
+  const patas=patasTransfer(transferId);
+  const sale=patas.find(m=>m.tipo==='gasto'),entra=patas.find(m=>m.tipo==='ingreso');
+  const hoy=new Date().toISOString().slice(0,10);
+  const origen=sale?sale.cuenta_id:cuentas[0].id;
+  const destino=entra?entra.cuenta_id:(cuentas.find(c=>c.id!==origen)||cuentas[1]).id;
+  window._trEdit=transferId||null;
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row spread" style="margin-bottom:12px"><h2>${transferId?'Editar transferencia':'Transferir entre cuentas'}</h2>
+    ${transferId&&sale?`<button class="btn sm danger" onclick="delMov('${sale.id}')">Eliminar</button>`:''}</div>
+    <p class="sub" style="font-size:.82rem;line-height:1.5;margin-bottom:14px">Mover dinero de una cuenta a otra. No cuenta como ingreso ni como gasto: tu presupuesto y tu balance no se tocan.</p>
+    <div class="field"><label>Desde</label><select class="inp" id="trOrigen" onchange="trRefrescar()">
+      ${cuentas.map(a=>`<option value="${a.id}" ${origen===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)} · ${a.moneda}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Hacia</label><select class="inp" id="trDestino" onchange="trRefrescar()">
+      ${cuentas.map(a=>`<option value="${a.id}" ${destino===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)} · ${a.moneda}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Monto que sale</label>
+      <input class="inp" id="trMonto" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${sale?Number(sale.monto):''}" style="font-size:1.2rem;font-weight:700" oninput="trRefrescar()">
+    </div>
+    <div id="trDestinoBox"></div>
+    <div class="field"><label>Fecha</label><input class="inp" id="trFecha" type="date" value="${sale?sale.fecha:hoy}"></div>
+    <div class="field"><label>Nota</label><input class="inp" id="trDesc" placeholder="Opcional" value="${sale?esc(sale.descripcion||''):''}"></div>
+    <button class="btn" onclick="guardarTransferencia()">${transferId?'Guardar cambios':'Transferir'}</button>
+  </div></div>`;
+  trRefrescar(entra?Number(entra.monto):null);
+}
+function trRefrescar(montoDestinoPrevio){
+  const box=document.getElementById('trDestinoBox');if(!box)return;
+  const o=cuentaById(document.getElementById('trOrigen').value);
+  const d=cuentaById(document.getElementById('trDestino').value);
+  if(!o||!d)return;
+  if(o.id===d.id){box.innerHTML='<div class="sub" style="color:var(--bad);font-weight:600;margin-bottom:12px">Elige dos cuentas distintas.</div>';return}
+  if(o.moneda===d.moneda){box.innerHTML='';return}
+  const monto=Number(document.getElementById('trMonto').value)||0;
+  const tc=Number(S.settings.tc)||40;
+  const sugerido=montoDestinoPrevio!=null?montoDestinoPrevio:(monto?Math.round((o.moneda==='USD'?monto*tc:monto/tc)*100)/100:'');
+  const previo=document.getElementById('trMontoDestino');
+  const valor=previo&&previo.dataset.tocado==='1'?previo.value:sugerido;
+  box.innerHTML=`<div class="field"><label>Monto que entra en ${esc(d.nombre)} (${d.moneda})</label>
+    <input class="inp" id="trMontoDestino" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${valor}" oninput="this.dataset.tocado='1'">
+    <div class="sub" style="font-size:.74rem;margin-top:5px">Las monedas son distintas. Escribe lo que realmente entra: así queda guardado el cambio que te hicieron.</div>
+  </div>`;
+}
+async function guardarTransferencia(){
+  const oid=document.getElementById('trOrigen').value;
+  const did=document.getElementById('trDestino').value;
+  if(oid===did)return toast('Elige dos cuentas distintas');
+  const o=cuentaById(oid),d=cuentaById(did);
+  if(!o||!d)return toast('Selecciona las dos cuentas');
+  const monto=Number(document.getElementById('trMonto').value);
+  if(!monto||monto<=0)return toast('Ingresa un monto mayor a 0');
+  const fecha=document.getElementById('trFecha').value;
+  if(!fecha)return toast('Selecciona la fecha');
+  const elD=document.getElementById('trMontoDestino');
+  let montoDestino=monto;
+  if(o.moneda!==d.moneda){
+    montoDestino=Number(elD?elD.value:0);
+    if(!montoDestino||montoDestino<=0)return toast('Ingresa cuánto entra en la cuenta destino');
+  }
+  const desc=document.getElementById('trDesc').value.trim();
+  const t=nowISO();
+  const tid=window._trEdit||uuid();
+  const patas=patasTransfer(window._trEdit);
+  const viejoSale=patas.find(m=>m.tipo==='gasto'),viejoEntra=patas.find(m=>m.tipo==='ingreso');
+  const base={user_id:S.uid,clase:'transferencia',transfer_id:tid,categoria_id:null,subcategoria_id:null,
+    notas:null,forma_pago:null,etiquetas:[],hora:new Date().toTimeString().slice(0,5),deleted:false,updated_at:t};
+  await enqueue('mov',{...base,
+    id:viejoSale?viejoSale.id:uuid(),created_at:viejoSale?viejoSale.created_at:t,
+    tipo:'gasto',cuenta_id:oid,monto:Math.round(monto*100)/100,moneda:o.moneda,fecha,
+    descripcion:desc||('Transferencia a '+d.nombre)});
+  await enqueue('mov',{...base,
+    id:viejoEntra?viejoEntra.id:uuid(),created_at:viejoEntra?viejoEntra.created_at:t,
+    tipo:'ingreso',cuenta_id:did,monto:Math.round(montoDestino*100)/100,moneda:d.moneda,fecha,
+    descripcion:desc||('Transferencia desde '+o.nombre)});
+  window._trEdit=null;
+  closeSheet();toast('Transferencia registrada');
 }
 
 function openCatSheet(id){
