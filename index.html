@@ -301,7 +301,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.48.0';
+const APP_VERSION='1.49.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -364,7 +364,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,rechazadosIds:[],editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -662,6 +662,7 @@ async function trySync(){
       const idsFallidos=new Set(fallidos.map(f=>f&&f.id).filter(Boolean));
       if(fallidos.length){
         S.rechazados=fallidos.length;
+        S.rechazadosIds=fallidos.map(f=>f&&f.id).filter(Boolean);
         logSyncError('sync_push_rechazo',JSON.stringify(fallidos).slice(0,480));
       }
 
@@ -683,7 +684,7 @@ let _avisoRechazo=false;
 function avisarRechazos(){
   if(!S.rechazados||_avisoRechazo)return;
   _avisoRechazo=true;
-  toast('Algunos registros esperan para subir. Se reintenta solo.');
+  toast('Algunos cambios esperan para subir. Míralos en Ajustes → Cambios por subir.');
 }
 
 async function pullAll(completo){
@@ -719,6 +720,7 @@ async function pullAll(completo){
   await kvSet('lastPull',maxT);
   if(completo)await kvSet('lastFull',new Date().toISOString());
   updateSyncPill();
+  if(S.tab==='ajustes')pintarPesoAdjuntos();
   return cambios;
 }
 
@@ -738,6 +740,7 @@ async function sincronizacionCompleta(silenciosa){
 
 function pintarSyncPill(){
   const el=document.getElementById('syncPill');if(!el)return;
+  el.style.cursor='pointer';el.onclick=abrirCola;
   const n=S.pendientes;
   if(!navigator.onLine){el.textContent=n?('Sin conexión · '+n+' por subir'):'Sin conexión · guardando local';el.className='pill off';return}
   if(S.syncing){el.textContent='Sincronizando…';el.className='pill syncing';return}
@@ -2027,7 +2030,7 @@ async function registrarRecurrente(id){
   await enqueue('mov',{
     id:uuid(),user_id:S.uid,tipo:r.tipo,monto:Number(r.monto),moneda:r.moneda||'UYU',
     fecha:fechaRecurrente(r,pk),hora:new Date().toTimeString().slice(0,5),
-    categoria_id:r.categoria_id||'',subcategoria_id:r.subcategoria_id||'',cuenta_id:r.cuenta_id||'',
+    categoria_id:r.categoria_id||'',subcategoria_id:r.subcategoria_id||'',cuenta_id:r.cuenta_id||cuentaPorDefecto()||'',
     descripcion:r.descripcion||'',notas:'',forma_pago:'',etiquetas:[],
     deleted:false,created_at:t,updated_at:t
   });
@@ -2133,7 +2136,7 @@ function viewRecurrentes(){
         <div class="iconbadge" style="background:var(--chip);color:${r.tipo==='ingreso'?'var(--ok)':'var(--bad)'}">${c?c.icon:'🔁'}</div>
         <div class="mtxt">
           <div>${esc(r.descripcion||(c?c.name:'Movimiento fijo'))} <span class="pill" style="background:${e.bg};color:${e.col};font-size:.55rem">${e.txt}</span></div>
-          <div class="sub">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)} · próximo ${proximoVencimiento(r)}</div>
+          <div class="sub">${r.tipo==='ingreso'?'+':'−'}${money(r.monto,r.moneda)} · próximo ${proximoVencimiento(r)}${(!r.cuenta_id&&cuentasActivas().length)?' · <b style="color:#d97706">sin cuenta</b>':''}</div>
         </div>
         <span style="color:var(--sub)">${ic('chevron',18)}</span>
       </div>`;
@@ -2172,6 +2175,11 @@ function editarRecurrente(id){
         ${cats.map(c=>`<option value="${c.id}" ${r&&r.categoria_id===c.id?'selected':''}>${c.icon} ${esc(c.name)}</option>`).join('')}
       </select>
     </div>
+    ${cuentasActivas().length?`<div class="field"><label>Cuenta</label>
+      <select class="inp" id="rcCuenta">
+        ${cuentasActivas().map(a=>`<option value="${a.id}" ${(r?r.cuenta_id:cuentaPorDefecto())===a.id?'selected':''}>${a.icono||'💵'} ${esc(a.nombre)}</option>`).join('')}
+      </select>
+    </div>`:''}
     <div class="field"><label>Día del mes en que ocurre</label><input class="inp" id="rcDia" type="number" inputmode="numeric" min="1" max="31" value="${r?r.dia_mes:1}"></div>
     ${r?`<label class="row" style="gap:10px;align-items:center;margin-bottom:16px;cursor:pointer">
       <input type="checkbox" id="rcActivo" ${r.activo?'checked':''} style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)">
@@ -2189,13 +2197,16 @@ async function guardarRecurrente(id){
   const cat=document.getElementById('rcCat').value;
   const dia=Math.max(1,Math.min(31,Number(document.getElementById('rcDia').value)||1));
   const activoEl=document.getElementById('rcActivo');
+  const selCta=document.getElementById('rcCuenta');
+  const cuentaRec=selCta?selCta.value:(id?(S.recurring.find(x=>x.id===id)||{}).cuenta_id:cuentaPorDefecto());
   if(!monto||monto<=0)return toast('Ingresa un monto válido');
+  if(cuentasActivas().length&&!cuentaRec)return toast('Elige en qué cuenta va este movimiento fijo');
   const prev=id?S.recurring.find(x=>x.id===id):null;
   const t=nowISO();
   await enqueue('rec',{
     id:id||uuid(),user_id:S.uid,tipo:window._recTipo||'gasto',
     monto:Math.round(monto*100)/100,moneda:window._recMon||'UYU',
-    categoria_id:cat||'',subcategoria_id:'',descripcion:desc,dia_mes:dia,
+    categoria_id:cat||'',subcategoria_id:'',cuenta_id:cuentaRec||'',descripcion:desc,dia_mes:dia,
     activo:activoEl?activoEl.checked:true,
     ultimo_periodo:prev?prev.ultimo_periodo:null,
     deleted:false,created_at:prev?prev.created_at:t,updated_at:t
@@ -2855,7 +2866,7 @@ const AYUDA={
     titulo:'Movimientos',
     que:'Es el historial completo de tu dinero, ordenado del más reciente al más antiguo. Cada ingreso y gasto queda aquí, y puedes buscarlo, filtrarlo, editarlo o duplicarlo.',
     ejemplo:'Quieres ver cuánto gastaste en comida esta semana. Escribes "comida" en el buscador o tocas esa categoría en los filtros, y ves todos esos gastos sumados abajo.',
-    pasos:['Toca el botón azul + para registrar un ingreso o gasto.','Escribe el monto, elige la categoría, la cuenta y guarda.','El buscador encuentra por categoría, cuenta, descripción, etiqueta, nota, forma de pago o monto; no hace falta escribir la palabra completa ni los acentos.','Filtra por tipo (ingreso o gasto), por fechas Desde/Hasta y por varias categorías a la vez.','El total de arriba se recalcula con los filtros que tengas puestos.','Toca cualquier movimiento para editarlo, duplicarlo o eliminarlo.']
+    pasos:['Toca el botón azul + para registrar un ingreso o gasto.','Escribe el monto, elige la categoría, la cuenta y guarda.','El buscador encuentra por categoría, cuenta, descripción, etiqueta, nota, forma de pago o monto; no hace falta escribir la palabra completa ni los acentos.','Filtra por tipo (ingreso o gasto), por fechas Desde/Hasta y por varias categorías a la vez.','El total de arriba se recalcula con los filtros que tengas puestos.','Toca cualquier movimiento para editarlo, duplicarlo o eliminarlo.','Los saldos de apertura y las transferencias aparecen marcados: se editan desde su cuenta, no aquí.','Si activaste los adjuntos, puedes guardarle una foto o un PDF a cada movimiento.']
   },
   cats:{
     titulo:'Categorías',
@@ -2867,13 +2878,13 @@ const AYUDA={
     titulo:'Presupuesto',
     que:'Aquí planificas tu mes: declaras cuánto esperas ingresar, asignas un límite de gasto a cada categoría, proteges el dinero de tus obligaciones y te pones metas de ahorro. La app predice si te excederás, te dice cuánto puedes gastar por día y calcula tu salud financiera.',
     ejemplo:'Declaras un ingreso de $44.000, apartas $12.500 para la renta y $3.000 para ahorro. La app te dice que puedes gastar $850 por día, y que a tu ritmo de ahorro tendrás el televisor que quieres en 4 meses.',
-    pasos:['Toca "Definir" y declara tu ingreso esperado del mes: sin ese dato los cálculos no tienen contra qué compararse.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler, remesas o ahorro.','Mira "Puedes gastar hasta X/día" para no excederte.','Cambia de mes con el selector de arriba para revisar o planificar otro período.','Ponte una meta (un TV, unas vacaciones) y la app calcula cuándo la alcanzas.','Revisa el semáforo 🟢🟡🔴, tu salud financiera y las recomendaciones.']
+    pasos:['Toca "Definir" y declara tu ingreso esperado del mes: sin ese dato no se puede calcular tu disponible.','Toca cada categoría para asignarle un presupuesto.','Marca "Obligación reservada" en gastos fijos como alquiler, remesas o ahorro.','Mira "Puedes gastar hasta X/día" para no excederte.','En la predicción, elige la base del cálculo: todo el mes, los últimos 7 días o los últimos 30.','Cambia de mes con el selector de arriba para revisar o planificar otro período.','Ponte una meta (un TV, unas vacaciones) y la app calcula cuándo la alcanzas.','Revisa el semáforo 🟢🟡🔴, tu salud financiera y las recomendaciones.']
   },
   ajustes:{
     titulo:'Ajustes',
-    que:'Configuras la app a tu gusto y administras tus datos: cuentas, movimientos fijos, tipo de cambio, tema, seguridad, respaldos y sincronización.',
-    ejemplo:'Activas el tipo de cambio automático para que el valor del dólar se actualice solo, creas tu cuenta "Efectivo" y programas el alquiler como movimiento fijo para no registrarlo cada mes.',
-    pasos:['Crea tus cuentas (efectivo, banco, tarjeta) y marca cuál es la principal: es la que se preselecciona al registrar.','Configura tus movimientos fijos (alquiler, remesas, salario) para no registrarlos a mano cada mes.','Ajusta el tipo de cambio manual o actívalo en automático.','Cambia entre tema claro y oscuro.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Si un dispositivo muestra datos distintos a otro, usa "Sincronizar todo".','Descarga tus datos como respaldo personal cuando quieras.','Instala la app en tu teléfono y compártela con quien la necesite.','Únete al canal de WhatsApp para soporte y novedades.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
+    que:'Configuras la app y administras tus datos: cuentas, transferencias, movimientos fijos, informes, bitácora, adjuntos, tipo de cambio, tema, seguridad, respaldos y sincronización.',
+    ejemplo:'Creas tus cuentas, programas el alquiler como movimiento fijo, y a fin de mes sacas un informe filtrado por cuenta y período para ver en qué se fue el dinero.',
+    pasos:['Crea tus cuentas (efectivo, banco, tarjeta) y marca cuál es la principal: es la que se preselecciona al registrar.','Dentro de Cuentas tienes "Transferir entre cuentas": mueve dinero de una a otra sin que cuente como ingreso ni gasto.','Cada cuenta guarda su saldo de apertura con su fecha; queda registrado como un movimiento que puedes auditar.','Configura tus movimientos fijos y elige si quieres que se registren solos al llegar el día.','En Informes sacas balance, categorías, cuentas, monedas, formas de pago y flujo de caja, filtrado y exportable.','La Bitácora guarda todo lo que pasó con tus datos. La escribe el servidor, así que no se puede alterar.','"Cambios por subir" te muestra qué está esperando para sincronizar.','Activa los adjuntos si quieres guardarle fotos o PDFs a tus movimientos: quedan solo en este teléfono.','Ajusta el tipo de cambio manual o actívalo en automático, y cambia entre tema claro y oscuro.','Activa el bloqueo con PIN o huella para proteger tus finanzas.','Si un dispositivo muestra datos distintos a otro, usa "Sincronizar todo".','Descarga tus datos como respaldo, instala la app y compártela con quien la necesite.','En la Zona Roja puedes borrar todos tus datos si quieres empezar de cero (acción permanente).']
   }
 };
 function ayudaBtn(tab){
@@ -2935,8 +2946,9 @@ function viewAjustes(){
     <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, remesas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Descubre el análisis inteligente de tus finanzas</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
-    <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub">Fotos y PDFs guardados solo en este teléfono</div></div>
+    <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub" id="adjPeso">Fotos y PDFs guardados solo en este teléfono</div></div>
       <input type="checkbox" ${adjuntosOn()?'checked':''} onchange="setAdjuntos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"></label>
+    <div class="item" onclick="abrirCola()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📤</div><div class="mtxt"><div>Cambios por subir</div><div class="sub">${S.pendientes?S.pendientes+' esperando':'Todo sincronizado'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirBitacora()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🗒️</div><div class="mtxt"><div>Bitácora</div><div class="sub">Todo lo que pasó con tus datos, solo lectura</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInformes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📊</div><div class="mtxt"><div>Informes</div><div class="sub">Balance, categorías, cuentas y flujo de caja con filtros</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="exportarMisDatos()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('download',19)}</div><div class="mtxt"><div>Descargar mis datos</div><div class="sub">Exporta tus movimientos a un archivo CSV</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
@@ -3551,6 +3563,11 @@ async function pintarAdjuntos(movId){
       +'<button class="pill" style="background:var(--chip);color:var(--bad);padding:5px 10px;font-weight:700;flex-shrink:0" onclick="borrarAdjunto(\''+a.id+'\',\''+movId+'\')">Quitar</button></div>').join('')
     :'<div class="sub" style="font-size:.75rem;padding:4px 0">Sin adjuntos.</div>';
 }
+async function pintarPesoAdjuntos(){
+  const el=document.getElementById('adjPeso');if(!el)return;
+  const b=await adjuntosPeso();
+  el.textContent=b?('Ocupan '+pesoLegible(b)+' en este teléfono · no se sincronizan'):'Fotos y PDFs guardados solo en este teléfono';
+}
 function adjuntosCampo(movId){
   if(!adjuntosOn())return '';
   setTimeout(()=>pintarAdjuntos(movId),30);
@@ -3560,6 +3577,53 @@ function adjuntosCampo(movId){
     +'<button class="btn ghost" style="width:100%;margin-top:8px" onclick="document.getElementById(\'adjInput\').click()">Agregar foto o PDF</button>'
     +'<div class="sub" style="font-size:.72rem;margin-top:6px">Se guardan solo en este teléfono. No se suben ni se sincronizan: si borras la app o cierras sesión borrando tus datos, se van con ellos.</div>'
     +'</div>';
+}
+
+
+// ===== Cola de sincronización (visor) =====
+const COLA_TIPOS={mov:'Movimiento',acc:'Cuenta',cat:'Categoría',budget:'Presupuesto',plan:'Ingreso esperado',goal:'Meta',rec:'Movimiento fijo'};
+function colaResumen(p){
+  const d=p.data||{};
+  if(p.kind==='mov'){
+    const c=catById(d.categoria_id);
+    return (d.descripcion||(c?c.name:'Movimiento'))+' · '+money(d.monto,d.moneda)+' · '+(d.fecha||'');
+  }
+  return d.descripcion||d.nombre||d.name||d.periodo||d.id||'—';
+}
+async function abrirCola(){
+  let pend=[];
+  try{pend=await idbAll('outbox')}catch(e){}
+  const rech=S.rechazadosIds||[];
+  const fila=p=>{
+    const trabado=rech.indexOf(p.data&&p.data.id)>=0;
+    return '<div style="border-bottom:1px solid var(--line);padding:9px 0">'
+    +'<div class="row spread" style="gap:8px">'
+    +'<div style="min-width:0;flex:1"><div style="font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(colaResumen(p))+'</div>'
+    +'<div class="sub" style="font-size:.73rem">'+(COLA_TIPOS[p.kind]||p.kind)+(trabado?' · el servidor lo rechazó':'')+'</div></div>'
+    +(trabado?'<button class="pill" style="background:var(--chip);color:var(--bad);padding:5px 10px;font-weight:700;flex-shrink:0" onclick="descartarDeCola(\''+p.k+'\')">Descartar</button>':'<span class="pill" style="background:rgba(23,136,255,.14);color:var(--pri);flex-shrink:0">En espera</span>')
+    +'</div></div>';
+  };
+  document.getElementById('sheetHost').innerHTML=
+  '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
+  +'<div class="handle"></div><h2 style="margin-bottom:4px">Cambios por subir</h2>'
+  +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:12px">'
+  +(pend.length?'Estos cambios están guardados en tu teléfono y esperan para subir a la nube. No se pierden.':'Todo está subido. No hay nada esperando.')
+  +'</p>'
+  +(pend.length?pend.map(fila).join(''):'')
+  +(pend.length?'<button class="btn" style="margin-top:14px" onclick="closeSheet();sincronizarAhora()">Reintentar ahora</button>':'')
+  +'</div></div>';
+}
+async function sincronizarAhora(){
+  if(!navigator.onLine)return toast('Necesitas Internet para subir tus cambios');
+  toast('Subiendo…');
+  await trySync();
+  const n=S.pendientes;
+  toast(n?n+' cambio(s) siguen esperando':'Todo subido ✓');
+}
+async function descartarDeCola(k){
+  openConfirm('¿Descartar este cambio?','El servidor lo rechazó y no va a poder subir. Si lo descartas, se pierde para siempre.',async()=>{
+    try{await idbDel('outbox',k);updateSyncPill();toast('Descartado');abrirCola()}catch(e){toast('No se pudo descartar')}
+  },'Descartar');
 }
 
 function csvEscape(v){
