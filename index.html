@@ -301,7 +301,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.40.0';
+const APP_VERSION='1.41.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -364,7 +364,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -375,6 +375,20 @@ function money(n,mon){return (mon==='USD'?'US$ ':'$ ')+fmt(n)}
 function toUYU(m){return m.moneda==='USD'?m.monto*(Number(S.settings.tc)||40):m.monto*1}
 function autoIcon(name){const n=name.toLowerCase();for(const[k,v]of ICON_MAP){if(n.includes(k))return v}return '🏷️'}
 function autoColor(name){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length]}
+// --- Clase de movimiento (F3) ---
+// 'normal'        → un ingreso o gasto real; cuenta para presupuesto y análisis.
+// 'apertura'      → el saldo con el que empezó una cuenta; suma al saldo pero
+//                   no es un ingreso del mes.
+// 'transferencia' → una de las dos patas de un traspaso entre cuentas; mueve
+//                   dinero de lugar, no genera resultado.
+// El signo lo sigue llevando 'tipo', así que los saldos no cambian de fórmula.
+// Los registros anteriores no traen 'clase': se consideran normales.
+function claseDe(m){return (m&&m.clase)?m.clase:'normal'}
+function esNormal(m){return claseDe(m)==='normal'}
+function esApertura(m){return claseDe(m)==='apertura'}
+function movsNormales(){return movsActivos().filter(esNormal)}
+const CLASE_ETIQUETA={apertura:'Apertura',transferencia:'Transferencia'};
+
 function catById(id){return S.cats.find(c=>c.id===id)}
 function activeCats(){return S.cats.filter(c=>!c.deleted)}
 
@@ -398,6 +412,7 @@ function movSearchText(m){
     m.moneda==='USD'?'usd dolares dólares':'pesos',
     m.tipo,
     m.tipo==='ingreso'?'entrada':'salida',
+    CLASE_ETIQUETA[claseDe(m)]||'',
     m.fecha,
     String(m.monto),
     fmt(m.monto)
@@ -632,20 +647,42 @@ async function trySync(){
       }
       const lote=[...ultima.values()].slice(0,SYNC_LOTE);
       const enLote=new Set(lote.map(p=>p.kind+':'+p.data.id));
-      const clavesLote=sanos.filter(p=>enLote.has(p.kind+':'+p.data.id)).map(p=>p.k);
+      const entradasLote=sanos.filter(p=>enLote.has(p.kind+':'+p.data.id));
 
       const bolsa=k=>lote.filter(p=>p.kind===k).map(p=>p.data);
       const payload={categories:bolsa('cat'),movements:bolsa('mov'),budgets:bolsa('budget'),monthly_plan:bolsa('plan'),goals:bolsa('goal'),recurring:bolsa('rec'),accounts:bolsa('acc')};
-      const{error}=await sb.rpc('sync_push',{p:payload});
+      const{data,error}=await sb.rpc('sync_push',{p:payload});
       if(error)throw error;
 
-      for(const k of clavesLote)await idbDel('outbox',k);
-      // No se corta aquí: la vuelta siguiente vuelve a leer la cola. Si el usuario
-      // registró algo durante el envío, sale ahora y no dentro de 45 segundos.
+      // sync_push devuelve ok:true aunque haya rechazado registros uno por uno.
+      // Si se borraran igual, ese registro desaparecería del teléfono y de la
+      // nube a la vez. Lo rechazado se queda en la cola.
+      const fallidos=(data&&Array.isArray(data.fallidos))?data.fallidos:[];
+      const idsFallidos=new Set(fallidos.map(f=>f&&f.id).filter(Boolean));
+      if(fallidos.length){
+        S.rechazados=fallidos.length;
+        logSyncError('sync_push_rechazo',JSON.stringify(fallidos).slice(0,480));
+      }
+
+      const aBorrar=entradasLote.filter(p=>!idsFallidos.has(p.data.id));
+      for(const p of aBorrar)await idbDel('outbox',p.k);
+
+      // Sin progreso no se insiste: se evita un bucle sobre lo que el servidor
+      // no acepta. Queda pendiente y se reintenta en la próxima sincronización.
+      if(!aBorrar.length)break;
+      // La vuelta siguiente vuelve a leer la cola. Si el usuario registró algo
+      // durante el envío, sale ahora y no dentro de 45 segundos.
     }
     await pullAll();
   }catch(e){console.error('sync',e);logSyncError('sync_push',e.message||String(e))}
   S.syncing=false;updateSyncPill();
+  avisarRechazos();
+}
+let _avisoRechazo=false;
+function avisarRechazos(){
+  if(!S.rechazados||_avisoRechazo)return;
+  _avisoRechazo=true;
+  toast('Algunos registros esperan para subir. Se reintenta solo.');
 }
 
 async function pullAll(completo){
@@ -980,7 +1017,8 @@ function viewInicio(){
     saldo+=sign*v;
     if(m.moneda==='USD')saldoUSD+=sign*m.monto;else saldoUYU+=sign*m.monto;
     if(m.fecha>=d1&&m.fecha<=d2){
-      if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto;else ingMesUYU+=m.monto}
+      if(!esNormal(m)){}
+      else if(m.tipo==='ingreso'){ingMes+=v;if(m.moneda==='USD')ingMesUSD+=m.monto;else ingMesUYU+=m.monto}
       else{gasMes+=v;if(m.moneda==='USD')gasMesUSD+=m.monto;else gasMesUYU+=m.monto}
     }
   }
@@ -1091,7 +1129,7 @@ function sparkline(act,tipo,varName){
 
 function chart6m(act){
   const now=new Date();const labels=[],ing=[],gas=[];
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const[a,b]=monthRange(d);labels.push(d.toLocaleDateString('es-UY',{month:'short'}));let vi=0,vg=0;for(const m of act){if(m.fecha>=a&&m.fecha<=b){if(m.tipo==='ingreso')vi+=toUYU(m);else vg+=toUYU(m)}}ing.push(vi);gas.push(vg)}
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const[a,b]=monthRange(d);labels.push(d.toLocaleDateString('es-UY',{month:'short'}));let vi=0,vg=0;for(const m of act){if(!esNormal(m))continue;if(m.fecha>=a&&m.fecha<=b){if(m.tipo==='ingreso')vi+=toUYU(m);else vg+=toUYU(m)}}ing.push(vi);gas.push(vg)}
   const max=Math.max(...ing,...gas,1);
   const W=520,H=180,bw=28,g=W/6,top=14,chartH=130;
   const step=Math.pow(10,Math.floor(Math.log10(max||1)));
@@ -1274,7 +1312,7 @@ function movRow(m){
   return `<div class="mov" onclick="openMovSheet('${m.id}')">
     <div class="mico" style="background:${color}">${catIcon(c,20)}</div>
     <div class="mtxt"><div>${esc(m.descripcion||(c?c.name:(m.tipo==='ingreso'?'Ingreso':'Gasto')))}</div>
-    <div class="sub">${fecha}${c?' · '+esc(c.name):''}${cu?' · '+esc(cu.nombre):''}${m.forma_pago?' · '+esc(m.forma_pago):''}</div></div>
+    <div class="sub">${CLASE_ETIQUETA[claseDe(m)]?'<b>'+CLASE_ETIQUETA[claseDe(m)]+'</b> · ':''}${fecha}${c?' · '+esc(c.name):''}${cu?' · '+esc(cu.nombre):''}${m.forma_pago?' · '+esc(m.forma_pago):''}</div></div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
       <div class="mamt ${m.tipo==='ingreso'?'ok':'bad'}">${m.tipo==='ingreso'?'+':'−'}${money(m.monto,m.moneda)}</div>
       ${monBadge(m.moneda)}
@@ -1477,7 +1515,12 @@ function cuentaById(id){return S.accounts.find(a=>a.id===id)}
 function saldoCuenta(id){
   const a=cuentaById(id);
   if(!a)return 0;
-  let saldo=Number(a.saldo_inicial)||0;
+  // Puente hacia el asiento de apertura: mientras la cuenta no tenga su
+  // movimiento de apertura se sigue usando saldo_inicial; en cuanto exista, se
+  // ignora el campo. Así el paso 3 (generar aperturas) se puede correr en
+  // cualquier momento sin que nada se cuente dos veces ni desaparezca.
+  const tieneApertura=movsActivos().some(m=>m.cuenta_id===id&&esApertura(m));
+  let saldo=tieneApertura?0:(Number(a.saldo_inicial)||0);
   for(const m of movsActivos()){
     if(m.cuenta_id!==id)continue;
     // Si la moneda del movimiento difiere de la cuenta, convertir
@@ -2006,6 +2049,7 @@ function ahorroMensualPromedio(){
     const pk=(m.fecha||'').slice(0,7);
     if(!pk)continue;
     if(!porMes[pk])porMes[pk]={ing:0,gas:0};
+    if(!esNormal(m))continue;
     if(m.tipo==='ingreso')porMes[pk].ing+=toUYU(m);else porMes[pk].gas+=toUYU(m);
   }
   const meses=Object.keys(porMes).sort();
@@ -2123,11 +2167,11 @@ function budgetFor(catId,pk){return S.budgets.find(b=>!b.deleted&&b.periodo===pk
 function planMes(pk){return S.plan.find(p=>p.periodo===pk)}
 function gastadoEnCat(catId,pk){
   const[d1,d2]=periodRange(pk);
-  return movsActivos().filter(m=>m.tipo==='gasto'&&m.categoria_id===catId&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  return movsNormales().filter(m=>m.tipo==='gasto'&&m.categoria_id===catId&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 }
 function ingresoRealMes(pk){
   const[d1,d2]=periodRange(pk);
-  return movsActivos().filter(m=>m.tipo==='ingreso'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  return movsNormales().filter(m=>m.tipo==='ingreso'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 }
 
 function viewPresu(){
@@ -2145,7 +2189,7 @@ function viewPresu(){
   let totalPresu=0,totalGastado=0,totalReservado=0;
   for(const b of buds){totalPresu+=Number(b.monto);if(b.reservado)totalReservado+=Number(b.monto)}
   const[rd1,rd2]=periodRange(pk);
-  totalGastado=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=rd1&&m.fecha<=rd2).reduce((s,m)=>s+toUYU(m),0);
+  totalGastado=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=rd1&&m.fecha<=rd2).reduce((s,m)=>s+toUYU(m),0);
   const disponibleReal=ingresoEsperado-totalGastado-reservadoPendiente(pk);
 
   // Predicción de fin de mes
@@ -2414,7 +2458,7 @@ function saludDetalle(pk){
   if(ingresoEsp<=0&&buds.length===0)return null;
 
   const[d1,d2]=periodRange(pk);
-  const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const gastoTotal=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 
   const factores=[];
   let score=0,pesoTotal=0;
@@ -2457,7 +2501,7 @@ function generarRecomendaciones(pk){
   const ingresoEsp=plan?Number(plan.ingreso_esperado):0;
   const buds=budgetsMes(pk);
   const[d1,d2]=periodRange(pk);
-  const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const gastoTotal=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
 
   // Tendencia multi-mes: categorías excedidas 2-3 meses seguidos
   const catsGasto=S.cats.filter(c=>!c.deleted&&c.tipo==='gasto');
@@ -2544,7 +2588,7 @@ function generarAlertas(){
 
   if(ingresoEsp>0&&diaHoy>=5&&diasRest>0){
     const[a,z]=periodRange(pk);
-    const gastoTotal=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=a&&m.fecha<=z).reduce((s,m)=>s+toUYU(m),0);
+    const gastoTotal=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=a&&m.fecha<=z).reduce((s,m)=>s+toUYU(m),0);
     const proyeccion=(gastoTotal/diaHoy)*diasMes;
     if(proyeccion>ingresoEsp*1.05){
       alertas.push({prio:0,exceso:Infinity,nivel:'alto',icon:'⚠️',txt:`Al ritmo actual gastarías ${localFlag()} ${fmt(proyeccion)} este mes, más que tu ingreso de ${fmt(ingresoEsp)}.`});
@@ -2605,7 +2649,7 @@ function tarjetaPresupuestoInicio(oculto){
   let reservado=0;
   for(const b of buds)if(b.reservado)reservado+=Number(b.monto);
   const[d1,d2]=periodRange(pk);
-  const gastoMes=movsActivos().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
+  const gastoMes=movsNormales().filter(m=>m.tipo==='gasto'&&m.fecha>=d1&&m.fecha<=d2).reduce((s,m)=>s+toUYU(m),0);
   const disponible=ingresoEsp-gastoMes-reservadoPendiente(pk);
   const salud=saludFinancieraMes(pk);
   const saludColor=salud===null?'var(--sub)':salud>=70?'var(--ok)':salud>=45?'#d97706':'var(--bad)';
@@ -3183,6 +3227,7 @@ function duplicarMov(){
     fecha:now.toISOString().slice(0,10),
     hora:now.toTimeString().slice(0,5),
     etiquetas:[...(e.etiquetas||[])],
+    clase:'normal',transfer_id:null,
     deleted:false
   };
   delete copia.created_at;delete copia.updated_at;
@@ -3250,6 +3295,7 @@ async function saveMov(seguirAgregando){
     notas:document.getElementById('mNotas').value.trim()||null,
     forma_pago:document.getElementById('mPago').value||null,
     etiquetas:document.getElementById('mTags').value.split(',').map(t=>t.trim()).filter(Boolean),
+    clase:claseDe(e),transfer_id:e.transfer_id||null,
     deleted:false,created_at:isEdit?e.created_at:nowISO(),updated_at:nowISO()
   };
   // Actualizar el estado en memoria y persistir en IndexedDB ANTES de cerrar,
