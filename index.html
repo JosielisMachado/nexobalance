@@ -307,7 +307,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.54.0';
+const APP_VERSION='1.55.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3377,6 +3377,7 @@ function dibujarInformes(saltarLectura){
   +'<div class="handle"></div>'
   +'<div class="row spread" style="margin-bottom:12px"><h2>Informes</h2>'
   +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="exportarInformePDF()">PDF</button><button class="btn sm ghost" onclick="exportarInforme()">CSV</button></div></div>'
+  +'<div style="text-align:right;margin-bottom:8px"><button class="link" style="font-size:.76rem" onclick="exportarInformeHTML()">¿El PDF no abre? Descargar como página</button></div>'
   +'<div class="chips" style="margin-bottom:10px">'
   +'<button class="chip" onclick="infPreset(\'mes\')">Este mes</button>'
   +'<button class="chip" onclick="infPreset(\'mesant\')">Mes pasado</button>'
@@ -3467,25 +3468,43 @@ function infHTMLImpresion(){
     +detalle
     +'</body></html>';
 }
-function exportarInformePDF(){
-  const r=calcularInforme();
-  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
-  const html=infHTMLImpresion();
+// El iframe necesita medidas reales: con 0x0 el motor de impresión no tiene
+// qué maquetar y genera un PDF vacío o corrupto. Se lo saca de la vista
+// moviéndolo fuera de pantalla, no ocultándolo.
+function imprimirDocumento(html,alTerminar){
   const previo=document.getElementById('printFrame');
   if(previo)previo.remove();
   const f=document.createElement('iframe');
   f.id='printFrame';
-  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  f.setAttribute('aria-hidden','true');
+  f.style.cssText='position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;opacity:0;pointer-events:none';
   document.body.appendChild(f);
   const d=f.contentWindow.document;
   d.open();d.write(html);d.close();
   const lanzar=()=>{
-    try{f.contentWindow.focus();f.contentWindow.print();auditEvento('informe_pdf',{desde:INF.desde,hasta:INF.hasta})}
-    catch(e){toast('No se pudo abrir la impresión')}
+    try{
+      f.contentWindow.focus();
+      f.contentWindow.print();
+      if(alTerminar)alTerminar();
+    }catch(e){toast('No se pudo abrir la impresión')}
   };
-  if(d.readyState==='complete')setTimeout(lanzar,180);
-  else f.onload=()=>setTimeout(lanzar,180);
+  // Se espera a que carguen estilos y fuentes antes de imprimir.
+  if(d.readyState==='complete')setTimeout(lanzar,400);
+  else f.onload=()=>setTimeout(lanzar,400);
   toast('Elige "Guardar como PDF" en el destino');
+}
+function descargarHTML(nombre,html){
+  if(descargarArchivo(nombre,html,'text/html;charset=utf-8'))toast('Descargado ✓ Ábrelo y usa Compartir → Imprimir');
+}
+function exportarInformePDF(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  imprimirDocumento(infHTMLImpresion(),()=>auditEvento('informe_pdf',{desde:INF.desde,hasta:INF.hasta}));
+}
+function exportarInformeHTML(){
+  const r=calcularInforme();
+  if(!r.movimientos.length)return toast('No hay movimientos en ese período');
+  descargarHTML(infNombreArchivo().replace(/\.csv$/,'.html'),infHTMLImpresion());
 }
 
 
@@ -3517,6 +3536,7 @@ function dibujarManual(){
   +'<div class="handle"></div>'
   +'<div class="row spread" style="margin-bottom:4px"><h2>Manual de uso</h2>'
   +'<button class="btn sm ghost" onclick="manualPDF()">PDF</button></div>'
+  +'<div style="text-align:right;margin-bottom:4px"><button class="link" style="font-size:.76rem" onclick="manualHTMLDescarga()">¿El PDF no abre? Descargar como página</button></div>'
   +'<p class="sub" style="font-size:.83rem;line-height:1.5;margin-bottom:14px">Instrucciones y procedimientos de NexoBalance. Disponible sin conexión.</p>'
   +secs
   +'<button class="btn ghost" style="width:100%;margin-top:10px" onclick="cerrarManual()">Cerrar</button>'
@@ -3540,19 +3560,8 @@ function manualHTML(){
   +MANUAL.map(s=>'<h2>'+esc(s[0])+'</h2>'+s[2].map(t=>'<h3>'+esc(t[0])+'</h3><p>'+esc(t[1])+'</p>').join('')).join('')
   +'</body></html>';
 }
-function manualPDF(){
-  const previo=document.getElementById('printFrame');
-  if(previo)previo.remove();
-  const f=document.createElement('iframe');
-  f.id='printFrame';
-  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-  document.body.appendChild(f);
-  const d=f.contentWindow.document;
-  d.open();d.write(manualHTML());d.close();
-  const lanzar=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('No se pudo abrir la impresión')}};
-  if(d.readyState==='complete')setTimeout(lanzar,180); else f.onload=()=>setTimeout(lanzar,180);
-  toast('Elige "Guardar como PDF" en el destino');
-}
+function manualPDF(){imprimirDocumento(manualHTML())}
+function manualHTMLDescarga(){descargarHTML('nexobalance_manual_'+APP_VERSION+'.html',manualHTML())}
 
 function infNombreArchivo(){
   const p=[];
