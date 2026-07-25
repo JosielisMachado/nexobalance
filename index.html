@@ -307,7 +307,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.59.0';
+const APP_VERSION='1.60.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3666,6 +3666,16 @@ function asisSugerencia(t){
   ASIS.resultados=buscarManual(t);
   dibujarAsistente();
 }
+function asisMensajeError(motivo){
+  const m={
+    saturado:'El asistente está saturado en este momento. Espera unos segundos y vuelve a intentar; mientras tanto los temas del manual siguen abajo.',
+    vacio:'No logré armar una respuesta para esa pregunta. Prueba a formularla más corta o directa.',
+    clave:'El asistente no está configurado correctamente. Los temas del manual siguen funcionando.',
+    sin_configurar:'El asistente todavía no está configurado. Los temas del manual siguen funcionando.',
+    no_autorizado:'Tu sesión venció. Vuelve a entrar y prueba de nuevo.'
+  };
+  return m[motivo]||'El asistente no está disponible ahora. Los temas del manual siguen funcionando.';
+}
 async function asisPreguntarIA(){
   if(!ASIS.q.trim())return toast('Escribe tu pregunta');
   if(!navigator.onLine)return toast('El asistente necesita conexión. La búsqueda del manual funciona sin ella.');
@@ -3676,11 +3686,13 @@ async function asisPreguntarIA(){
       .slice(0,5).map(r=>'['+r.sec+' — '+r.titulo+'] '+r.texto).join('\n\n').slice(0,6000);
     const{data,error}=await sb.functions.invoke('asistente-manual',{body:{pregunta:ASIS.q.slice(0,400),contexto}});
     if(error)throw error;
-    if(data&&data.limite){ASIS.error='Alcanzaste el límite de consultas de hoy. La búsqueda del manual sigue disponible.'}
+    if(data&&data.limite)ASIS.error='Alcanzaste el límite de consultas de hoy. La búsqueda del manual sigue disponible.';
     else if(data&&data.respuesta)ASIS.respuesta=data.respuesta;
-    else ASIS.error='No se pudo obtener una respuesta. Revisa los temas del manual aquí abajo.';
+    else ASIS.error=asisMensajeError(data&&data.error);
   }catch(e){
-    ASIS.error='El asistente no está disponible ahora. Los temas del manual siguen funcionando.';
+    let motivo='';
+    try{const j=JSON.parse((e&&e.context&&e.context.body)||'{}');motivo=j.error||''}catch(_){}
+    ASIS.error=asisMensajeError(motivo);
   }
   ASIS.pensando=false;dibujarAsistente();
 }
