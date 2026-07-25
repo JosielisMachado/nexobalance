@@ -307,7 +307,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.57.0';
+const APP_VERSION='1.58.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -913,7 +913,8 @@ async function startApp(user,isNew){
   const fab=document.getElementById('fabBtn');
   if(fab)fab.classList.toggle('hidden',S.tab==='ajustes'||S.tab==='cats'||S.tab==='presu');
   armExitGuard();
-  if(lockConfig())bloquearApp();
+  if(lockConfig()&&!sesionRecienAbierta())bloquearApp();
+  marcarSesionAbierta();
   if(navigator.onLine){
     await trySync();
     await loadUserName();
@@ -962,6 +963,7 @@ async function cerrarSesionAhora(borrarLocal){
   }
   S.uid=null;S.movs=[];S.cats=[];S.budgets=[];S.plan=[];S.goals=[];S.recurring=[];S.accounts=[];S.pendientes=0;
   try{sessionStorage.removeItem('nb_tab');sessionStorage.removeItem('nb_scroll')}catch(e){}
+  limpiarSesionViva();
   location.reload();
 }
 async function doLogout(){
@@ -1821,6 +1823,15 @@ function bioDisponible(){
   return !!(window.PublicKeyCredential&&navigator.credentials);
 }
 let _lockBuffer='',_lockIntentos=0,_lockPendiente=false;
+const SESION_CLAVE='nb_sesion_viva';
+// El PIN protege el reingreso a la app, no cada recarga de pantalla. Si la
+// persona acaba de entrar con su contraseña, o solo refrescó dentro de la
+// misma sesión del navegador, no se le vuelve a pedir.
+function marcarSesionAbierta(){try{sessionStorage.setItem(SESION_CLAVE,String(Date.now()))}catch(e){}}
+function sesionRecienAbierta(){
+  try{return !!sessionStorage.getItem(SESION_CLAVE)}catch(e){return false}
+}
+function limpiarSesionViva(){try{sessionStorage.removeItem(SESION_CLAVE)}catch(e){}}
 
 function lockRenderDots(){
   const cont=document.getElementById('lockDots');
@@ -3297,6 +3308,11 @@ function infToggle(campo,valor){
   i>=0?arr.splice(i,1):arr.push(valor);
   dibujarInformes();
 }
+async function guardarTitular(v){
+  S.settings.titular=String(v||'').trim();
+  await kvSet('settings',S.settings);
+  toast('Titular actualizado');
+}
 function infLeerCampos(){
   const g=id=>document.getElementById(id);
   if(g('infDesde'))INF.desde=g('infDesde').value;
@@ -3402,6 +3418,8 @@ function dibujarInformes(saltarLectura){
   +'<div class="field" style="flex:1;margin:0"><label>Forma de pago</label><select class="inp" id="infPago" onchange="dibujarInformes()">'
     +'<option value="">Todas</option>'+pagos.map(p=>'<option value="'+esc(p)+'"'+(INF.pago===p?' selected':'')+'>'+esc(p)+'</option>').join('')+'</select></div></div>'
   +'<div class="field"><label>Etiqueta</label><input class="inp" id="infTag" placeholder="Opcional" value="'+esc(INF.tag)+'" onchange="dibujarInformes()"></div>'
+  +'<div class="field"><label>Titular del informe</label><input class="inp" id="infTitular" placeholder="'+esc(S.userName||'Tu nombre, entidad o empresa')+'" value="'+esc(S.settings.titular||'')+'" onchange="guardarTitular(this.value)">'
+  +'<div class="sub" style="font-size:.72rem;margin-top:5px">Encabeza tus informes exportados. Puede ser tu nombre, tu entidad o tu empresa.</div></div>'
   +'<div class="card" style="margin-top:6px">'
   +'<div style="font-weight:800;margin-bottom:6px">Balance financiero</div>'
   +fila('Saldo inicial',r.saldoInicial)
@@ -3452,10 +3470,13 @@ function infHTMLImpresion(){
     +'td{padding:5px 4px;border-bottom:1px solid #eaecf0}'
     +'.r{text-align:right}.c{text-align:center}.ok{color:#027A48}.bad{color:#B42318}'
     +'.bal td{font-size:13px}.bal .tot{font-weight:800;border-top:2px solid #101828}'
-    +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}}'
+    +'.titular{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#1788FF;font-weight:800;margin-bottom:3px}'
+    +'.pie{margin-top:26px;padding-top:10px;border-top:1px solid #d0d5dd;text-align:center;font-size:10px;color:#667085;letter-spacing:.04em}'
+    +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}.pie{position:relative}}'
     +'</style></head><body>'
-    +'<h1>NexoBalance — Informe financiero</h1>'
-    +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString('es-UY')+'</div>'
+    +(titularInforme()?'<div class="titular">'+esc(titularInforme())+'</div>':'')
+    +'<h1>Informe financiero</h1>'
+    +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString()+'</div>'
     +'<h2>Balance financiero</h2><table class="bal"><tbody>'
     +'<tr><td>Saldo inicial</td><td class="r">'+n(r.saldoInicial)+'</td></tr>'
     +'<tr><td>Ingresos</td><td class="r ok">'+n(r.ingresos)+'</td></tr>'
@@ -3471,6 +3492,7 @@ function infHTMLImpresion(){
     +tabla('Por forma de pago',r.porPago)
     +tabla('Flujo de caja por mes',r.porMes)
     +detalle
+    +piePDF()
     +'</body></html>';
 }
 // El iframe necesita medidas reales: con 0x0 el motor de impresión no tiene
@@ -3559,15 +3581,25 @@ function manualHTML(){
   +'h1{font-size:20px;margin:0 0 4px}.sub{color:#667085;font-size:11px;margin-bottom:20px}'
   +'h2{font-size:14px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #1788FF;page-break-after:avoid}'
   +'h3{font-size:12.5px;margin:12px 0 3px}p{margin:0 0 10px;color:#344054}'
+  +'.pie{margin-top:26px;padding-top:10px;border-top:1px solid #d0d5dd;text-align:center;font-size:10px;color:#667085;letter-spacing:.04em}'
   +'@media print{body{padding:0}h3,p{page-break-inside:avoid}}'
-  +'</style></head><body><h1>NexoBalance — Manual de instrucciones y procedimientos</h1>'
-  +'<div class="sub">Aplicación de finanzas personales · JosmaTech · Versión '+APP_VERSION+'</div>'
+  +'</style></head><body>'
+  +(titularInforme()?'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#1788FF;font-weight:800;margin-bottom:3px">'+esc(titularInforme())+'</div>':'')
+  +'<h1>NexoBalance — Manual de instrucciones y procedimientos</h1>'
+  +'<div class="sub">Tecnología JosmaTech · Versión '+APP_VERSION+'</div>'
   +MANUAL.map(s=>'<h2>'+esc(s[0])+'</h2>'+s[2].map(t=>'<h3>'+esc(t[0])+'</h3><p>'+esc(t[1])+'</p>').join('')).join('')
+  +piePDF()
   +'</body></html>';
 }
 function manualPDF(){imprimirDocumento(manualHTML())}
 function manualHTMLDescarga(){descargarHTML('nexobalance_manual_'+APP_VERSION+'.html',manualHTML())}
 
+function titularInforme(){
+  return (S.settings.titular||'').trim()||S.userName||'';
+}
+function piePDF(){
+  return '<div class="pie">NexoBalance · Tecnología JosmaTech · v'+APP_VERSION+'</div>';
+}
 function infNombreArchivo(){
   const p=[];
   if(INF.cuentas.length===1){const c=cuentaById(INF.cuentas[0]);if(c)p.push(norm(c.nombre).replace(/[^a-z0-9]+/g,'-'))}
@@ -3584,6 +3616,7 @@ function exportarInforme(){
   const cur=detectPais().cur||'UYU';
   const rows=[];
   const sec=t=>rows.push({seccion:t,concepto:'',cantidad:'',ingresos:'',gastos:'',neto:''});
+  if(titularInforme())sec(titularInforme().toUpperCase());
   sec('BALANCE FINANCIERO ('+INF.desde+' a '+INF.hasta+')');
   rows.push({seccion:'','concepto':'Saldo inicial',cantidad:'',ingresos:'',gastos:'',neto:r.saldoInicial.toFixed(2)});
   rows.push({seccion:'',concepto:'Ingresos',cantidad:'',ingresos:r.ingresos.toFixed(2),gastos:'',neto:''});
@@ -3612,6 +3645,7 @@ function exportarInforme(){
       neto:toUYU(m).toFixed(2)
     });
   }
+  sec('NexoBalance · Tecnología JosmaTech · v'+APP_VERSION);
   const csv=toCSV(rows,['seccion','concepto','cantidad','ingresos','gastos','neto']);
   if(descargarArchivo(infNombreArchivo(),csv)){auditEvento('informe',{desde:INF.desde,hasta:INF.hasta,filas:r.movimientos.length});toast('Informe descargado ✓')}
 }
