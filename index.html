@@ -301,7 +301,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.37.2';
+const APP_VERSION='1.37.3';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -463,7 +463,7 @@ async function pullAll(completo){
   if(ra&&!ra.error&&ra.data){for(const a of ra.data){const loc=S.accounts.find(x=>x.id===a.id);if(!loc||a.updated_at>=loc.updated_at){await saveLocalAcc(a);cambios++}if(a.updated_at>maxT)maxT=a.updated_at}}
   await kvSet('lastPull',maxT);
   if(completo)await kvSet('lastFull',new Date().toISOString());
-  if(cambios>0)render(true);
+  updateSyncPill();
   return cambios;
 }
 
@@ -473,7 +473,8 @@ async function sincronizacionCompleta(silenciosa){
   try{
     const cambios=await pullAll(true);
     if(!silenciosa)toast(cambios?'Sincronización completa: '+cambios+' registro'+(cambios!==1?'s':'')+' actualizado'+(cambios!==1?'s':''):'Todo estaba al día');
-    render(true);
+    if(!silenciosa&&cambios>0)render(true);
+    else updateSyncPill();
   }catch(e){
     if(!silenciosa)toast('No se pudo completar la sincronización');
   }
