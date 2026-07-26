@@ -118,6 +118,22 @@ nav button svg{transition:.15s}
 .lockDot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);transition:.15s}
 .lockDot.on{background:var(--pri);border-color:var(--pri);transform:scale(1.1)}
 .lockShake{animation:shk .4s}
+/* Burbuja del manual al iniciar: el aro se vacía y anuncia cuánto le queda. */
+#manualPill{position:fixed;left:14px;bottom:86px;z-index:70;display:flex;align-items:center;gap:10px;
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 15px 7px 7px;
+  box-shadow:0 10px 28px rgba(0,0,0,.16);cursor:pointer;
+  animation:manualEntra .42s cubic-bezier(.2,1.2,.3,1) both,manualLatido 2.2s ease-in-out .6s infinite}
+#manualPill.saliendo{animation:manualSale .32s ease forwards}
+#manualPill .aro{position:relative;width:42px;height:42px;flex-shrink:0}
+#manualPill .aro svg{position:absolute;inset:0;transform:rotate(-90deg)}
+#manualPill .aro .ico{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+#manualPill .txt{font-size:.82rem;font-weight:700;line-height:1.25;white-space:nowrap}
+#manualPill .txt small{display:block;font-weight:500;font-size:.7rem;color:var(--sub)}
+#manualPill .cerrar{margin-left:2px;color:var(--sub);font-size:.95rem;padding:6px}
+@keyframes manualEntra{from{opacity:0;transform:translateX(-24px) scale(.86)}to{opacity:1;transform:none}}
+@keyframes manualSale{to{opacity:0;transform:translateX(-24px) scale(.9)}}
+@keyframes manualLatido{0%,100%{box-shadow:0 10px 28px rgba(0,0,0,.16)}50%{box-shadow:0 10px 30px rgba(23,136,255,.42)}}
+@media (prefers-reduced-motion:reduce){#manualPill{animation:manualEntra .3s both}}
 @keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
 .sheet{touch-action:pan-y;overscroll-behavior:contain}
 body.sheet-open{overflow:hidden!important;touch-action:none}
@@ -307,7 +323,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.61.0';
+const APP_VERSION='1.62.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -905,6 +921,7 @@ async function startApp(user,isNew){
   }catch(e){}
   try{await autoRegistrarFijos()}catch(e){}
   render();
+  setTimeout(mostrarPildoraManual,1200);
   // Restaurar posición de scroll tras el render
   try{
     const sy=Number(sessionStorage.getItem('nb_scroll'));
@@ -2003,7 +2020,15 @@ function cambiarTimeoutBloqueo(v){
 }
 async function cambiarBioBloqueo(activar){
   const cfg=lockConfig();if(!cfg)return;
-  if(!activar){cfg.bio=false;cfg.credId=null;lockGuardar(cfg);toast('Biometría desactivada');return}
+  if(!activar){
+    const el0=document.getElementById('lkBio');if(el0)el0.checked=true;
+    return pedirPin('¿Desactivar la huella?','Seguirás entrando con tu PIN. Confirma que eres tú.',async()=>{
+      const c=lockConfig();if(!c)return;
+      c.bio=false;c.credId=null;lockGuardar(c);
+      await auditEvento('biometria_desactivada');
+      toast('Biometría desactivada');render();
+    });
+  }
   try{
     const challenge=crypto.getRandomValues(new Uint8Array(32));
     const userId=crypto.getRandomValues(new Uint8Array(16));
@@ -2020,16 +2045,53 @@ async function cambiarBioBloqueo(activar){
     const raw=new Uint8Array(cred.rawId);
     cfg.credId=btoa(String.fromCharCode(...raw));
     cfg.bio=true;lockGuardar(cfg);
+    await auditEvento('biometria_activada');
     toast('Biometría activada');
   }catch(e){
     const el=document.getElementById('lkBio');if(el)el.checked=false;
     toast('No se pudo activar la biometría en este dispositivo');
   }
 }
+// Apagar la seguridad exige demostrar que eres tú. Si no, a quien tenga el
+// teléfono desbloqueado le basta un toque para dejar la app abierta.
+function pedirPin(titulo,mensaje,alConfirmar){
+  const cfg=lockConfig();
+  if(!cfg)return alConfirmar();
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <h2 style="margin-bottom:6px">${esc(titulo)}</h2>
+    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:16px">${esc(mensaje)}</p>
+    <div class="field"><label>Confirma tu PIN</label>
+      <input class="inp" id="pinConf" type="password" inputmode="numeric" maxlength="${cfg.largo||6}" placeholder="••••" style="text-align:center;letter-spacing:.5em;font-size:1.2rem">
+      <div class="sub" id="pinConfMsg" style="font-size:.78rem;margin-top:7px"></div>
+    </div>
+    <button class="btn danger" onclick="confirmarPin()">Continuar</button>
+    <button class="link" style="width:100%;margin-top:10px" onclick="closeSheet()">Cancelar</button>
+  </div></div>`;
+  window._pinOk=alConfirmar;
+  setTimeout(()=>{const el=document.getElementById('pinConf');if(el)el.focus()},80);
+}
+async function confirmarPin(){
+  const cfg=lockConfig();if(!cfg)return;
+  const el=document.getElementById('pinConf'),msg=document.getElementById('pinConfMsg');
+  const v=el?el.value:'';
+  if(!v)return;
+  const h=await hashPin(v,cfg.salt);
+  if(h!==cfg.hash){
+    if(el){el.value='';el.classList.add('lockShake');setTimeout(()=>el.classList.remove('lockShake'),400)}
+    if(msg){msg.textContent='PIN incorrecto.';msg.style.color='var(--bad)'}
+    return;
+  }
+  const fn=window._pinOk;window._pinOk=null;
+  closeSheet();
+  if(fn)await fn();
+}
 function quitarBloqueo(){
-  openConfirm('¿Desactivar el bloqueo?','Tu aplicación quedará accesible sin PIN.',()=>{
+  pedirPin('¿Desactivar el bloqueo?','Tu aplicación quedará accesible sin PIN. Confirma que eres tú.',async()=>{
     try{localStorage.removeItem(lockKeyUsuario())}catch(e){}
-    closeSheet();toast('Bloqueo desactivado');render();
+    await auditEvento('bloqueo_desactivado');
+    toast('Bloqueo desactivado');render();
   });
 }
 
@@ -2804,7 +2866,7 @@ function generarRecomendaciones(pk){
       if(b&&Number(b.monto)>0&&gastadoEnCat(c.id,p)>Number(b.monto))seguidos++;
       else break;
     }
-    if(seguidos>=2)recs.push({icon:'📈',txt:`Llevas ${seguidos} mes${seguidos>1?'es':''} gastando más de lo presupuestado en ${esc(c.name)}. Quizás debas aumentar ese presupuesto o revisar esos gastos.`});
+    if(seguidos>=2)recs.push({pri:1,icon:'📈',txt:`Llevas ${seguidos} mes${seguidos>1?'es':''} gastando más de lo presupuestado en ${esc(c.name)}. Quizás debas aumentar ese presupuesto o revisar esos gastos.`});
   }
 
   // Reducción respecto al mes anterior
@@ -2813,7 +2875,7 @@ function generarRecomendaciones(pk){
     const prev=gastadoEnCat(c.id,periodShift(pk,-1));
     if(prev>0&&actual>0&&actual<prev*0.85){
       const baja=Math.round((1-actual/prev)*100);
-      recs.push({icon:'✅',txt:`Este mes redujiste un ${baja}% tus gastos en ${esc(c.name)}. ¡Buen control!`});
+      recs.push({pri:4,icon:'✅',txt:`Este mes redujiste un ${baja}% tus gastos en ${esc(c.name)}. ¡Buen control!`});
     }
   }
 
@@ -2824,13 +2886,13 @@ function generarRecomendaciones(pk){
     const diaHoy=pk===periodKey(new Date())?new Date().getDate():Number(d2b.split('-')[2]);
     if(diaHoy>=20){ // solo si el mes está avanzado, para que la cifra sea creíble
       const anual=ahorroMes*12;
-      recs.push({icon:'🏦',txt:`Si mantienes este ritmo de ahorro (${localFlag()} ${fmt(ahorroMes)}/mes) durante un año, acumularás aproximadamente ${localFlag()} ${fmt(anual)}.`});
+      recs.push({pri:5,icon:'🏦',txt:`Si mantienes este ritmo de ahorro (${localFlag()} ${fmt(ahorroMes)}/mes) durante un año, acumularás aproximadamente ${localFlag()} ${fmt(anual)}.`});
     }
   }
 
   // Sin presupuestos aún
   if(buds.length===0&&ingresoEsp>0){
-    recs.push({icon:'💡',txt:'Ya declaraste tu ingreso. Asigna presupuestos a tus categorías para que la app te ayude a controlar cada gasto.'});
+    recs.push({pri:2,icon:'💡',txt:'Ya declaraste tu ingreso. Asigna presupuestos a tus categorías para que la app te ayude a controlar cada gasto.'});
   }
 
   // Categoría más pesada del mes
@@ -2838,11 +2900,13 @@ function generarRecomendaciones(pk){
     let mayor=null,mayorVal=0;
     for(const c of catsGasto){const g=gastadoEnCat(c.id,pk);if(g>mayorVal){mayorVal=g;mayor=c}}
     if(mayor&&mayorVal/gastoTotal>=0.4){
-      recs.push({icon:'🔍',txt:`${esc(mayor.name)} representa el ${Math.round(mayorVal/gastoTotal*100)}% de tus gastos este mes. Vigila esa categoría de cerca.`});
+      recs.push({pri:3,icon:'🔍',txt:`${esc(mayor.name)} representa el ${Math.round(mayorVal/gastoTotal*100)}% de tus gastos este mes. Vigila esa categoría de cerca.`});
     }
   }
 
-  return recs;
+  // Se muestran las tres que más le sirven ahora, no todas: una lista larga
+  // de consejos genéricos se ignora entera.
+  return recs.sort((a,b)=>(a.pri||9)-(b.pri||9)).slice(0,3);
 }
 
 function generarAlertas(){
@@ -3019,6 +3083,13 @@ function viewAjustes(){
   const dark=(S.settings.theme==='dark');
   return `
   <div class="row spread" style="margin-bottom:18px"><h1>Ajustes</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('ajustes')}<span class="pill" id="syncPill">…</span></div></div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="item" onclick="abrirAsistente()" style="background:linear-gradient(135deg,rgba(23,136,255,.10),rgba(23,136,255,.03))">
+      <div class="iconbadge" style="background:var(--pri);color:#fff">📘</div>
+      <div class="mtxt"><div style="font-weight:700">Manual y asistente</div><div class="sub">Pregunta cómo hacer algo y te lo explica al instante</div></div>
+      <span style="color:var(--pri)">${ic('chevron',18)}</span>
+    </div>
+  </div>
   <div class="card">
     <div class="item" onclick="setTheme('${dark?'light':'dark'}')"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic(dark?'sun':'moon',19)}</div><div class="mtxt"><div>Tema ${dark?'claro':'oscuro'}</div><div class="sub">Actual: ${dark?'oscuro':'claro'}</div></div></div>
     <div class="item" style="flex-direction:column;align-items:stretch;gap:10px">
@@ -3650,7 +3721,43 @@ function buscarManual(q){
   }));
   return out.sort((a,b)=>b.p-a.p).slice(0,5);
 }
+const MANUAL_PILL_SEG=10;
+let _pillTimer=null;
+function mostrarPildoraManual(){
+  if(document.getElementById('manualPill'))return;
+  try{if(sessionStorage.getItem('nb_pill_visto'))return}catch(e){}
+  const R=18,C=2*Math.PI*R;
+  const el=document.createElement('div');
+  el.id='manualPill';
+  el.innerHTML='<div class="aro"><svg viewBox="0 0 42 42">'
+    +'<circle cx="21" cy="21" r="'+R+'" fill="none" stroke="var(--line)" stroke-width="3"></circle>'
+    +'<circle id="pillAro" cx="21" cy="21" r="'+R+'" fill="none" stroke="var(--pri)" stroke-width="3" stroke-linecap="round"'
+    +' stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="0" style="transition:stroke-dashoffset '+MANUAL_PILL_SEG+'s linear"></circle>'
+    +'</svg><span class="ico">📘</span></div>'
+    +'<div class="txt">¿Primera vez por aquí?<small>Toca y te explico la app</small></div>'
+    +'<span class="cerrar">✕</span>';
+  el.addEventListener('click',function(e){
+    const cerrar=e.target.classList&&e.target.classList.contains('cerrar');
+    ocultarPildoraManual();
+    if(!cerrar)abrirAsistente();
+  });
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{
+    const aro=document.getElementById('pillAro');
+    if(aro)aro.style.strokeDashoffset=C.toFixed(1);
+  });
+  _pillTimer=setTimeout(ocultarPildoraManual,MANUAL_PILL_SEG*1000);
+}
+function ocultarPildoraManual(){
+  const el=document.getElementById('manualPill');
+  if(_pillTimer){clearTimeout(_pillTimer);_pillTimer=null}
+  try{sessionStorage.setItem('nb_pill_visto','1')}catch(e){}
+  if(!el)return;
+  el.classList.add('saliendo');
+  setTimeout(()=>el.remove(),340);
+}
 function abrirAsistente(){
+  ocultarPildoraManual();
   ASIS.q='';ASIS.resultados=[];ASIS.respuesta='';ASIS.error='';ASIS.pensando=false;
   dibujarAsistente();
 }
