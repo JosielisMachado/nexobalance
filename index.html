@@ -118,6 +118,23 @@ nav button svg{transition:.15s}
 .lockDot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);transition:.15s}
 .lockDot.on{background:var(--pri);border-color:var(--pri);transform:scale(1.1)}
 .lockShake{animation:shk .4s}
+/* Llamado principal del login: tiene que competir con el formulario, no
+   parecer un enlace secundario. */
+#ctaMes{width:100%;margin:2px 0 22px;display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border:none;border-radius:18px;cursor:pointer;text-align:left;color:#fff;
+  background:linear-gradient(135deg,#1788FF 0%,#0B5FD0 55%,#0A4FAE 100%);
+  box-shadow:0 10px 26px rgba(23,136,255,.38);
+  animation:ctaEntra .5s cubic-bezier(.2,1.1,.3,1) both,ctaPulso 2.6s ease-in-out 1s infinite}
+#ctaMes .ico{font-size:1.3rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18)}
+#ctaMes .txt{flex:1;min-width:0;font-weight:800;font-size:.95rem;line-height:1.25}
+#ctaMes .txt small{display:block;font-weight:500;font-size:.75rem;opacity:.88;margin-top:2px}
+#ctaMes .fl{font-size:1.35rem;font-weight:700;opacity:.9;flex-shrink:0}
+#ctaMes:active{transform:scale(.985)}
+@keyframes ctaEntra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes ctaPulso{0%,100%{box-shadow:0 10px 26px rgba(23,136,255,.38)}
+  50%{box-shadow:0 12px 34px rgba(23,136,255,.62)}}
+@media (prefers-reduced-motion:reduce){#ctaMes{animation:none}}
 /* Burbuja del manual al iniciar: el aro se vacía y anuncia cuánto le queda. */
 #manualPill{position:fixed;left:14px;bottom:86px;z-index:70;display:flex;align-items:center;gap:10px;
   background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 15px 7px 7px;
@@ -204,7 +221,11 @@ svg text{font-family:inherit}
     </div>
   </div>
 
-  <button onclick="abrirBienvenida()" style="width:100%;margin-bottom:20px;background:transparent;color:var(--pri);border:none;padding:4px;font-weight:700;font-size:.87rem">¿Cómo te cambia el mes? ›</button>
+  <button id="ctaMes" onclick="abrirBienvenida()">
+    <span class="ico">✨</span>
+    <span class="txt">¿Cómo te cambia el mes?<small>Míralo en 30 segundos</small></span>
+    <span class="fl">›</span>
+  </button>
   <div id="loginForm">
     <div class="field"><label>Número de teléfono</label><input class="inp" id="loginPhone" type="tel" inputmode="tel" placeholder="098 123 456"></div>
     <div class="field"><label>Contraseña</label><div style="position:relative">
@@ -323,7 +344,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.62.0';
+const APP_VERSION='1.63.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3121,7 +3142,6 @@ function viewAjustes(){
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub" id="adjPeso">Fotos y PDFs guardados solo en este teléfono</div></div>
       <input type="checkbox" ${adjuntosOn()?'checked':''} onchange="setAdjuntos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"></label>
-    <div class="item" onclick="abrirAsistente()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📘</div><div class="mtxt"><div>Manual y asistente</div><div class="sub">Pregunta cómo hacer algo y te lo explica</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirCola()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📤</div><div class="mtxt"><div>Cambios por subir</div><div class="sub">${S.pendientes?S.pendientes+' esperando':'Todo sincronizado'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirBitacora()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🗒️</div><div class="mtxt"><div>Bitácora</div><div class="sub">Todo lo que pasó con tus datos, solo lectura</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirInformes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📊</div><div class="mtxt"><div>Informes</div><div class="sub">Balance, categorías, cuentas y flujo de caja con filtros</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
