@@ -344,7 +344,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.63.0';
+const APP_VERSION='1.64.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -781,6 +781,35 @@ async function sincronizacionCompleta(silenciosa){
   }
 }
 
+async function verificarIntegridadLocal(){
+  // Un almacén local vacío puede ser normal (usuario nuevo) o una pérdida de datos
+  // del dispositivo. La sincronización incremental no distingue los dos casos: filtra
+  // por updated_at, así que nunca vuelve a traer registros antiguos que se perdieron
+  // en local. Aquí se le pregunta al servidor antes de asumir que no hay nada.
+  if(!navigator.onLine||!S.uid)return 0;
+  try{
+    const faltantes=[];
+    if(!S.accounts.length)faltantes.push('accounts');
+    if(!S.movs.length)faltantes.push('movements');
+    if(!activeCats().length)faltantes.push('categories');
+    if(!faltantes.length)return 0;
+    let hayEnServidor=false;
+    for(const tabla of faltantes){
+      const{count,error}=await sb.from(tabla).select('id',{count:'exact',head:true}).eq('deleted',false);
+      if(!error&&count>0){hayEnServidor=true;break}
+    }
+    if(!hayEnServidor)return 0;
+    const cambios=await pullAll(true);
+    await kvSet('lastFull',new Date().toISOString());
+    if(cambios)await auditEvento('recuperacion_local',{almacenes:faltantes.join(','),cambios});
+    return cambios;
+  }catch(e){
+    console.error('verificarIntegridadLocal:',e);
+    try{await logSyncError('verificar_integridad',e.message||String(e))}catch(_){}
+    return 0;
+  }
+}
+
 function pintarSyncPill(){
   const el=document.getElementById('syncPill');if(!el)return;
   el.style.cursor='pointer';el.onclick=abrirCola;
@@ -969,7 +998,11 @@ async function startApp(user,isNew){
     tcAutoFetch(true);
   }
   if(isNew&&!activeCats().length){await seedCats();toast('¡Bienvenido! Creamos tus categorías iniciales')}
-  else if(!S.movs.length&&!activeCats().length&&navigator.onLine){await pullAll();if(!activeCats().length)await seedCats()}
+  else if(navigator.onLine){
+    const recuperados=await verificarIntegridadLocal();
+    if(recuperados){toast('Recuperamos '+recuperados+' registro'+(recuperados!==1?'s':'')+' desde el servidor');render(true)}
+    if(!S.movs.length&&!activeCats().length)await seedCats();
+  }
 }
 async function loadUserName(){
   try{
