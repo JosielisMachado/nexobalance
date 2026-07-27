@@ -374,7 +374,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.75.0';
+const APP_VERSION='1.78.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3472,7 +3472,7 @@ async function zonaRojaEjecutar(){
 }
 
 // ===== Informes (H-004 / H-013) =====
-const INF={desde:'',hasta:'',cuentas:[],cats:[],moneda:'',pago:'',tag:''};
+const INF={desde:'',hasta:'',cuentas:[],cats:[],moneda:'',pago:'',tag:'',estado:'resumen'};
 function infInicializar(){
   if(INF.desde)return;
   const[d1,d2]=periodRange(periodKey(new Date()));
@@ -3488,6 +3488,205 @@ function infPreset(tipo){
   // Se repinta sin releer los campos: si no, los inputs viejos pisarían
   // las fechas que acaba de fijar el atajo.
   dibujarInformes(true);
+}
+const INF_ESTADOS=[['resumen','Resumen general'],['resultados','Estado de Resultados'],['flujos','Flujos de Capital'],['presupuesto','Gestión del Presupuesto'],['conciliacion','Conciliación de saldos']];
+function infEstado(v){INF.estado=v;dibujarInformes()}
+function infFilaEF(et,val,cls,negrita,sangria){
+  return '<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)'+(sangria?';padding-left:'+(sangria*14)+'px':'')+'">'
+    +'<span class="'+(negrita?'':'sub')+'" style="font-size:var(--fs-sm)'+(negrita?';font-weight:var(--fw-b);color:var(--txt)':'')+'">'+et+'</span>'
+    +'<span class="'+(cls||'')+'" style="font-weight:'+(negrita?'var(--fw-xb)':'var(--fw-sb)')+';font-size:var(--fs-sm)">'+localFlag()+' '+fmt(val)+'</span></div>';
+}
+function calcularResultados(){
+  const enRango=infFiltrar().filter(esNormal);
+  const raiz=c=>{let x=catById(c);let g=0;while(x&&x.parent_id&&g<6){x=catById(x.parent_id);g++}return x};
+  const bloque=tipo=>{
+    const map=new Map();
+    for(const m of enRango.filter(x=>x.tipo===tipo)){
+      const r=raiz(m.categoria_id),sub=catById(m.categoria_id);
+      const k=r?r.id:'—',kn=r?r.name:'Sin categoría';
+      if(!map.has(k))map.set(k,{nombre:kn,total:0,subs:new Map()});
+      const o=map.get(k);o.total+=toUYU(m);
+      const sk=(sub&&sub.parent_id)?sub.id:null;
+      if(sk){const sn=sub.name;o.subs.set(sk,{nombre:sn,total:(o.subs.get(sk)||{total:0}).total+toUYU(m)})}
+    }
+    const arr=[...map.values()].sort((a,b)=>b.total-a.total);
+    return {lineas:arr,total:arr.reduce((s,x)=>s+x.total,0)};
+  };
+  const ing=bloque('ingreso'),gas=bloque('gasto');
+  const ajustes=infFiltrar().filter(m=>claseDe(m)==='ajuste').reduce((s,m)=>s+(m.tipo==='ingreso'?1:-1)*toUYU(m),0);
+  return {ing,gas,resultado:ing.total-gas.total,ajustes,n:enRango.length};
+}
+function calcularFlujos(){
+  const enRango=infFiltrar();
+  const previos=infFiltrar('9999-12-31').filter(m=>INF.desde&&m.fecha<INF.desde);
+  const sgn=m=>(m.tipo==='ingreso'?1:-1)*toUYU(m);
+  const base=cuentasActivas().filter(a=>!INF.cuentas.length||INF.cuentas.indexOf(a.id)>=0);
+  const filas=base.map(a=>{
+    const pr=previos.filter(m=>m.cuenta_id===a.id);
+    const en=enRango.filter(m=>m.cuenta_id===a.id);
+    const ini=pr.reduce((s,m)=>s+sgn(m),0);
+    const ing=en.filter(m=>esNormal(m)&&m.tipo==='ingreso').reduce((s,m)=>s+toUYU(m),0);
+    const gas=en.filter(m=>esNormal(m)&&m.tipo==='gasto').reduce((s,m)=>s+toUYU(m),0);
+    const ape=en.filter(esApertura).reduce((s,m)=>s+sgn(m),0);
+    const tin=en.filter(m=>claseDe(m)==='transferencia'&&m.tipo==='ingreso').reduce((s,m)=>s+toUYU(m),0);
+    const tout=en.filter(m=>claseDe(m)==='transferencia'&&m.tipo==='gasto').reduce((s,m)=>s+toUYU(m),0);
+    const aj=en.filter(m=>claseDe(m)==='ajuste').reduce((s,m)=>s+sgn(m),0);
+    return {a,ini,ing,gas,ape,tin,tout,aj,fin:ini+ape+ing-gas+tin-tout+aj,n:en.length};
+  });
+  const sinCuenta=enRango.filter(m=>!m.cuenta_id);
+  const tot=filas.reduce((o,f)=>({ini:o.ini+f.ini,ing:o.ing+f.ing,gas:o.gas+f.gas,ape:o.ape+f.ape,tin:o.tin+f.tin,tout:o.tout+f.tout,aj:o.aj+f.aj,fin:o.fin+f.fin}),{ini:0,ing:0,gas:0,ape:0,tin:0,tout:0,aj:0,fin:0});
+  return {filas,tot,sinCuenta:sinCuenta.length,sinCuentaMonto:sinCuenta.reduce((s,m)=>s+sgn(m),0)};
+}
+function vistaResultados(){
+  const r=calcularResultados();
+  const pct=(v,t)=>t?' <span class="sub" style="font-size:var(--fs-xs)">'+(v/t*100).toFixed(1)+'%</span>':'';
+  const bloque=(tit,b,cls)=>'<div style="font-weight:var(--fw-xb);margin:14px 0 4px">'+tit+'</div>'
+    +(b.lineas.length?b.lineas.map(l=>infFilaEF(esc(l.nombre)+pct(l.total,b.total),l.total,cls)
+      +[...l.subs.values()].sort((x,y)=>y.total-x.total).map(sx=>infFilaEF('· '+esc(sx.nombre),sx.total,'',false,1)).join('')
+     ).join(''):'<div class="sub" style="padding:8px 0">Sin movimientos</div>')
+    +infFilaEF('Total '+tit.toLowerCase(),b.total,cls,true);
+  return '<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);font-size:var(--fs-lg)">Estado de Resultados</div>'
+    +'<div class="sub" style="margin-bottom:4px">Del '+INF.desde+' al '+INF.hasta+'</div>'
+    +bloque('Ingresos',r.ing,'ok')
+    +bloque('Gastos',r.gas,'bad')
+    +'<div style="height:10px"></div>'
+    +infFilaEF('RESULTADO DEL PERÍODO',r.resultado,r.resultado>=0?'ok':'bad',true)
+    +(r.ajustes?'<div class="sub" style="font-size:var(--fs-xs);margin-top:10px">Ajustes de saldo del período: '+localFlag()+' '+fmt(r.ajustes)+'. No integran el resultado: se imputan directo a patrimonio.</div>':'')
+    +'<div class="sub" style="font-size:var(--fs-xs);margin-top:8px">Excluye aperturas y transferencias internas. '+r.n+' movimiento(s).</div>'
+    +'</div>';
+}
+function vistaFlujos(){
+  const r=calcularFlujos();
+  const tarjeta=f=>'<div class="card" style="padding:16px">'
+    +'<div class="row spread" style="margin-bottom:6px"><div style="font-weight:var(--fw-xb)">'+(f.a.icono||'💵')+' '+esc(f.a.nombre)+'</div><div class="sub">'+f.a.moneda+'</div></div>'
+    +infFilaEF('Saldo inicial',f.ini)
+    +(f.ape?infFilaEF('Saldo de apertura',f.ape):'')
+    +infFilaEF('Ingresos',f.ing,'ok')
+    +infFilaEF('Gastos',f.gas,'bad')
+    +(f.tin?infFilaEF('Transferencias recibidas',f.tin,'ok'):'')
+    +(f.tout?infFilaEF('Transferencias enviadas',f.tout,'bad'):'')
+    +(f.aj?infFilaEF('Ajustes',f.aj):'')
+    +infFilaEF('Saldo final',f.fin,f.fin>=0?'ok':'bad',true)
+    +'<div class="sub" style="font-size:var(--fs-xs);margin-top:6px">'+f.n+' movimiento(s)</div>'
+    +'</div>';
+  return '<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);font-size:var(--fs-lg)">Flujos de Capital</div>'
+    +'<div class="sub">Del '+INF.desde+' al '+INF.hasta+'</div>'
+    +'</div>'
+    +(r.filas.length?r.filas.map(tarjeta).join(''):'<div class="card"><div class="sub">No hay cuentas para mostrar</div></div>')
+    +'<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);margin-bottom:6px">Consolidado</div>'
+    +infFilaEF('Saldo inicial',r.tot.ini)
+    +(r.tot.ape?infFilaEF('Saldos de apertura',r.tot.ape):'')
+    +infFilaEF('Ingresos',r.tot.ing,'ok')
+    +infFilaEF('Gastos',r.tot.gas,'bad')
+    +(r.tot.tin||r.tot.tout?infFilaEF('Transferencias netas',r.tot.tin-r.tot.tout):'')
+    +(r.tot.aj?infFilaEF('Ajustes',r.tot.aj):'')
+    +infFilaEF('Saldo final',r.tot.fin,r.tot.fin>=0?'ok':'bad',true)
+    +(r.sinCuenta?'<div class="sub" style="font-size:var(--fs-xs);margin-top:8px;color:var(--bad)">Atención: '+r.sinCuenta+' movimiento(s) sin cuenta asignada por '+localFlag()+' '+fmt(Math.abs(r.sinCuentaMonto))+'. No integran ninguna cuenta y descuadran el consolidado.</div>':'')
+    +'<div class="sub" style="font-size:var(--fs-xs);margin-top:8px">Las transferencias internas se compensan entre cuentas: no alteran el patrimonio total.</div>'
+    +'</div>';
+}
+function calcularPresupuesto(){
+  const meses=[];
+  if(INF.desde&&INF.hasta){
+    let k=INF.desde.slice(0,7);const fin=INF.hasta.slice(0,7);let g=0;
+    while(k<=fin&&g<60){meses.push(k);k=periodShift(k,1);g++}
+  }
+  const cats=activeCats().filter(c=>c.tipo==='gasto');
+  const map=new Map();
+  let presTot=0,realTot=0,ingEsp=0,ingReal=0;
+  for(const pk of meses){
+    const pl=planMes(pk);
+    if(pl&&pl.ingreso_esperado)ingEsp+=Number(pl.ingreso_esperado)||0;
+    ingReal+=ingresoRealMes(pk);
+    for(const c of cats){
+      const b=budgetFor(c.id,pk);
+      const pres=b?Number(b.monto)||0:0;
+      const real=gastadoEnCat(c.id,pk);
+      if(!pres&&!real)continue;
+      if(!map.has(c.id))map.set(c.id,{nombre:c.name,pres:0,real:0});
+      const o=map.get(c.id);o.pres+=pres;o.real+=real;
+    }
+  }
+  const lineas=[...map.values()].map(o=>({...o,dif:o.pres-o.real,pct:o.pres?o.real/o.pres*100:null}))
+    .sort((a,b)=>(b.pres||b.real)-(a.pres||a.real));
+  for(const l of lineas){presTot+=l.pres;realTot+=l.real}
+  return {meses,lineas,presTot,realTot,difTot:presTot-realTot,ingEsp,ingReal,sinPresu:lineas.filter(l=>!l.pres).length};
+}
+function vistaPresupuesto(){
+  const r=calcularPresupuesto();
+  const sem=l=>l.pct===null?'':(l.pct>100?'bad':(l.pct>85?'':'ok'));
+  const fila=l=>'<div style="padding:9px 0;border-bottom:1px solid var(--line)">'
+    +'<div class="row spread"><span style="font-weight:var(--fw-sb);font-size:var(--fs-sm)">'+esc(l.nombre)+'</span>'
+    +'<span class="'+sem(l)+'" style="font-weight:var(--fw-b);font-size:var(--fs-sm)">'+(l.pct===null?'sin presupuesto':l.pct.toFixed(0)+'%')+'</span></div>'
+    +'<div class="row spread" style="margin-top:2px"><span class="sub" style="font-size:var(--fs-xs)">Presupuestado '+localFlag()+' '+fmt(l.pres)+' · Real '+localFlag()+' '+fmt(l.real)+'</span>'
+    +'<span class="'+(l.dif>=0?'ok':'bad')+'" style="font-size:var(--fs-xs);font-weight:var(--fw-b)">'+(l.dif>=0?'+':'')+fmt(l.dif)+'</span></div>'
+    +(l.pres?'<div style="height:5px;background:var(--chip);border-radius:3px;margin-top:5px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,l.pct)+'%;background:var('+(l.pct>100?'--bad':(l.pct>85?'--purple':'--ok'))+')"></div></div>':'')
+    +'</div>';
+  return '<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);font-size:var(--fs-lg)">Gestión del Presupuesto</div>'
+    +'<div class="sub" style="margin-bottom:10px">'+r.meses.length+' mes(es) · del '+INF.desde+' al '+INF.hasta+'</div>'
+    +infFilaEF('Ingreso esperado',r.ingEsp)
+    +infFilaEF('Ingreso real',r.ingReal,r.ingReal>=r.ingEsp?'ok':'bad')
+    +infFilaEF('Desvío de ingresos',r.ingReal-r.ingEsp,r.ingReal-r.ingEsp>=0?'ok':'bad',true)
+    +'</div>'
+    +'<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);margin-bottom:4px">Ejecución por categoría</div>'
+    +(r.lineas.length?r.lineas.map(fila).join(''):'<div class="sub" style="padding:8px 0">Sin presupuestos ni gastos en el período</div>')
+    +'</div>'
+    +'<div class="card">'
+    +infFilaEF('Total presupuestado',r.presTot)
+    +infFilaEF('Total ejecutado',r.realTot,'bad')
+    +infFilaEF('Disponible',r.difTot,r.difTot>=0?'ok':'bad',true)
+    +(r.sinPresu?'<div class="sub" style="font-size:var(--fs-xs);margin-top:8px">'+r.sinPresu+' categoría(s) con gasto pero sin presupuesto asignado.</div>':'')
+    +'</div>';
+}
+function calcularConciliacion(){
+  const act=movsActivos();
+  const ids=new Set(cuentasActivas().map(a=>a.id));
+  const todas=new Set(S.accounts.map(a=>a.id));
+  const sinCuenta=act.filter(m=>!m.cuenta_id);
+  const huerfanos=act.filter(m=>m.cuenta_id&&!todas.has(m.cuenta_id));
+  const enBorrada=act.filter(m=>m.cuenta_id&&todas.has(m.cuenta_id)&&!ids.has(m.cuenta_id));
+  const sinApertura=cuentasActivas().filter(a=>!aperturaDe(a.id));
+  const tmap=new Map();
+  for(const m of act.filter(m=>m.transfer_id))tmap.set(m.transfer_id,(tmap.get(m.transfer_id)||0)+1);
+  const transfRotas=[...tmap.entries()].filter(([,n])=>n!==2).length;
+  const principales=cuentasActivas().filter(a=>a.principal).length;
+  const sgn=m=>(m.tipo==='ingreso'?1:-1)*toUYU(m);
+  const saldoCuentas=act.filter(m=>m.cuenta_id&&ids.has(m.cuenta_id)).reduce((s,m)=>s+sgn(m),0);
+  const saldoTotal=act.reduce((s,m)=>s+sgn(m),0);
+  const dup=new Map();
+  for(const m of act){const k=m.fecha+'|'+m.monto+'|'+m.moneda+'|'+(m.categoria_id||'')+'|'+(m.cuenta_id||'');dup.set(k,(dup.get(k)||0)+1)}
+  const posiblesDup=[...dup.values()].filter(n=>n>1).reduce((s,n)=>s+n-1,0);
+  return {sinCuenta,huerfanos,enBorrada,sinApertura,transfRotas,principales,saldoCuentas,saldoTotal,descuadre:saldoTotal-saldoCuentas,posiblesDup,total:act.length};
+}
+function vistaConciliacion(){
+  const c=calcularConciliacion();
+  const chk=(ok,tit,det,accion)=>'<div class="row" style="gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">'
+    +'<span style="font-size:1.1rem;flex-shrink:0">'+(ok?'✅':'⚠️')+'</span>'
+    +'<div style="flex:1"><div style="font-weight:var(--fw-sb);font-size:var(--fs-sm)">'+tit+'</div>'
+    +'<div class="sub" style="font-size:var(--fs-xs);margin-top:2px">'+det+'</div>'
+    +(!ok&&accion?'<div class="sub" style="font-size:var(--fs-xs);margin-top:3px;color:var(--pri)">'+accion+'</div>':'')+'</div></div>';
+  return '<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);font-size:var(--fs-lg)">Conciliación de saldos</div>'
+    +'<div class="sub" style="margin-bottom:8px">Control de integridad sobre '+c.total+' movimiento(s) activos. No depende del período seleccionado.</div>'
+    +chk(!c.sinCuenta.length,'Movimientos con cuenta asignada',c.sinCuenta.length?c.sinCuenta.length+' movimiento(s) sin cuenta. Suman al total pero no a ninguna cuenta.':'Todos los movimientos tienen cuenta.','Ajustes → Cuentas → asignar pendientes')
+    +chk(!c.huerfanos.length,'Referencias válidas',c.huerfanos.length?c.huerfanos.length+' movimiento(s) apuntan a una cuenta inexistente.':'Ningún movimiento apunta a una cuenta inexistente.','Reasignar desde el detalle del movimiento')
+    +chk(!c.enBorrada.length,'Cuentas vigentes',c.enBorrada.length?c.enBorrada.length+' movimiento(s) en cuentas eliminadas.':'Ningún movimiento en cuentas eliminadas.','Reasignar a una cuenta activa')
+    +chk(!c.sinApertura.length,'Saldos de apertura',c.sinApertura.length?c.sinApertura.length+' cuenta(s) sin saldo de apertura: '+esc(c.sinApertura.map(a=>a.nombre).join(', ')):'Todas las cuentas tienen apertura registrada.','Ajustes → Cuentas → editar y fijar saldo')
+    +chk(!c.transfRotas,'Transferencias completas',c.transfRotas?c.transfRotas+' transferencia(s) con una sola pata registrada.':'Todas las transferencias tienen sus dos patas.','Revisar en Movimientos')
+    +chk(c.principales===1,'Cuenta principal única',c.principales===1?'Hay exactamente una cuenta principal.':(c.principales?c.principales+' cuentas marcadas como principales.':'Ninguna cuenta marcada como principal.'),'Ajustes → Cuentas → marcar una sola')
+    +chk(Math.abs(c.descuadre)<0.01,'Cuadre general',Math.abs(c.descuadre)<0.01?'El saldo total coincide con la suma de las cuentas.':'Diferencia de '+localFlag()+' '+fmt(Math.abs(c.descuadre))+' entre el saldo total y la suma de las cuentas.','Se corrige asignando los movimientos sin cuenta')
+    +chk(!c.posiblesDup,'Posibles duplicados',c.posiblesDup?c.posiblesDup+' movimiento(s) idénticos en fecha, monto, moneda, categoría y cuenta.':'Sin movimientos idénticos repetidos.','Revisar en Movimientos: pueden ser legítimos')
+    +'</div>'
+    +'<div class="card">'
+    +infFilaEF('Saldo total del sistema',c.saldoTotal)
+    +infFilaEF('Suma de saldos por cuenta',c.saldoCuentas)
+    +infFilaEF('Diferencia',c.descuadre,Math.abs(c.descuadre)<0.01?'ok':'bad',true)
+    +'</div>';
 }
 function infToggle(campo,valor){
   const arr=INF[campo],i=arr.indexOf(valor);
@@ -3585,6 +3784,8 @@ function dibujarInformes(saltarLectura){
   +'<div class="row spread" style="margin-bottom:12px"><h2>Informes</h2>'
   +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="exportarInformePDF()">PDF</button><button class="btn sm ghost" onclick="exportarInforme()">CSV</button></div></div>'
   +'<div style="text-align:right;margin-bottom:8px"><button class="link" style="font-size:.76rem" onclick="exportarInformeHTML()">¿El PDF no abre? Descargar como página</button></div>'
+  +'<div class="field"><label>Estado</label><select class="inp" onchange="infEstado(this.value)">'
+    +INF_ESTADOS.map(e=>'<option value="'+e[0]+'"'+(INF.estado===e[0]?' selected':'')+'>'+e[1]+'</option>').join('')+'</select></div>'
   +'<div class="chips" style="margin-bottom:10px">'
   +'<button class="chip" onclick="infPreset(\'mes\')">Este mes</button>'
   +'<button class="chip" onclick="infPreset(\'mesant\')">Mes pasado</button>'
@@ -3606,7 +3807,8 @@ function dibujarInformes(saltarLectura){
   +'<div class="field"><label>Etiqueta</label><input class="inp" id="infTag" placeholder="Opcional" value="'+esc(INF.tag)+'" onchange="dibujarInformes()"></div>'
   +'<div class="field"><label>Titular del informe</label><input class="inp" id="infTitular" placeholder="'+esc(S.userName||'Tu nombre, entidad o empresa')+'" value="'+esc(S.settings.titular||'')+'" onchange="guardarTitular(this.value)">'
   +'<div class="sub" style="font-size:.72rem;margin-top:5px">Encabeza tus informes exportados. Puede ser tu nombre, tu entidad o tu empresa.</div></div>'
-  +'<div class="card" style="margin-top:6px">'
+  +(INF.estado!=='resumen'?(INF.estado==='resultados'?vistaResultados():INF.estado==='flujos'?vistaFlujos():INF.estado==='presupuesto'?vistaPresupuesto():vistaConciliacion())+'</div></div>':
+   '<div class="card" style="margin-top:6px">'
   +'<div style="font-weight:800;margin-bottom:6px">Balance financiero</div>'
   +fila('Saldo inicial',r.saldoInicial)
   +fila('Ingresos',r.ingresos,'ok')
@@ -3623,10 +3825,75 @@ function dibujarInformes(saltarLectura){
   +infTabla('Por forma de pago',r.porPago)
   +infTabla('Flujo de caja por mes',r.porMes)
   +'</div>'
-  +'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>'
+  +'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>')
   +'</div></div>';
 }
 
+function exportarEstadoCSV(){
+  const cur=detectPais().cur||'UYU';
+  const rows=[];
+  const sec=t=>rows.push({seccion:t,concepto:'',importe:'',porcentaje:''});
+  if(titularInforme())sec(titularInforme().toUpperCase());
+  if(INF.estado==='conciliacion'){
+    const c=calcularConciliacion();
+    sec('CONCILIACION DE SALDOS');
+    const f=(t,ok,d)=>rows.push({seccion:'',concepto:t,importe:ok?'OK':'REVISAR',porcentaje:d});
+    f('Movimientos sin cuenta',!c.sinCuenta.length,String(c.sinCuenta.length));
+    f('Cuenta inexistente',!c.huerfanos.length,String(c.huerfanos.length));
+    f('Cuentas eliminadas',!c.enBorrada.length,String(c.enBorrada.length));
+    f('Cuentas sin apertura',!c.sinApertura.length,String(c.sinApertura.length));
+    f('Transferencias incompletas',!c.transfRotas,String(c.transfRotas));
+    f('Cuenta principal unica',c.principales===1,String(c.principales));
+    f('Posibles duplicados',!c.posiblesDup,String(c.posiblesDup));
+    sec('CUADRE');
+    rows.push({seccion:'',concepto:'Saldo total del sistema',importe:c.saldoTotal.toFixed(2),porcentaje:''});
+    rows.push({seccion:'',concepto:'Suma de saldos por cuenta',importe:c.saldoCuentas.toFixed(2),porcentaje:''});
+    rows.push({seccion:'',concepto:'Diferencia',importe:c.descuadre.toFixed(2),porcentaje:''});
+    rows.push({seccion:'NexoBalance · Tecnología JosmaTech · v'+APP_VERSION,concepto:'',importe:'',porcentaje:''});
+    if(!descargarArchivo('nexobalance_conciliacion_'+new Date().toISOString().slice(0,10)+'.csv',toCSV(rows,['seccion','concepto','importe','porcentaje'])))return;
+  }else if(INF.estado==='presupuesto'){
+    const r=calcularPresupuesto();
+    sec('GESTION DEL PRESUPUESTO ('+INF.desde+' a '+INF.hasta+')');
+    rows.push({seccion:'',concepto:'Ingreso esperado',importe:r.ingEsp.toFixed(2),porcentaje:''});
+    rows.push({seccion:'',concepto:'Ingreso real',importe:r.ingReal.toFixed(2),porcentaje:''});
+    rows.push({seccion:'',concepto:'Desvio de ingresos',importe:(r.ingReal-r.ingEsp).toFixed(2),porcentaje:''});
+    sec('EJECUCION POR CATEGORIA');
+    for(const l of r.lineas)rows.push({seccion:'',concepto:l.nombre+' | presupuestado '+l.pres.toFixed(2)+' | ejecutado '+l.real.toFixed(2),importe:l.dif.toFixed(2),porcentaje:l.pct===null?'':l.pct.toFixed(1)});
+    rows.push({seccion:'',concepto:'TOTAL | presupuestado '+r.presTot.toFixed(2)+' | ejecutado '+r.realTot.toFixed(2),importe:r.difTot.toFixed(2),porcentaje:r.presTot?(r.realTot/r.presTot*100).toFixed(1):''});
+    rows.push({seccion:'NexoBalance · Tecnología JosmaTech · v'+APP_VERSION,concepto:'',importe:'',porcentaje:''});
+    if(!descargarArchivo('nexobalance_presupuesto_'+INF.desde+'_'+INF.hasta+'.csv',toCSV(rows,['seccion','concepto','importe','porcentaje'])))return;
+  }else if(INF.estado==='resultados'){
+    const r=calcularResultados();
+    sec('ESTADO DE RESULTADOS ('+INF.desde+' a '+INF.hasta+')');
+    const bloque=(t,b)=>{
+      sec(t.toUpperCase());
+      for(const l of b.lineas){
+        rows.push({seccion:'',concepto:l.nombre,importe:l.total.toFixed(2),porcentaje:b.total?(l.total/b.total*100).toFixed(1):'0.0'});
+        for(const sx of [...l.subs.values()].sort((x,y)=>y.total-x.total))rows.push({seccion:'',concepto:'  '+sx.nombre,importe:sx.total.toFixed(2),porcentaje:''});
+      }
+      rows.push({seccion:'',concepto:'TOTAL '+t.toUpperCase(),importe:b.total.toFixed(2),porcentaje:'100.0'});
+    };
+    bloque('Ingresos',r.ing);bloque('Gastos',r.gas);
+    rows.push({seccion:'',concepto:'RESULTADO DEL PERIODO',importe:r.resultado.toFixed(2),porcentaje:''});
+    if(r.ajustes)rows.push({seccion:'',concepto:'Ajustes (a patrimonio)',importe:r.ajustes.toFixed(2),porcentaje:''});
+    rows.push({seccion:'NexoBalance · Tecnología JosmaTech · v'+APP_VERSION,concepto:'',importe:'',porcentaje:''});
+    if(!descargarArchivo('nexobalance_estado_resultados_'+INF.desde+'_'+INF.hasta+'.csv',toCSV(rows,['seccion','concepto','importe','porcentaje'])))return;
+  }else{
+    const r=calcularFlujos();
+    const f2=[];
+    const sec2=t=>f2.push({seccion:t,cuenta:'',inicial:'',apertura:'',ingresos:'',gastos:'',transferencias:'',ajustes:'',final:''});
+    if(titularInforme())sec2(titularInforme().toUpperCase());
+    sec2('FLUJOS DE CAPITAL ('+INF.desde+' a '+INF.hasta+')');
+    for(const f of r.filas)f2.push({seccion:'',cuenta:f.a.nombre,inicial:f.ini.toFixed(2),apertura:f.ape.toFixed(2),ingresos:f.ing.toFixed(2),gastos:f.gas.toFixed(2),transferencias:(f.tin-f.tout).toFixed(2),ajustes:f.aj.toFixed(2),final:f.fin.toFixed(2)});
+    const t=r.tot;
+    f2.push({seccion:'',cuenta:'CONSOLIDADO',inicial:t.ini.toFixed(2),apertura:t.ape.toFixed(2),ingresos:t.ing.toFixed(2),gastos:t.gas.toFixed(2),transferencias:(t.tin-t.tout).toFixed(2),ajustes:t.aj.toFixed(2),final:t.fin.toFixed(2)});
+    if(r.sinCuenta)f2.push({seccion:'',cuenta:'SIN CUENTA ASIGNADA ('+r.sinCuenta+' mov.)',inicial:'',apertura:'',ingresos:'',gastos:'',transferencias:'',ajustes:'',final:r.sinCuentaMonto.toFixed(2)});
+    f2.push({seccion:'NexoBalance · Tecnología JosmaTech · v'+APP_VERSION,cuenta:'',inicial:'',apertura:'',ingresos:'',gastos:'',transferencias:'',ajustes:'',final:''});
+    if(!descargarArchivo('nexobalance_flujos_capital_'+INF.desde+'_'+INF.hasta+'.csv',toCSV(f2,['seccion','cuenta','inicial','apertura','ingresos','gastos','transferencias','ajustes','final'])))return;
+  }
+  auditEvento('informe',{estado:INF.estado,desde:INF.desde,hasta:INF.hasta});
+  toast('Estado descargado ✓ · montos en '+cur);
+}
 function infHTMLImpresion(){
   const r=calcularInforme();
   const cur=detectPais().cur||'UYU';
@@ -3663,7 +3930,8 @@ function infHTMLImpresion(){
     +(titularInforme()?'<div class="titular">'+esc(titularInforme())+'</div>':'')
     +'<h1>Informe financiero</h1>'
     +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString()+'</div>'
-    +'<h2>Balance financiero</h2><table class="bal"><tbody>'
+    +(INF.estado!=='resumen'?(INF.estado==='resultados'?impResultados():INF.estado==='flujos'?impFlujos():INF.estado==='presupuesto'?impPresupuesto():impConciliacion())+piePDF()+'</body></html>':
+     '<h2>Balance financiero</h2><table class="bal"><tbody>'
     +'<tr><td>Saldo inicial</td><td class="r">'+n(r.saldoInicial)+'</td></tr>'
     +'<tr><td>Ingresos</td><td class="r ok">'+n(r.ingresos)+'</td></tr>'
     +'<tr><td>Gastos</td><td class="r bad">'+n(r.gastos)+'</td></tr>'
@@ -3679,7 +3947,60 @@ function infHTMLImpresion(){
     +tabla('Flujo de caja por mes',r.porMes)
     +detalle
     +piePDF()
-    +'</body></html>';
+    +'</body></html>');
+}
+function impPresupuesto(){
+  const r=calcularPresupuesto(),n=v=>fmt(v);
+  return '<h2>Ingresos</h2><table class="bal"><tbody>'
+    +'<tr><td>Ingreso esperado</td><td class="r">'+n(r.ingEsp)+'</td></tr>'
+    +'<tr><td>Ingreso real</td><td class="r">'+n(r.ingReal)+'</td></tr>'
+    +'<tr class="tot"><td>Desvío</td><td class="r">'+n(r.ingReal-r.ingEsp)+'</td></tr></tbody></table>'
+    +'<h2>Ejecución por categoría</h2><table><thead><tr><th>Categoría</th><th class="r">Presupuestado</th><th class="r">Ejecutado</th><th class="r">Disponible</th><th class="r">%</th></tr></thead><tbody>'
+    +(r.lineas.length?r.lineas.map(l=>'<tr><td>'+esc(l.nombre)+'</td><td class="r">'+n(l.pres)+'</td><td class="r">'+n(l.real)+'</td><td class="r">'+n(l.dif)+'</td><td class="r">'+(l.pct===null?'—':l.pct.toFixed(0))+'</td></tr>').join(''):'<tr><td colspan="5">Sin datos</td></tr>')
+    +'<tr class="tot"><td>Total</td><td class="r">'+n(r.presTot)+'</td><td class="r">'+n(r.realTot)+'</td><td class="r">'+n(r.difTot)+'</td><td class="r">'+(r.presTot?(r.realTot/r.presTot*100).toFixed(0):'—')+'</td></tr>'
+    +'</tbody></table>'
+    +'<div class="meta">'+r.meses.length+' mes(es) comprendidos en el período.'+(r.sinPresu?' '+r.sinPresu+' categoría(s) con gasto y sin presupuesto asignado.':'')+'</div>';
+}
+function impConciliacion(){
+  const c=calcularConciliacion(),n=v=>fmt(v);
+  const f=(t,ok,d)=>'<tr><td>'+t+'</td><td class="c">'+(ok?'OK':'REVISAR')+'</td><td>'+d+'</td></tr>';
+  return '<h2>Controles de integridad</h2><table><thead><tr><th>Control</th><th class="c">Estado</th><th>Detalle</th></tr></thead><tbody>'
+    +f('Movimientos con cuenta asignada',!c.sinCuenta.length,c.sinCuenta.length?c.sinCuenta.length+' sin cuenta':'Sin observaciones')
+    +f('Referencias válidas',!c.huerfanos.length,c.huerfanos.length?c.huerfanos.length+' con cuenta inexistente':'Sin observaciones')
+    +f('Cuentas vigentes',!c.enBorrada.length,c.enBorrada.length?c.enBorrada.length+' en cuentas eliminadas':'Sin observaciones')
+    +f('Saldos de apertura',!c.sinApertura.length,c.sinApertura.length?c.sinApertura.length+' cuenta(s) sin apertura':'Sin observaciones')
+    +f('Transferencias completas',!c.transfRotas,c.transfRotas?c.transfRotas+' con una sola pata':'Sin observaciones')
+    +f('Cuenta principal única',c.principales===1,c.principales+' cuenta(s) principal(es)')
+    +f('Posibles duplicados',!c.posiblesDup,c.posiblesDup?c.posiblesDup+' repetido(s)':'Sin observaciones')
+    +'</tbody></table>'
+    +'<h2>Cuadre general</h2><table class="bal"><tbody>'
+    +'<tr><td>Saldo total del sistema</td><td class="r">'+n(c.saldoTotal)+'</td></tr>'
+    +'<tr><td>Suma de saldos por cuenta</td><td class="r">'+n(c.saldoCuentas)+'</td></tr>'
+    +'<tr class="tot"><td>Diferencia</td><td class="r">'+n(c.descuadre)+'</td></tr>'
+    +'</tbody></table><div class="meta">Control sobre '+c.total+' movimiento(s) activos. Independiente del período seleccionado.</div>';
+}
+function impResultados(){
+  const r=calcularResultados(),n=v=>fmt(v);
+  const bloque=(tit,b)=>'<h2>'+tit+'</h2><table><thead><tr><th>Concepto</th><th class="r">Importe</th><th class="r">%</th></tr></thead><tbody>'
+    +(b.lineas.length?b.lineas.map(l=>'<tr><td>'+esc(l.nombre)+'</td><td class="r">'+n(l.total)+'</td><td class="r">'+(b.total?(l.total/b.total*100).toFixed(1):'0.0')+'</td></tr>'
+      +[...l.subs.values()].sort((x,y)=>y.total-x.total).map(sx=>'<tr><td style="padding-left:18px">· '+esc(sx.nombre)+'</td><td class="r">'+n(sx.total)+'</td><td class="r"></td></tr>').join('')
+     ).join(''):'<tr><td colspan="3">Sin movimientos</td></tr>')
+    +'<tr class="tot"><td>Total '+tit.toLowerCase()+'</td><td class="r">'+n(b.total)+'</td><td class="r">100.0</td></tr></tbody></table>';
+  return bloque('Ingresos',r.ing)+bloque('Gastos',r.gas)
+    +'<h2>Resultado</h2><table class="bal"><tbody><tr class="tot"><td>Resultado del período</td><td class="r">'+n(r.resultado)+'</td></tr></tbody></table>'
+    +(r.ajustes?'<div class="meta">Ajustes de saldo del período: '+n(r.ajustes)+'. No integran el resultado: se imputan directo a patrimonio.</div>':'')
+    +'<div class="meta">Excluye saldos de apertura y transferencias internas.</div>';
+}
+function impFlujos(){
+  const r=calcularFlujos(),n=v=>fmt(v);
+  const fila=f=>'<tr><td>'+esc(f.a.nombre)+'</td><td class="r">'+n(f.ini)+'</td><td class="r">'+n(f.ape)+'</td><td class="r">'+n(f.ing)+'</td><td class="r">'+n(f.gas)+'</td><td class="r">'+n(f.tin-f.tout)+'</td><td class="r">'+n(f.aj)+'</td><td class="r">'+n(f.fin)+'</td></tr>';
+  const t=r.tot;
+  return '<h2>Flujos de capital por cuenta</h2><table><thead><tr><th>Cuenta</th><th class="r">Inicial</th><th class="r">Apertura</th><th class="r">Ingresos</th><th class="r">Gastos</th><th class="r">Transf. neta</th><th class="r">Ajustes</th><th class="r">Final</th></tr></thead><tbody>'
+    +(r.filas.length?r.filas.map(fila).join(''):'<tr><td colspan="8">Sin cuentas</td></tr>')
+    +'<tr class="tot"><td>Consolidado</td><td class="r">'+n(t.ini)+'</td><td class="r">'+n(t.ape)+'</td><td class="r">'+n(t.ing)+'</td><td class="r">'+n(t.gas)+'</td><td class="r">'+n(t.tin-t.tout)+'</td><td class="r">'+n(t.aj)+'</td><td class="r">'+n(t.fin)+'</td></tr>'
+    +'</tbody></table>'
+    +(r.sinCuenta?'<div class="meta"><b>Atención:</b> '+r.sinCuenta+' movimiento(s) sin cuenta asignada por '+n(Math.abs(r.sinCuentaMonto))+'. No integran ninguna cuenta y descuadran el consolidado.</div>':'')
+    +'<div class="meta">Las transferencias internas se compensan entre cuentas: no alteran el patrimonio total.</div>';
 }
 // El iframe necesita medidas reales: con 0x0 el motor de impresión no tiene
 // qué maquetar y genera un PDF vacío o corrupto. Se lo saca de la vista
@@ -4009,6 +4330,7 @@ function infNombreArchivo(){
   return 'nexobalance_informe_'+p.join('_')+'_'+INF.desde+'_a_'+INF.hasta+'.csv';
 }
 function exportarInforme(){
+  if(INF.estado!=='resumen')return exportarEstadoCSV();
   const r=calcularInforme();
   if(!r.movimientos.length)return toast('No hay movimientos en ese período');
   const cur=detectPais().cur||'UYU';
