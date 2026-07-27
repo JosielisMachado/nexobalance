@@ -374,7 +374,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.79.0';
+const APP_VERSION='1.80.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3641,7 +3641,7 @@ function vistaPresupuesto(){
     +'<div class="card">'
     +infFilaEF('Total presupuestado',r.presTot)
     +infFilaEF('Total ejecutado',r.realTot,'bad')
-    +infFilaEF('Disponible',r.difTot,r.difTot>=0?'ok':'bad',true)
+    +infFilaEF(r.difTot<0?'Excedido':'Disponible',r.difTot,r.difTot>=0?'ok':'bad',true)
     +(r.sinPresu?'<div class="sub" style="font-size:var(--fs-xs);margin-top:8px">'+r.sinPresu+' categoría(s) con gasto pero sin presupuesto asignado.</div>':'')
     +'</div>';
 }
@@ -3924,23 +3924,23 @@ function infHTMLImpresion(){
     +'table{width:100%;border-collapse:collapse;margin-bottom:6px}'
     +'th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#667085;border-bottom:1px solid #d0d5dd;padding:5px 4px}'
     +'td{padding:5px 4px;border-bottom:1px solid #eaecf0}'
-    +'.r{text-align:right}.c{text-align:center}.ok{color:#027A48}.bad{color:#B42318}'
+    +'.r{text-align:right}.c{text-align:center}.ok{color:#027A48;font-weight:700}.bad{color:#B42318;font-weight:700}.neu{color:#1570EF;font-weight:700}'+'.pos{background:#ECFDF3}.neg{background:#FEF3F2}'
     +'.bal td{font-size:13px}.bal .tot{font-weight:800;border-top:2px solid #101828}'
     +'.titular{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#1788FF;font-weight:800;margin-bottom:3px}'
     +'.pie{margin-top:26px;padding-top:10px;border-top:1px solid #d0d5dd;text-align:center;font-size:10px;color:#667085;letter-spacing:.04em}'
-    +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}.pie{position:relative}}'
+    +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}.pie{position:relative}'+'*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     +'</style></head><body>'
     +(titularInforme()?'<div class="titular">'+esc(titularInforme())+'</div>':'')
     +'<h1>'+esc(infNombreEstado())+'</h1>'
     +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString()+'</div>'
     +(INF.estado!=='resumen'?(INF.estado==='resultados'?impResultados():INF.estado==='flujos'?impFlujos():INF.estado==='presupuesto'?impPresupuesto():impConciliacion())+piePDF()+'</body></html>':
      '<h2>Balance financiero</h2><table class="bal"><tbody>'
-    +'<tr><td>Saldo inicial</td><td class="r">'+n(r.saldoInicial)+'</td></tr>'
+    +'<tr><td>Saldo inicial</td><td class="r neu">'+n(r.saldoInicial)+'</td></tr>'
     +'<tr><td>Ingresos</td><td class="r ok">'+n(r.ingresos)+'</td></tr>'
     +'<tr><td>Gastos</td><td class="r bad">'+n(r.gastos)+'</td></tr>'
-    +'<tr><td>Resultado</td><td class="r">'+n(r.resultado)+'</td></tr>'
+    +'<tr><td>Resultado</td><td class="r '+impClase(r.resultado)+'">'+n(r.resultado)+'</td></tr>'
     +(r.aperturas?'<tr><td>Saldos de apertura</td><td class="r">'+n(r.aperturas)+'</td></tr>':'')
-    +'<tr class="tot"><td>Saldo final</td><td class="r">'+n(r.saldoFinal)+'</td></tr>'
+    +'<tr class="tot '+(r.saldoFinal<-0.005?'neg':'pos')+'"><td>Saldo final</td><td class="r '+impClase(r.saldoFinal)+'">'+n(r.saldoFinal)+'</td></tr>'
     +'</tbody></table>'
     +(r.nTransfer?'<div class="meta">'+r.nTransfer+' transferencia(s) interna(s) en el período. No afectan ingresos, gastos ni resultado.</div>':'')
     +tabla('Por categoría',r.porCategoria)
@@ -3952,21 +3952,23 @@ function infHTMLImpresion(){
     +piePDF()
     +'</body></html>');
 }
+function impClase(v){return v>0.005?'ok':(v<-0.005?'bad':'neu')}
 function impPresupuesto(){
   const r=calcularPresupuesto(),n=v=>fmt(v);
+  const etDisp=r.difTot<0?'Excedido':'Disponible';
   return '<h2>Ingresos</h2><table class="bal"><tbody>'
-    +'<tr><td>Ingreso esperado</td><td class="r">'+n(r.ingEsp)+'</td></tr>'
-    +'<tr><td>Ingreso real</td><td class="r">'+n(r.ingReal)+'</td></tr>'
-    +'<tr class="tot"><td>Desvío</td><td class="r">'+n(r.ingReal-r.ingEsp)+'</td></tr></tbody></table>'
-    +'<h2>Ejecución por categoría</h2><table><thead><tr><th>Categoría</th><th class="r">Presupuestado</th><th class="r">Ejecutado</th><th class="r">Disponible</th><th class="r">%</th></tr></thead><tbody>'
-    +(r.lineas.length?r.lineas.map(l=>'<tr><td>'+esc(l.nombre)+'</td><td class="r">'+n(l.pres)+'</td><td class="r">'+n(l.real)+'</td><td class="r">'+n(l.dif)+'</td><td class="r">'+(l.pct===null?'—':l.pct.toFixed(0))+'</td></tr>').join(''):'<tr><td colspan="5">Sin datos</td></tr>')
-    +'<tr class="tot"><td>Total</td><td class="r">'+n(r.presTot)+'</td><td class="r">'+n(r.realTot)+'</td><td class="r">'+n(r.difTot)+'</td><td class="r">'+(r.presTot?(r.realTot/r.presTot*100).toFixed(0):'—')+'</td></tr>'
+    +'<tr><td>Ingreso esperado</td><td class="r neu">'+n(r.ingEsp)+'</td></tr>'
+    +'<tr><td>Ingreso real</td><td class="r neu">'+n(r.ingReal)+'</td></tr>'
+    +'<tr class="tot"><td>Desvío</td><td class="r '+impClase(r.ingReal-r.ingEsp)+'">'+n(r.ingReal-r.ingEsp)+'</td></tr></tbody></table>'
+    +'<h2>Ejecución por categoría</h2><table><thead><tr><th>Categoría</th><th class="r">Presupuestado</th><th class="r">Ejecutado</th><th class="r">'+etDisp+'</th><th class="r">%</th></tr></thead><tbody>'
+    +(r.lineas.length?r.lineas.map(l=>'<tr class="'+(l.dif<-0.005?'neg':'')+'"><td>'+esc(l.nombre)+'</td><td class="r neu">'+n(l.pres)+'</td><td class="r">'+n(l.real)+'</td><td class="r '+impClase(l.dif)+'">'+n(l.dif)+'</td><td class="r '+(l.pct===null?'neu':(l.pct>100?'bad':'ok'))+'">'+(l.pct===null?'—':l.pct.toFixed(0))+'</td></tr>').join(''):'<tr><td colspan="5">Sin datos</td></tr>')
+    +'<tr class="tot '+(r.difTot<-0.005?'neg':'pos')+'"><td>Total</td><td class="r neu">'+n(r.presTot)+'</td><td class="r">'+n(r.realTot)+'</td><td class="r '+impClase(r.difTot)+'">'+n(r.difTot)+'</td><td class="r '+(r.presTot&&r.realTot/r.presTot*100>100?'bad':'ok')+'">'+(r.presTot?(r.realTot/r.presTot*100).toFixed(0):'—')+'</td></tr>'
     +'</tbody></table>'
     +'<div class="meta">'+r.meses.length+' mes(es) comprendidos en el período.'+(r.sinPresu?' '+r.sinPresu+' categoría(s) con gasto y sin presupuesto asignado.':'')+'</div>';
 }
 function impConciliacion(){
   const c=calcularConciliacion(),n=v=>fmt(v);
-  const f=(t,ok,d)=>'<tr><td>'+t+'</td><td class="c">'+(ok?'OK':'REVISAR')+'</td><td>'+d+'</td></tr>';
+  const f=(t,ok,d)=>'<tr class="'+(ok?'':'neg')+'"><td>'+t+'</td><td class="c '+(ok?'ok':'bad')+'">'+(ok?'OK':'REVISAR')+'</td><td>'+d+'</td></tr>';
   return '<h2>Controles de integridad</h2><table><thead><tr><th>Control</th><th class="c">Estado</th><th>Detalle</th></tr></thead><tbody>'
     +f('Movimientos con cuenta asignada',!c.sinCuenta.length,c.sinCuenta.length?c.sinCuenta.length+' sin cuenta':'Sin observaciones')
     +f('Referencias válidas',!c.huerfanos.length,c.huerfanos.length?c.huerfanos.length+' con cuenta inexistente':'Sin observaciones')
@@ -3979,7 +3981,7 @@ function impConciliacion(){
     +'<h2>Cuadre general</h2><table class="bal"><tbody>'
     +'<tr><td>Saldo total del sistema</td><td class="r">'+n(c.saldoTotal)+'</td></tr>'
     +'<tr><td>Suma de saldos por cuenta</td><td class="r">'+n(c.saldoCuentas)+'</td></tr>'
-    +'<tr class="tot"><td>Diferencia</td><td class="r">'+n(c.descuadre)+'</td></tr>'
+    +'<tr class="tot '+(Math.abs(c.descuadre)<0.01?'pos':'neg')+'"><td>Diferencia</td><td class="r '+(Math.abs(c.descuadre)<0.01?'ok':'bad')+'">'+n(c.descuadre)+'</td></tr>'
     +'</tbody></table><div class="meta">Control sobre '+c.total+' movimiento(s) activos. Independiente del período seleccionado.</div>';
 }
 function impResultados(){
@@ -3990,17 +3992,17 @@ function impResultados(){
      ).join(''):'<tr><td colspan="3">Sin movimientos</td></tr>')
     +'<tr class="tot"><td>Total '+tit.toLowerCase()+'</td><td class="r">'+n(b.total)+'</td><td class="r">100.0</td></tr></tbody></table>';
   return bloque('Ingresos',r.ing)+bloque('Gastos',r.gas)
-    +'<h2>Resultado</h2><table class="bal"><tbody><tr class="tot"><td>Resultado del período</td><td class="r">'+n(r.resultado)+'</td></tr></tbody></table>'
+    +'<h2>Resultado</h2><table class="bal"><tbody><tr class="tot '+(r.resultado<-0.005?'neg':'pos')+'"><td>Resultado del período</td><td class="r '+impClase(r.resultado)+'">'+n(r.resultado)+'</td></tr></tbody></table>'
     +(r.ajustes?'<div class="meta">Ajustes de saldo del período: '+n(r.ajustes)+'. No integran el resultado: se imputan directo a patrimonio.</div>':'')
     +'<div class="meta">Excluye saldos de apertura y transferencias internas.</div>';
 }
 function impFlujos(){
   const r=calcularFlujos(),n=v=>fmt(v);
-  const fila=f=>'<tr><td>'+esc(f.a.nombre)+'</td><td class="r">'+n(f.ini)+'</td><td class="r">'+n(f.ape)+'</td><td class="r">'+n(f.ing)+'</td><td class="r">'+n(f.gas)+'</td><td class="r">'+n(f.tin-f.tout)+'</td><td class="r">'+n(f.aj)+'</td><td class="r">'+n(f.fin)+'</td></tr>';
+  const fila=f=>'<tr><td>'+esc(f.a.nombre)+'</td><td class="r neu">'+n(f.ini)+'</td><td class="r neu">'+n(f.ape)+'</td><td class="r ok">'+n(f.ing)+'</td><td class="r bad">'+n(f.gas)+'</td><td class="r '+impClase(f.tin-f.tout)+'">'+n(f.tin-f.tout)+'</td><td class="r '+impClase(f.aj)+'">'+n(f.aj)+'</td><td class="r '+impClase(f.fin)+'">'+n(f.fin)+'</td></tr>';
   const t=r.tot;
   return '<h2>Flujos de capital por cuenta</h2><table><thead><tr><th>Cuenta</th><th class="r">Inicial</th><th class="r">Apertura</th><th class="r">Ingresos</th><th class="r">Gastos</th><th class="r">Transf. neta</th><th class="r">Ajustes</th><th class="r">Final</th></tr></thead><tbody>'
     +(r.filas.length?r.filas.map(fila).join(''):'<tr><td colspan="8">Sin cuentas</td></tr>')
-    +'<tr class="tot"><td>Consolidado</td><td class="r">'+n(t.ini)+'</td><td class="r">'+n(t.ape)+'</td><td class="r">'+n(t.ing)+'</td><td class="r">'+n(t.gas)+'</td><td class="r">'+n(t.tin-t.tout)+'</td><td class="r">'+n(t.aj)+'</td><td class="r">'+n(t.fin)+'</td></tr>'
+    +'<tr class="tot '+(t.fin<-0.005?'neg':'pos')+'"><td>Consolidado</td><td class="r neu">'+n(t.ini)+'</td><td class="r neu">'+n(t.ape)+'</td><td class="r ok">'+n(t.ing)+'</td><td class="r bad">'+n(t.gas)+'</td><td class="r '+impClase(t.tin-t.tout)+'">'+n(t.tin-t.tout)+'</td><td class="r '+impClase(t.aj)+'">'+n(t.aj)+'</td><td class="r '+impClase(t.fin)+'">'+n(t.fin)+'</td></tr>'
     +'</tbody></table>'
     +(r.sinCuenta?'<div class="meta"><b>Atención:</b> '+r.sinCuenta+' movimiento(s) sin cuenta asignada por '+n(Math.abs(r.sinCuentaMonto))+'. No integran ninguna cuenta y descuadran el consolidado.</div>':'')
     +'<div class="meta">Las transferencias internas se compensan entre cuentas: no alteran el patrimonio total.</div>';
