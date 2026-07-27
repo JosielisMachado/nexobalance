@@ -101,7 +101,7 @@ nav button svg{transition:.15s}
   .btn:hover{filter:brightness(1.06)}
   nav button:hover{opacity:.85}
 }
-.sheet{background:var(--card);border:1px solid var(--line);border-radius:26px 26px 0 0;width:100%;max-width:560px;margin:0 auto;max-height:92vh;overflow-y:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom));animation:up .25s cubic-bezier(.4,0,.2,1)}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:26px 26px 0 0;width:100%;max-width:560px;margin:0 auto;max-height:92vh;overflow-y:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom));animation:fade .18s ease-out}
 .sheet.full{max-height:100vh;height:100vh;border-radius:0;padding-top:calc(16px + env(safe-area-inset-top))}
 .sheet-bg:has(.sheet.full){background:var(--bg)}
 .sheet-bg.dragging{background:var(--bg)!important}
@@ -345,7 +345,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.66.0';
+const APP_VERSION='1.67.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3269,10 +3269,10 @@ async function tcAutoFetch(silencioso){
     S.settings.tcFuente=data.nombre||'Oficial';
     await kvSet('settings',S.settings);
     if(!silencioso)toast('Tipo de cambio oficial actualizado');
-    render();
+    render(!!silencioso);
   }catch(e){
     if(!silencioso)toast('No se pudo obtener la cotización. Se mantiene el último valor.');
-    if(S.tab==='ajustes')render();
+    if(S.tab==='ajustes')render(!!silencioso);
   }
 }
 
