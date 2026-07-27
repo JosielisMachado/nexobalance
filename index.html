@@ -133,8 +133,9 @@ nav button svg{transition:.15s}
   .sheet-bg:has(.sheet.full){background:var(--panel-out)}
   .sheet.full{border-radius:22px 22px 0 0;height:100%;max-height:none;padding-top:var(--sp-4)}
 }
-.sheetX{position:sticky;top:0;z-index:6;margin:0 0 var(--sp-2) auto;width:38px;height:38px;min-width:38px;border-radius:var(--r-full);background:var(--chip);color:var(--txt);font-size:.95rem;font-weight:var(--fw-b);display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-sm)}
-.sheetX:active{transform:scale(.92)}
+.sheet>.handle{display:none}
+.sheetX{position:sticky;top:0;z-index:6;float:right;margin:0 0 var(--sp-2) var(--sp-2);width:34px;height:34px;min-width:34px;border-radius:var(--r-full);background:var(--chip);color:var(--sub);font-size:.9rem;line-height:1;font-weight:var(--fw-b);display:flex;align-items:center;justify-content:center}
+.sheetX:active{transform:scale(.92);background:var(--line)}
 @media(min-width:720px){
   .sheet{border-radius:22px;max-height:84vh;animation:fade .18s}
   .sheet.full{border-radius:22px;max-height:84vh;height:auto}
@@ -374,7 +375,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.73.0';
+const APP_VERSION='1.74.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -4375,7 +4376,9 @@ function fallbackCopy(txt){
   if(!host)return;
   new MutationObserver(()=>{
     const sh=host.querySelector('.sheet');
-    if(!sh||sh.querySelector('.sheetX'))return;
+    if(!sh)return;
+    const ya=sh.querySelectorAll('.sheetX');
+    if(ya.length){for(let i=1;i<ya.length;i++)ya[i].remove();return}
     const b=document.createElement('button');
     b.className='sheetX';b.type='button';b.setAttribute('aria-label','Cerrar');b.textContent='✕';
     b.addEventListener('click',closeSheet);
