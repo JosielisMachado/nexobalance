@@ -344,7 +344,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.64.0';
+const APP_VERSION='1.64.1';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -782,26 +782,27 @@ async function sincronizacionCompleta(silenciosa){
 }
 
 async function verificarIntegridadLocal(){
-  // Un almacén local vacío puede ser normal (usuario nuevo) o una pérdida de datos
-  // del dispositivo. La sincronización incremental no distingue los dos casos: filtra
-  // por updated_at, así que nunca vuelve a traer registros antiguos que se perdieron
-  // en local. Aquí se le pregunta al servidor antes de asumir que no hay nada.
+  // Un almacén local con menos registros que el servidor puede ser normal (aún no
+  // sincronizó) o una pérdida de datos del dispositivo. La sincronización incremental
+  // no distingue los dos casos: filtra por updated_at, así que nunca vuelve a traer
+  // registros antiguos que se perdieron en local.
+  // Comparar cantidades detecta tanto la pérdida total como la parcial.
   if(!navigator.onLine||!S.uid)return 0;
   try{
-    const faltantes=[];
-    if(!S.accounts.length)faltantes.push('accounts');
-    if(!S.movs.length)faltantes.push('movements');
-    if(!activeCats().length)faltantes.push('categories');
-    if(!faltantes.length)return 0;
-    let hayEnServidor=false;
-    for(const tabla of faltantes){
+    const ult=await kvGet('lastIntegridad');
+    if(ult&&(Date.now()-new Date(ult).getTime())<3600*1000)return 0;
+    const controles=[['accounts',cuentasActivas().length],['categories',activeCats().length]];
+    if(!S.movs.length)controles.push(['movements',0]);
+    let divergencia=null;
+    for(const[tabla,local]of controles){
       const{count,error}=await sb.from(tabla).select('id',{count:'exact',head:true}).eq('deleted',false);
-      if(!error&&count>0){hayEnServidor=true;break}
+      if(!error&&typeof count==='number'&&count>local){divergencia=tabla;break}
     }
-    if(!hayEnServidor)return 0;
+    await kvSet('lastIntegridad',new Date().toISOString());
+    if(!divergencia)return 0;
     const cambios=await pullAll(true);
     await kvSet('lastFull',new Date().toISOString());
-    if(cambios)await auditEvento('recuperacion_local',{almacenes:faltantes.join(','),cambios});
+    if(cambios)await auditEvento('recuperacion_local',{almacen:divergencia,cambios});
     return cambios;
   }catch(e){
     console.error('verificarIntegridadLocal:',e);
