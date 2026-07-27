@@ -187,7 +187,6 @@ nav button svg{transition:.15s}
 body.sheet-open{overflow:hidden!important;touch-action:none}
 .sheet.closing{animation:down .22s cubic-bezier(.4,0,.2,1) forwards}
 @keyframes down{from{transform:translateY(0)}to{transform:translateY(100%)}}
-.sheet-x{position:absolute;top:12px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--chip);color:var(--txt);display:flex;align-items:center;justify-content:center;font-size:1.1rem;z-index:5}
 @keyframes fade{from{opacity:0}}
 @keyframes up{from{transform:translateY(40px)}}
 .handle{width:42px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
@@ -375,7 +374,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.74.0';
+const APP_VERSION='1.75.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -4377,7 +4376,7 @@ function fallbackCopy(txt){
   new MutationObserver(()=>{
     const sh=host.querySelector('.sheet');
     if(!sh)return;
-    const ya=sh.querySelectorAll('.sheetX');
+    const ya=sh.querySelectorAll('.sheetX,.sheet-x');
     if(ya.length){for(let i=1;i<ya.length;i++)ya[i].remove();return}
     const b=document.createElement('button');
     b.className='sheetX';b.type='button';b.setAttribute('aria-label','Cerrar');b.textContent='✕';
@@ -4916,7 +4915,6 @@ async function openAdminSheet(){
   if(!navigator.onLine)return toast('Necesitas Internet para ver las estadísticas');
   const h=document.getElementById('sheetHost');
   h.innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet full">
-    <button class="sheet-x" onclick="closeSheet()">✕</button>
     <div class="handle"></div><h2 style="margin-bottom:14px">Panel de administrador</h2>
     <div id="adminBody" class="sub">Cargando…</div>
   </div></div>`;
