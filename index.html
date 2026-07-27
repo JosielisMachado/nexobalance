@@ -374,7 +374,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.80.0';
+const APP_VERSION='1.81.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -2699,8 +2699,10 @@ function viewPresu(){
     </div>`;
   }
 
-  const copiar=budgetsMes(periodShift(pk,-1)).length>0&&buds.length===0?
-    `<button class="btn ghost" style="width:100%;margin-bottom:12px" onclick="copiarPresupuestoAnterior()">Copiar presupuesto del mes anterior</button>`:'';
+  const hayPrev=budgetsMes(periodShift(pk,-1)).length>0;
+  const copiar=(hayPrev&&!buds.length?
+    `<button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,var(--pri),var(--pri2));box-shadow:0 8px 20px rgba(23,136,255,.32)" onclick="copiarPresupuestoAnterior()">⧉ Copiar presupuesto del mes anterior</button>`:'')
+    +(buds.length?`<button class="btn ghost" style="width:100%;margin-bottom:12px;color:var(--bad)" onclick="limpiarPresupuestoMes()">Limpiar presupuesto de este mes</button>`:'');
 
   // Salud financiera + recomendaciones
   const sd=saludDetalle(pk);
@@ -2878,6 +2880,26 @@ async function eliminarPresupuesto(catId){
   const pk=S.presuMes;const b=budgetFor(catId,pk);if(!b)return;
   await enqueue('budget',{...b,deleted:true,updated_at:nowISO()});
   closeSheet();toast('Presupuesto quitado');
+}
+function limpiarPresupuestoMes(){
+  const pk=S.presuMes,buds=budgetsMes(pk);
+  if(!buds.length)return toast('Este mes no tiene presupuesto cargado');
+  openConfirm('¿Limpiar el presupuesto de '+periodLabel(pk)+'?',
+    'Se eliminarán los '+buds.length+' presupuesto(s) de categoría de este mes. Tus movimientos y tus gastos no se tocan: solo desaparecen los límites que fijaste.',
+    ()=>{
+      openConfirm('Confirma otra vez',
+        'Esta acción no se puede deshacer. Tendrás que volver a cargar cada límite a mano o copiarlo del mes anterior.',
+        ()=>{pedirPin('Limpiar presupuesto','Confirma con tu PIN para eliminar los límites de '+periodLabel(pk)+'.',ejecutarLimpiezaPresupuesto)},
+        'Sí, limpiar');
+    },'Continuar');
+}
+async function ejecutarLimpiezaPresupuesto(){
+  const pk=S.presuMes,buds=budgetsMes(pk);
+  const t=nowISO();
+  for(const b of buds)await enqueue('budget',{...b,deleted:true,updated_at:t});
+  closeSheet();
+  await auditEvento('presupuesto_limpiado',{periodo:pk,eliminados:buds.length});
+  toast(buds.length+' presupuesto(s) eliminado(s)');
 }
 async function copiarPresupuestoAnterior(){
   const pk=S.presuMes;const prev=periodShift(pk,-1);
@@ -3472,7 +3494,7 @@ async function zonaRojaEjecutar(){
 }
 
 // ===== Informes (H-004 / H-013) =====
-const INF={desde:'',hasta:'',cuentas:[],cats:[],moneda:'',pago:'',tag:'',estado:'resumen'};
+const INF={desde:'',hasta:'',cuentas:[],cats:[],moneda:'',pago:'',tag:'',estado:'resumen',comparar:false};
 function infInicializar(){
   if(INF.desde)return;
   const[d1,d2]=periodRange(periodKey(new Date()));
@@ -3491,6 +3513,68 @@ function infPreset(tipo){
 }
 const INF_ESTADOS=[['resumen','Resumen general'],['resultados','Estado de Resultados'],['flujos','Flujos de Capital'],['presupuesto','Gestión del Presupuesto'],['conciliacion','Conciliación de saldos']];
 function infEstado(v){INF.estado=v;dibujarInformes()}
+function infComparar(v){INF.comparar=!!v;dibujarInformes()}
+function infRangoAnterior(){
+  const d=new Date(INF.desde+'T00:00:00'),h=new Date(INF.hasta+'T00:00:00');
+  const dias=Math.round((h-d)/86400000)+1;
+  const h2=new Date(d.getTime()-86400000),d2=new Date(h2.getTime()-(dias-1)*86400000);
+  const f=x=>x.toISOString().slice(0,10);
+  return [f(d2),f(h2)];
+}
+function conRangoAnterior(fn){
+  const od=INF.desde,oh=INF.hasta;
+  const [a,b]=infRangoAnterior();
+  INF.desde=a;INF.hasta=b;
+  let r;try{r=fn()}finally{INF.desde=od;INF.hasta=oh}
+  return r;
+}
+function infVar(act,ant){
+  const dif=act-ant;
+  const pct=ant?Math.abs(dif/ant*100):null;
+  return {dif,pct};
+}
+function infNotaComparativa(){
+  if(!INF.comparar)return{texto:'',lineas:[]};
+  const [a,b]=infRangoAnterior();
+  const act=calcularResultados(),ant=conRangoAnterior(calcularResultados);
+  const mapa=new Map();
+  for(const l of ant.gas.lineas)mapa.set(l.nombre,l.total);
+  const lineas=[];
+  for(const l of act.gas.lineas){
+    const prev=mapa.get(l.nombre)||0;
+    const v=infVar(l.total,prev);
+    if(!prev&&l.total>0){lineas.push({cat:l.nombre,texto:'apareció este período con '+fmt(l.total)+', no existía antes.',signo:1});continue}
+    if(prev&&!l.total){lineas.push({cat:l.nombre,texto:'dejó de registrarse: antes '+fmt(prev)+'.',signo:-1});continue}
+    if(v.pct!==null&&v.pct>=15&&Math.abs(v.dif)>=1){
+      lineas.push({cat:l.nombre,texto:(v.dif>0?'subió':'bajó')+' '+v.pct.toFixed(0)+'% ('+(v.dif>0?'+':'')+fmt(v.dif)+'), de '+fmt(prev)+' a '+fmt(l.total)+'.',signo:v.dif>0?1:-1});
+    }
+  }
+  lineas.sort((x,y)=>Math.abs(y.signo)-Math.abs(x.signo));
+  const vi=infVar(act.ing.total,ant.ing.total),vg=infVar(act.gas.total,ant.gas.total),vr=infVar(act.resultado,ant.resultado);
+  const texto='Comparado con el período anterior ('+a+' a '+b+'): ingresos '+(vi.dif>=0?'+':'')+fmt(vi.dif)
+    +', gastos '+(vg.dif>=0?'+':'')+fmt(vg.dif)+', resultado '+(vr.dif>=0?'+':'')+fmt(vr.dif)+'.';
+  return {texto,lineas,a,b,act,ant};
+}
+function vistaComparativa(){
+  const c=infNotaComparativa();
+  if(!c.texto)return '';
+  return '<div class="card">'
+    +'<div style="font-weight:var(--fw-xb);margin-bottom:4px">Análisis comparativo</div>'
+    +'<div class="sub" style="line-height:1.5;margin-bottom:8px">'+esc(c.texto)+'</div>'
+    +(c.lineas.length?c.lineas.map(l=>'<div style="padding:7px 0;border-top:1px solid var(--line)">'
+      +'<span style="font-weight:var(--fw-sb);font-size:var(--fs-sm)">'+esc(l.cat)+'</span> '
+      +'<span class="'+(l.signo>0?'bad':'ok')+'" style="font-size:var(--fs-sm)">'+esc(l.texto)+'</span></div>').join('')
+     :'<div class="sub" style="font-size:var(--fs-xs)">Sin variaciones relevantes por categoría.</div>')
+    +'</div>';
+}
+function impComparativa(){
+  const c=infNotaComparativa();
+  if(!c.texto)return '';
+  return '<h2>Análisis comparativo</h2><div class="meta">'+esc(c.texto)+'</div>'
+    +(c.lineas.length?'<table><thead><tr><th>Categoría</th><th>Observación</th></tr></thead><tbody>'
+      +c.lineas.map(l=>'<tr class="'+(l.signo>0?'neg':'pos')+'"><td>'+esc(l.cat)+'</td><td>'+esc(l.texto)+'</td></tr>').join('')
+      +'</tbody></table>':'<div class="meta">Sin variaciones relevantes por categoría.</div>');
+}
 function infNombreEstado(){const e=INF_ESTADOS.find(x=>x[0]===INF.estado);return e?e[1]:'Informe financiero'}
 function infSlugEstado(){return norm(infNombreEstado()).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function infFilaEF(et,val,cls,negrita,sangria){
@@ -3786,6 +3870,7 @@ function dibujarInformes(saltarLectura){
   +'<div class="row spread" style="margin-bottom:12px"><h2>'+infNombreEstado()+'</h2>'
   +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="exportarInformePDF()">PDF</button><button class="btn sm ghost" onclick="exportarInforme()">CSV</button></div></div>'
   +'<div style="text-align:right;margin-bottom:8px"><button class="link" style="font-size:.76rem" onclick="exportarInformeHTML()">¿El PDF no abre? Descargar como página</button></div>'
+  +'<label class="row" style="gap:10px;align-items:center;margin-bottom:12px;cursor:pointer"><input type="checkbox" '+(INF.comparar?'checked':'')+' onchange="infComparar(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"><div><div style="font-weight:var(--fw-sb)">Comparar con el período anterior</div><div class="sub" style="font-size:var(--fs-xs)">Agrega el análisis de variaciones por categoría</div></div></label>'
   +'<div class="field"><label>Estado</label><select class="inp" onchange="infEstado(this.value)">'
     +INF_ESTADOS.map(e=>'<option value="'+e[0]+'"'+(INF.estado===e[0]?' selected':'')+'>'+e[1]+'</option>').join('')+'</select></div>'
   +'<div class="chips" style="margin-bottom:10px">'
@@ -3809,7 +3894,7 @@ function dibujarInformes(saltarLectura){
   +'<div class="field"><label>Etiqueta</label><input class="inp" id="infTag" placeholder="Opcional" value="'+esc(INF.tag)+'" onchange="dibujarInformes()"></div>'
   +'<div class="field"><label>Titular del informe</label><input class="inp" id="infTitular" placeholder="'+esc(S.userName||'Tu nombre, entidad o empresa')+'" value="'+esc(S.settings.titular||'')+'" onchange="guardarTitular(this.value)">'
   +'<div class="sub" style="font-size:.72rem;margin-top:5px">Encabeza tus informes exportados. Puede ser tu nombre, tu entidad o tu empresa.</div></div>'
-  +(INF.estado!=='resumen'?(INF.estado==='resultados'?vistaResultados():INF.estado==='flujos'?vistaFlujos():INF.estado==='presupuesto'?vistaPresupuesto():vistaConciliacion())+'</div></div>':
+  +(INF.estado!=='resumen'?(INF.estado==='resultados'?vistaResultados():INF.estado==='flujos'?vistaFlujos():INF.estado==='presupuesto'?vistaPresupuesto():vistaConciliacion())+vistaComparativa()+'</div></div>':
    '<div class="card" style="margin-top:6px">'
   +'<div style="font-weight:800;margin-bottom:6px">Balance financiero</div>'
   +fila('Saldo inicial',r.saldoInicial)
@@ -3827,7 +3912,7 @@ function dibujarInformes(saltarLectura){
   +infTabla('Por forma de pago',r.porPago)
   +infTabla('Flujo de caja por mes',r.porMes)
   +'</div>'
-  +'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>')
+  +vistaComparativa()+'<div class="sub" style="font-size:.75rem;text-align:center;padding:6px 0 4px">'+r.movimientos.length+' movimiento(s) en el período · montos convertidos a '+(detectPais().cur||'UYU')+'</div>')
   +'</div></div>';
 }
 
@@ -3933,7 +4018,7 @@ function infHTMLImpresion(){
     +(titularInforme()?'<div class="titular">'+esc(titularInforme())+'</div>':'')
     +'<h1>'+esc(infNombreEstado())+'</h1>'
     +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString()+'</div>'
-    +(INF.estado!=='resumen'?(INF.estado==='resultados'?impResultados():INF.estado==='flujos'?impFlujos():INF.estado==='presupuesto'?impPresupuesto():impConciliacion())+piePDF()+'</body></html>':
+    +(INF.estado!=='resumen'?(INF.estado==='resultados'?impResultados():INF.estado==='flujos'?impFlujos():INF.estado==='presupuesto'?impPresupuesto():impConciliacion())+impComparativa()+piePDF()+'</body></html>':
      '<h2>Balance financiero</h2><table class="bal"><tbody>'
     +'<tr><td>Saldo inicial</td><td class="r neu">'+n(r.saldoInicial)+'</td></tr>'
     +'<tr><td>Ingresos</td><td class="r ok">'+n(r.ingresos)+'</td></tr>'
@@ -3949,6 +4034,7 @@ function infHTMLImpresion(){
     +tabla('Por forma de pago',r.porPago)
     +tabla('Flujo de caja por mes',r.porMes)
     +detalle
+    +impComparativa()
     +piePDF()
     +'</body></html>');
 }
