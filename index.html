@@ -374,7 +374,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.78.0';
+const APP_VERSION='1.79.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3491,6 +3491,8 @@ function infPreset(tipo){
 }
 const INF_ESTADOS=[['resumen','Resumen general'],['resultados','Estado de Resultados'],['flujos','Flujos de Capital'],['presupuesto','Gestión del Presupuesto'],['conciliacion','Conciliación de saldos']];
 function infEstado(v){INF.estado=v;dibujarInformes()}
+function infNombreEstado(){const e=INF_ESTADOS.find(x=>x[0]===INF.estado);return e?e[1]:'Informe financiero'}
+function infSlugEstado(){return norm(infNombreEstado()).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function infFilaEF(et,val,cls,negrita,sangria){
   return '<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)'+(sangria?';padding-left:'+(sangria*14)+'px':'')+'">'
     +'<span class="'+(negrita?'':'sub')+'" style="font-size:var(--fs-sm)'+(negrita?';font-weight:var(--fw-b);color:var(--txt)':'')+'">'+et+'</span>'
@@ -3781,7 +3783,7 @@ function dibujarInformes(saltarLectura){
   document.getElementById('sheetHost').innerHTML=
   '<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">'
   +'<div class="handle"></div>'
-  +'<div class="row spread" style="margin-bottom:12px"><h2>Informes</h2>'
+  +'<div class="row spread" style="margin-bottom:12px"><h2>'+infNombreEstado()+'</h2>'
   +'<div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm ghost" onclick="exportarInformePDF()">PDF</button><button class="btn sm ghost" onclick="exportarInforme()">CSV</button></div></div>'
   +'<div style="text-align:right;margin-bottom:8px"><button class="link" style="font-size:.76rem" onclick="exportarInformeHTML()">¿El PDF no abre? Descargar como página</button></div>'
   +'<div class="field"><label>Estado</label><select class="inp" onchange="infEstado(this.value)">'
@@ -3834,6 +3836,7 @@ function exportarEstadoCSV(){
   const rows=[];
   const sec=t=>rows.push({seccion:t,concepto:'',importe:'',porcentaje:''});
   if(titularInforme())sec(titularInforme().toUpperCase());
+  sec(infNombreEstado().toUpperCase());
   if(INF.estado==='conciliacion'){
     const c=calcularConciliacion();
     sec('CONCILIACION DE SALDOS');
@@ -3883,7 +3886,7 @@ function exportarEstadoCSV(){
     const f2=[];
     const sec2=t=>f2.push({seccion:t,cuenta:'',inicial:'',apertura:'',ingresos:'',gastos:'',transferencias:'',ajustes:'',final:''});
     if(titularInforme())sec2(titularInforme().toUpperCase());
-    sec2('FLUJOS DE CAPITAL ('+INF.desde+' a '+INF.hasta+')');
+    sec2(infNombreEstado().toUpperCase()+' ('+INF.desde+' a '+INF.hasta+')');
     for(const f of r.filas)f2.push({seccion:'',cuenta:f.a.nombre,inicial:f.ini.toFixed(2),apertura:f.ape.toFixed(2),ingresos:f.ing.toFixed(2),gastos:f.gas.toFixed(2),transferencias:(f.tin-f.tout).toFixed(2),ajustes:f.aj.toFixed(2),final:f.fin.toFixed(2)});
     const t=r.tot;
     f2.push({seccion:'',cuenta:'CONSOLIDADO',inicial:t.ini.toFixed(2),apertura:t.ape.toFixed(2),ingresos:t.ing.toFixed(2),gastos:t.gas.toFixed(2),transferencias:(t.tin-t.tout).toFixed(2),ajustes:t.aj.toFixed(2),final:t.fin.toFixed(2)});
@@ -3914,7 +3917,7 @@ function infHTMLImpresion(){
       return '<tr><td>'+m.fecha+'</td><td>'+esc(m.descripcion||(c?c.name:''))+(c?' <i>('+esc(c.name)+')</i>':'')+(cl?' <b>['+cl+']</b>':'')+'</td><td>'+esc(cu?cu.nombre:'—')+'</td>'
         +'<td class="r '+(m.tipo==='ingreso'?'ok':'bad')+'">'+(m.tipo==='ingreso'?'+':'−')+money(m.monto,m.moneda)+'</td></tr>';
     }).join('')+'</tbody></table>';
-  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexoBalance — Informe</title><style>'
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexoBalance — '+esc(infNombreEstado())+'</title><style>'
     +'*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#101828;margin:0;padding:24px;font-size:12px}'
     +'h1{font-size:19px;margin:0 0 2px}h2{font-size:13px;margin:20px 0 6px;padding-bottom:4px;border-bottom:2px solid #1788FF}'
     +'.meta{color:#667085;font-size:11px;line-height:1.5;margin-bottom:14px}'
@@ -3928,7 +3931,7 @@ function infHTMLImpresion(){
     +'@media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}.pie{position:relative}}'
     +'</style></head><body>'
     +(titularInforme()?'<div class="titular">'+esc(titularInforme())+'</div>':'')
-    +'<h1>Informe financiero</h1>'
+    +'<h1>'+esc(infNombreEstado())+'</h1>'
     +'<div class="meta">Período: '+INF.desde+' a '+INF.hasta+'<br>'+esc(filtros.join(' · '))+'<br>Montos expresados en '+cur+' · Emitido el '+new Date().toLocaleString()+'</div>'
     +(INF.estado!=='resumen'?(INF.estado==='resultados'?impResultados():INF.estado==='flujos'?impFlujos():INF.estado==='presupuesto'?impPresupuesto():impConciliacion())+piePDF()+'</body></html>':
      '<h2>Balance financiero</h2><table class="bal"><tbody>'
@@ -4320,7 +4323,7 @@ function dibujarAsistente(){
 }
 
 function infNombreArchivo(){
-  const p=[];
+  const p=[infSlugEstado()];
   if(INF.cuentas.length===1){const c=cuentaById(INF.cuentas[0]);if(c)p.push(norm(c.nombre).replace(/[^a-z0-9]+/g,'-'))}
   else if(INF.cuentas.length>1)p.push(INF.cuentas.length+'cuentas');
   else p.push('consolidado');
@@ -4337,7 +4340,7 @@ function exportarInforme(){
   const rows=[];
   const sec=t=>rows.push({seccion:t,concepto:'',cantidad:'',ingresos:'',gastos:'',neto:''});
   if(titularInforme())sec(titularInforme().toUpperCase());
-  sec('BALANCE FINANCIERO ('+INF.desde+' a '+INF.hasta+')');
+  sec(infNombreEstado().toUpperCase()+' ('+INF.desde+' a '+INF.hasta+')');
   rows.push({seccion:'','concepto':'Saldo inicial',cantidad:'',ingresos:'',gastos:'',neto:r.saldoInicial.toFixed(2)});
   rows.push({seccion:'',concepto:'Ingresos',cantidad:'',ingresos:r.ingresos.toFixed(2),gastos:'',neto:''});
   rows.push({seccion:'',concepto:'Gastos',cantidad:'',ingresos:'',gastos:r.gastos.toFixed(2),neto:''});
