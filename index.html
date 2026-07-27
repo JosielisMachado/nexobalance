@@ -127,6 +127,11 @@ nav button svg{transition:.15s}
 .sheet-bg:has(.sheet.full){background:var(--bg)}
 .sheet-bg.dragging{background:var(--bg)!important}
 .sheet-bg{touch-action:none;overscroll-behavior:contain}
+@media(max-width:719px){
+  .sheet-bg{align-items:stretch;background:var(--bg)}
+  .sheet{max-height:100dvh;height:100dvh;border-radius:0;padding-top:calc(14px + env(safe-area-inset-top));-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px);mask-image:linear-gradient(to bottom,transparent 0,#000 14px)}
+  .sheet-bg:has(.sheet.full){background:var(--bg)}
+}
 @media(min-width:720px){
   .sheet{border-radius:22px;max-height:84vh;animation:fade .18s}
   .sheet.full{border-radius:22px;max-height:84vh;height:auto}
@@ -366,7 +371,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.71.0';
+const APP_VERSION='1.72.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -3204,7 +3209,7 @@ function viewAjustes(){
     <div class="item" onclick="triggerInstall()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">${ic('phone',19)}</div><div class="mtxt"><div>Instalar aplicación</div><div class="sub">Agregar NexoBalance a tu pantalla de inicio</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirCuentas()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">💳</div><div class="mtxt"><div>Cuentas y medios de pago</div><div class="sub">${cuentasActivas().length?cuentasActivas().length+' cuenta'+(cuentasActivas().length!==1?'s':''):'Efectivo, banco, tarjeta…'}</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="abrirRecurrentes()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔁</div><div class="mtxt"><div>Movimientos fijos</div><div class="sub">Alquiler, cuotas, salario… se repiten cada mes</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
-    <div class="item" onclick="abrirInteligencia()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Qué cambia en tu mes cuando lo usas bien</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
+    <div class="item" onclick="abrirComoAyuda()"><div class="iconbadge" style="background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri)">✨</div><div class="mtxt"><div>¿Cómo te ayuda NexoBalance?</div><div class="sub">Qué cambia en tu mes cuando lo usas bien</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <div class="item" onclick="sincronizacionCompleta()"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">🔄</div><div class="mtxt"><div>Sincronizar todo</div><div class="sub">Trae de nuevo todos tus datos desde la nube</div></div><span style="color:var(--sub)">${ic('chevron',18)}</span></div>
     <label class="item" style="cursor:pointer"><div class="iconbadge" style="background:var(--chip);color:var(--pri)">📎</div><div class="mtxt"><div>Adjuntos en movimientos</div><div class="sub" id="adjPeso">Fotos y PDFs guardados solo en este teléfono</div></div>
       <input type="checkbox" ${adjuntosOn()?'checked':''} onchange="setAdjuntos(this.checked)" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--pri)"></label>
@@ -3354,9 +3359,38 @@ const IA_ITEMS={
   metas:{icon:'🎯',t:'Metas de ahorro',d:'Define un objetivo (un TV, unas vacaciones) y calcula, con tu ritmo real de ahorro, en cuántos meses lo alcanzas y en qué fecha.'}
 };
 function badgeIA(clave){return `<span onclick="event.stopPropagation();abrirInteligencia('${clave||''}')" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:20px;background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri);border:1px solid rgba(23,136,255,.25);cursor:pointer;letter-spacing:.03em">✨ ANÁLISIS</span>`}
+const APP_FUNCIONES=[
+  {icon:'🔮',t:'Predicción del mes',d:'Analiza tu ritmo de gasto diario y proyecta cómo cerrarás el mes, con un semáforo que te avisa si vas por buen camino o hacia un exceso.'},
+  {icon:'📅',t:'Gasto diario recomendado',d:'Calcula en tiempo real cuánto puedes gastar cada día con el dinero que te queda, para que llegues tranquilo a fin de mes.'},
+  {icon:'❤️',t:'Salud financiera',d:'Combina tu cumplimiento de presupuestos, tu ahorro y tus excesos en un índice claro de 0 a 100 que resume tu mes.'},
+  {icon:'💡',t:'Recomendaciones',d:'Detecta patrones en tu historial: categorías donde gastas de más varios meses seguidos, mejoras que lograste, y proyecciones de ahorro.'},
+  {icon:'🧮',t:'Simulador de compras',d:'Antes de registrar un gasto, te muestra cómo afectará tu presupuesto de esa categoría, para que decidas con la información delante.'},
+  {icon:'🔔',t:'Alertas anticipadas',d:'Te avisa cuando te acercas a un límite o cuando tu ritmo pone en riesgo tu presupuesto, antes de que sea tarde.'},
+  {icon:'🔁',t:'Movimientos fijos',d:'Registra una vez tus gastos e ingresos que se repiten cada mes y la app te los recuerda el día que tocan.'},
+  {icon:'🎯',t:'Metas de ahorro',d:'Define un objetivo (un TV, unas vacaciones) y calcula, con tu ritmo real de ahorro, en cuántos meses lo alcanzas y en qué fecha.'},
+  {icon:'💰',t:'Detección de ingresos',d:'Si cobras más de lo que esperabas, lo detecta y te ofrece ajustar tu plan con un toque.'},
+  {icon:'💳',t:'Cuentas separadas',d:'Registra dónde está tu dinero (efectivo, banco, tarjeta) y la app calcula el saldo real de cada cuenta.'},
+  {icon:'🔐',t:'Protección con PIN',d:'Bloquea la aplicación con un PIN o tu huella, para que solo tú veas tus finanzas.'}
+];
+function abrirComoAyuda(){
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div class="row" style="gap:10px;align-items:center;margin-bottom:6px">
+      <span style="font-size:1.5rem">✨</span>
+      <h2>¿Cómo te ayuda NexoBalance?</h2>
+    </div>
+    <p class="sub" style="line-height:1.5;margin-bottom:16px">No solo registra tu dinero: lo analiza para ayudarte a tomar mejores decisiones. Esto es lo que hace por ti:</p>
+    ${APP_FUNCIONES.map(i=>`<div class="row" style="gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)">
+      <span style="font-size:1.4rem;flex-shrink:0">${i.icon}</span>
+      <div style="flex:1"><div style="font-weight:var(--fw-b);font-size:var(--fs-md)">${i.t}</div><div class="sub" style="line-height:1.45;margin-top:2px">${i.d}</div></div>
+    </div>`).join('')}
+    <button class="btn" style="margin-top:16px" onclick="closeSheet()">Entendido</button>
+  </div></div>`;
+}
 function abrirInteligencia(clave){
   const it=IA_ITEMS[clave];
-  if(!it)return;
+  if(!it)return abrirComoAyuda();
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
