@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
 <meta name="theme-color" content="#070B14">
 <title>NexoBalance</title>
 <link rel="manifest" href="manifest.json">
@@ -49,6 +49,7 @@ body:has(#appView:not(.hidden)){background:var(--panel-out)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:var(--pad);box-shadow:var(--shadow);margin-bottom:var(--gap);animation:cardIn .35s ease-out backwards}
 .card:nth-of-type(1){animation-delay:.02s}.card:nth-of-type(2){animation-delay:.06s}.card:nth-of-type(3){animation-delay:.1s}.card:nth-of-type(4){animation-delay:.14s}.card:nth-of-type(5){animation-delay:.18s}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+body.sinAnim .card{animation:none}
 .row{display:flex;align-items:center;gap:10px}
 .spread{justify-content:space-between}
 .sub{color:var(--sub);font-size:.82rem}
@@ -344,7 +345,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.64.1';
+const APP_VERSION='1.66.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -407,7 +408,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,rechazadosIds:[],editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,rechazadosIds:[],avisoPull:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -751,7 +752,16 @@ async function pullAll(completo){
     sb.from('recurring').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(500),
     sb.from('accounts').select('*').gt('updated_at',since).order('updated_at',{ascending:true}).limit(200)
   ]);
-  if(rc.error||rm.error){console.error('pull',rc.error||rm.error);return}
+  const tablas=[['categories',rc],['movements',rm],['budgets',rb],['monthly_plan',rp],['goals',rg],['recurring',rr],['accounts',ra]];
+  const fallos=tablas.filter(([,r])=>r&&r.error).map(([n,r])=>n+': '+((r.error&&r.error.message)||'error'));
+  if(fallos.length){
+    console.error('pull',fallos.join(' | '));
+    logSyncError('pull_lectura',fallos.join(' | '));
+  }
+  if(rc.error||rm.error){
+    if(!S.avisoPull){S.avisoPull=true;toast('No pudimos leer algunos datos del servidor. Revisa Ajustes → Bitácora.')}
+    return 0;
+  }
   let maxT=since;let cambios=0;
   for(const c of rc.data){const loc=S.cats.find(x=>x.id===c.id);if(!loc||c.updated_at>=loc.updated_at){await saveLocalCat(c);cambios++}if(c.updated_at>maxT)maxT=c.updated_at}
   for(const m of rm.data){const loc=S.movs.find(x=>x.id===m.id);if(!loc||m.updated_at>=loc.updated_at){await saveLocalMov(m);cambios++}if(m.updated_at>maxT)maxT=m.updated_at}
@@ -762,6 +772,10 @@ async function pullAll(completo){
   if(ra&&!ra.error&&ra.data){for(const a of ra.data){const loc=S.accounts.find(x=>x.id===a.id);if(!loc||a.updated_at>=loc.updated_at){await saveLocalAcc(a);cambios++}if(a.updated_at>maxT)maxT=a.updated_at}}
   await kvSet('lastPull',maxT);
   if(completo)await kvSet('lastFull',new Date().toISOString());
+  if(fallos.length&&!S.avisoPull){
+    S.avisoPull=true;
+    toast('Algunos datos no se pudieron leer del servidor. Revisa Ajustes → Bitácora.');
+  }
   updateSyncPill();
   if(S.tab==='ajustes')pintarPesoAdjuntos();
   return cambios;
@@ -782,11 +796,6 @@ async function sincronizacionCompleta(silenciosa){
 }
 
 async function verificarIntegridadLocal(){
-  // Un almacén local con menos registros que el servidor puede ser normal (aún no
-  // sincronizó) o una pérdida de datos del dispositivo. La sincronización incremental
-  // no distingue los dos casos: filtra por updated_at, así que nunca vuelve a traer
-  // registros antiguos que se perdieron en local.
-  // Comparar cantidades detecta tanto la pérdida total como la parcial.
   if(!navigator.onLine||!S.uid)return 0;
   try{
     const ult=await kvGet('lastIntegridad');
@@ -1013,7 +1022,7 @@ async function loadUserName(){
       if(data.phone)S.userPhone=data.phone;
       if(data.display_name){S.userName=data.display_name;S.settings.name=data.display_name;await kvSet('settings',S.settings)}
       S.isAdmin=!!data.is_admin;
-      if(S.tab==='inicio'||S.tab==='ajustes')render();
+      if(S.tab==='inicio'||S.tab==='ajustes')render(true);
     }
   }catch(e){console.error('loadUserName excepción:',e)}
 }
@@ -1036,6 +1045,8 @@ async function cerrarSesionAhora(borrarLocal){
   S.uid=null;S.movs=[];S.cats=[];S.budgets=[];S.plan=[];S.goals=[];S.recurring=[];S.accounts=[];S.pendientes=0;
   try{sessionStorage.removeItem('nb_tab');sessionStorage.removeItem('nb_scroll')}catch(e){}
   limpiarSesionViva();
+  try{if('scrollRestoration' in history)history.scrollRestoration='manual'}catch(e){}
+  try{window.scrollTo(0,0)}catch(e){}
   location.reload();
 }
 async function doLogout(){
@@ -1084,6 +1095,7 @@ function movsActivos(){return S.movs.filter(m=>!m.deleted)}
 
 function render(sinAnimar){
   const el=document.getElementById('screen');
+  document.body.classList.toggle('sinAnim',!!sinAnimar);
   if(S.tab==='inicio'){
     el.innerHTML=viewInicio();
     if(sinAnimar)pintarSinAnimar();else{animateCounters();animateBars()}
@@ -2418,7 +2430,7 @@ function metasCard(){
   }
   const ordenadas=metas.slice().sort((a,b)=>(b.principal?1:0)-(a.principal?1:0));
   return `<div class="card">
-    <div class="row spread" style="margin-bottom:10px"><h2 style="font-size:1rem">🎯 Mis metas</h2>${badgeIA()}</div>
+    <div class="row spread" style="margin-bottom:10px"><h2 style="font-size:1rem">🎯 Mis metas</h2>${badgeIA('metas')}</div>
     ${ordenadas.map(g=>{
       const monto=Number(g.monto)||0;
       const p=proyectarMeta(monto);
@@ -2484,7 +2496,6 @@ async function eliminarMeta(id){
   await enqueue('goal',{...g,deleted:true,updated_at:nowISO()});
   closeSheet();toast('Meta eliminada');
 }
-function badgeIA(){return `<span onclick="event.stopPropagation();abrirInteligencia()" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:20px;background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri);border:1px solid rgba(23,136,255,.25);cursor:pointer;letter-spacing:.03em">✨ ANÁLISIS</span>`}
 function periodKey(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)}
 function periodLabel(pk){const[y,m]=pk.split('-').map(Number);const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];return meses[m-1]+' '+y}
 function periodShift(pk,delta){const[y,m]=pk.split('-').map(Number);const d=new Date(y,m-1+delta,1);return periodKey(d)}
@@ -2584,7 +2595,7 @@ function viewPresu(){
     const exceso=proyeccion-limite;
     prediccion=`
     <div class="card">
-      <div class="row spread" style="margin-bottom:10px"><h2 style="font-size:1rem">Predicción del mes</h2>${badgeIA()}</div>
+      <div class="row spread" style="margin-bottom:10px"><h2 style="font-size:1rem">Predicción del mes</h2>${badgeIA('prediccion')}</div>
       <div class="row" style="gap:10px;align-items:flex-start">
         <div style="font-size:1.5rem">${estado}</div>
         <div style="flex:1">
@@ -2637,7 +2648,7 @@ function viewPresu(){
   if(esMesActual&&ingresoEsperado>0&&diasRest>0){
     const col=gastoDiarioRec<=0?'var(--bad)':'var(--ok)';
     diarioCard=`<div class="card" style="background:var(--chip)">
-      <div class="row spread" style="margin-bottom:6px"><h2 style="font-size:1rem">Puedes gastar hasta</h2>${badgeIA()}</div>
+      <div class="row spread" style="margin-bottom:6px"><h2 style="font-size:1rem">Puedes gastar hasta</h2>${badgeIA('diario')}</div>
       <div style="font-weight:800;color:${col};font-size:${fitFont(gastoDiarioRec,1.9,1,8)};line-height:1.15">${localFlag()} ${fmt(gastoDiarioRec)}<span style="font-size:.95rem;font-weight:700;opacity:.8"> / día</span></div>
       <div class="sub" style="font-size:.78rem;margin-top:5px;line-height:1.4">Con ${localFlag()} ${fmt(disponibleReal)} disponibles, ya descontado lo que tienes apartado, repartido en los ${diasRest} día${diasRest!==1?'s':''} que quedan del mes.</div>
     </div>`;
@@ -2670,7 +2681,7 @@ function viewPresu(){
     const etq=sd.score>=70?'Saludable':sd.score>=45?'Requiere atención':'En riesgo';
     saludCard=`
     <div class="card">
-      <div class="row spread" style="margin-bottom:12px"><h2>Salud financiera</h2>${badgeIA()}</div>
+      <div class="row spread" style="margin-bottom:12px"><h2>Salud financiera</h2>${badgeIA('salud')}</div>
       <div class="row" style="gap:16px;align-items:center;margin-bottom:14px">
         <div style="position:relative;width:76px;height:76px;flex-shrink:0">
           <svg width="76" height="76" viewBox="0 0 76 76" style="transform:rotate(-90deg)">
@@ -2691,7 +2702,7 @@ function viewPresu(){
   const recs=generarRecomendaciones(pk);
   let recsCard='';
   if(recs.length){
-    recsCard=`<div class="card"><div class="row spread" style="margin-bottom:10px"><h2>Recomendaciones</h2>${badgeIA()}</div>
+    recsCard=`<div class="card"><div class="row spread" style="margin-bottom:10px"><h2>Recomendaciones</h2>${badgeIA('recs')}</div>
       ${recs.map(r=>`<div class="row" style="gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)"><span style="font-size:1.1rem;flex-shrink:0">${r.icon}</span><span style="font-size:.84rem;line-height:1.45;flex:1">${r.txt}</span></div>`).join('')}
     </div>`;
   }
@@ -3314,36 +3325,28 @@ function abrirJosmaTech(){
   </div></div>`;
 }
 
-function abrirInteligencia(){
-  const items=[
-    {icon:'🔮',t:'Predicción del mes',d:'Analiza tu ritmo de gasto diario y proyecta cómo cerrarás el mes, con un semáforo que te avisa si vas por buen camino o hacia un exceso.'},
-    {icon:'📅',t:'Gasto diario recomendado',d:'Calcula en tiempo real cuánto puedes gastar cada día con el dinero que te queda, para que llegues tranquilo a fin de mes.'},
-    {icon:'❤️',t:'Salud financiera',d:'Combina tu cumplimiento de presupuestos, tu ahorro y tus excesos en un índice claro de 0 a 100 que resume tu mes.'},
-    {icon:'💡',t:'Recomendaciones',d:'Detecta patrones en tu historial: categorías donde gastas de más varios meses seguidos, mejoras que lograste, y proyecciones de ahorro.'},
-    {icon:'🧮',t:'Simulador de compras',d:'Antes de registrar un gasto, te muestra cómo afectará tu presupuesto de esa categoría, para que decidas con la información delante.'},
-    {icon:'🔔',t:'Alertas anticipadas',d:'Te avisa cuando te acercas a un límite o cuando tu ritmo pone en riesgo tu presupuesto, antes de que sea tarde.'},
-    {icon:'🔁',t:'Movimientos fijos',d:'Registra una vez tus gastos e ingresos que se repiten cada mes y la app te los recuerda el día que tocan.'},
-    {icon:'🎯',t:'Metas de ahorro',d:'Define un objetivo (un TV, unas vacaciones) y calcula, con tu ritmo real de ahorro, en cuántos meses lo alcanzas y en qué fecha.'},
-    {icon:'💰',t:'Detección de ingresos',d:'Si cobras más de lo que esperabas, lo detecta y te ofrece ajustar tu plan con un toque.'},
-    {icon:'💳',t:'Cuentas separadas',d:'Registra dónde está tu dinero (efectivo, banco, tarjeta) y la app calcula el saldo real de cada cuenta.'},
-    {icon:'🔐',t:'Protección con PIN',d:'Bloquea la aplicación con un PIN o tu huella, para que solo tú veas tus finanzas.'}
-  ];
+const IA_ITEMS={
+  prediccion:{icon:'🔮',t:'Predicción del mes',d:'Analiza tu ritmo de gasto diario y proyecta cómo cerrarás el mes, con un semáforo que te avisa si vas por buen camino o hacia un exceso.'},
+  diario:{icon:'📅',t:'Gasto diario recomendado',d:'Calcula en tiempo real cuánto puedes gastar cada día con el dinero que te queda, para que llegues tranquilo a fin de mes.'},
+  salud:{icon:'❤️',t:'Salud financiera',d:'Combina tu cumplimiento de presupuestos, tu ahorro y tus excesos en un índice claro de 0 a 100 que resume tu mes.'},
+  recs:{icon:'💡',t:'Recomendaciones',d:'Detecta patrones en tu historial: categorías donde gastas de más varios meses seguidos, mejoras que lograste, y proyecciones de ahorro.'},
+  metas:{icon:'🎯',t:'Metas de ahorro',d:'Define un objetivo (un TV, unas vacaciones) y calcula, con tu ritmo real de ahorro, en cuántos meses lo alcanzas y en qué fecha.'}
+};
+function badgeIA(clave){return `<span onclick="event.stopPropagation();abrirInteligencia('${clave||''}')" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:20px;background:linear-gradient(135deg,rgba(23,136,255,.15),rgba(155,92,255,.15));color:var(--pri);border:1px solid rgba(23,136,255,.25);cursor:pointer;letter-spacing:.03em">✨ ANÁLISIS</span>`}
+function abrirInteligencia(clave){
+  const it=IA_ITEMS[clave];
+  if(!it)return;
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div>
-    <div class="row" style="gap:10px;align-items:center;margin-bottom:6px">
-      <span style="font-size:1.5rem">✨</span>
-      <h2>Análisis inteligente</h2>
+    <div class="row" style="gap:12px;align-items:center;margin-bottom:12px">
+      <span style="font-size:1.8rem">${it.icon}</span>
+      <div><div style="font-size:.62rem;font-weight:800;color:var(--pri);letter-spacing:.04em">✨ ANÁLISIS INTELIGENTE</div><h2 style="font-size:1.05rem">${it.t}</h2></div>
     </div>
-    <p class="sub" style="font-size:.85rem;line-height:1.5;margin-bottom:16px">NexoBalance no solo registra tu dinero: lo analiza para ayudarte a tomar mejores decisiones. Esto es lo que hace por ti:</p>
-    ${items.map(i=>`<div class="row" style="gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)">
-      <span style="font-size:1.4rem;flex-shrink:0">${i.icon}</span>
-      <div style="flex:1"><div style="font-weight:700;font-size:.9rem">${i.t}</div><div class="sub" style="font-size:.8rem;line-height:1.45;margin-top:2px">${i.d}</div></div>
-    </div>`).join('')}
-    <button class="btn" style="margin-top:16px" onclick="closeSheet()">Entendido</button>
+    <p class="sub" style="font-size:.87rem;line-height:1.55;margin-bottom:18px">${it.d}</p>
+    <button class="btn" onclick="closeSheet()">Entendido</button>
   </div></div>`;
 }
-
 
 function zonaRojaPaso1(){
   document.getElementById('sheetHost').innerHTML=`
@@ -3776,9 +3779,22 @@ function buscarManual(q){
   return out.sort((a,b)=>b.p-a.p).slice(0,5);
 }
 const MANUAL_PILL_SEG=10;
+const MANUAL_PILL_DIAS=1;
 let _pillTimer=null;
+function pillClave(){return 'nb_pill_'+(S.uid||'anon')}
+function pillDebeMostrarse(){
+  try{
+    const raw=localStorage.getItem(pillClave());
+    if(raw==='off')return false;
+    if(!raw){localStorage.setItem(pillClave(),String(Date.now()));return true}
+    const desde=Number(raw);
+    if(!desde||isNaN(desde))return false;
+    return (Date.now()-desde)<MANUAL_PILL_DIAS*24*3600*1000;
+  }catch(e){return false}
+}
 function mostrarPildoraManual(){
   if(document.getElementById('manualPill'))return;
+  if(!pillDebeMostrarse())return;
   try{if(sessionStorage.getItem('nb_pill_visto'))return}catch(e){}
   const R=18,C=2*Math.PI*R;
   const el=document.createElement('div');
@@ -3792,6 +3808,7 @@ function mostrarPildoraManual(){
     +'<span class="cerrar">✕</span>';
   el.addEventListener('click',function(e){
     const cerrar=e.target.classList&&e.target.classList.contains('cerrar');
+    if(cerrar){try{localStorage.setItem(pillClave(),'off')}catch(_){}}
     ocultarPildoraManual();
     if(!cerrar)abrirAsistente();
   });
