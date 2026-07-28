@@ -374,7 +374,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.82.0';
+const APP_VERSION='1.83.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -2700,9 +2700,14 @@ function viewPresu(){
   }
 
   const hayPrev=budgetsMes(periodShift(pk,-1)).length>0;
-  const copiar=(hayPrev&&!buds.length?
-    `<button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,var(--pri),var(--pri2));box-shadow:0 8px 20px rgba(23,136,255,.32)" onclick="copiarPresupuestoAnterior()">⧉ Copiar presupuesto del mes anterior</button>`:'')
-    +(buds.length?`<button class="btn ghost" style="width:100%;margin-bottom:12px;color:var(--bad)" onclick="limpiarPresupuestoMes()">Limpiar presupuesto de este mes</button>`:'');
+  const copiar=hayPrev&&!buds.length?
+    `<button class="btn" style="width:100%;margin-bottom:12px;background:linear-gradient(135deg,var(--pri),var(--pri2));box-shadow:0 8px 20px rgba(23,136,255,.32)" onclick="copiarPresupuestoAnterior()">⧉ Copiar presupuesto del mes anterior</button>`:'';
+  const limpiar=buds.length?
+    `<div class="card" style="border:1px solid var(--line);background:transparent;box-shadow:none;padding:16px">
+      <div style="font-weight:var(--fw-b);margin-bottom:2px">Empezar de cero este mes</div>
+      <div class="sub" style="font-size:var(--fs-sm);line-height:1.45;margin-bottom:12px">Elimina los ${buds.length} límite(s) de ${periodLabel(pk)}. Tus movimientos y tus gastos no se tocan.</div>
+      <button class="btn" style="background:var(--bad);box-shadow:0 8px 20px rgba(180,35,24,.28)" onclick="limpiarPresupuestoMes()">🧹 Limpiar presupuesto de ${periodLabel(pk)}</button>
+    </div>`:'';
 
   // Salud financiera + recomendaciones
   const sd=saludDetalle(pk);
@@ -2740,7 +2745,7 @@ function viewPresu(){
 
   return `<div class="wrap">
     <div class="row spread" style="margin-bottom:6px"><h1 style="font-size:1.4rem">Presupuesto</h1><div class="row" style="gap:8px;align-items:center">${ayudaBtn('presu')}<span class="pill" id="syncPill">Al día</span></div></div>
-    ${selector}${resumen}${diarioCard}${prediccion}${metasCard()}${sugAhorro}${saludCard}${recsCard}${copiar}${lista}
+    ${selector}${resumen}${diarioCard}${prediccion}${metasCard()}${sugAhorro}${saludCard}${recsCard}${copiar}${lista}${limpiar}
     <div style="height:20px"></div>
   </div>`;
 }
