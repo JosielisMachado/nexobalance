@@ -126,7 +126,18 @@ Deno.serve(async (request) => {
       license = await requestCentral(platformUrl, productKey, { action: "license-status", ...baseBody });
     } catch (error) {
       if (!(error instanceof Error) || error.message !== "LICENSE_NOT_FOUND") throw error;
-      license = await requestCentral(platformUrl, productKey, { action: "provision-trial", ...baseBody });
+      try {
+        license = await requestCentral(platformUrl, productKey, { action: "provision-trial", ...baseBody });
+      } catch (provisionError) {
+        // El centro puede crear la prueba y agotar la primera respuesta. Si eso
+        // ocurre, una segunda consulta recupera la licencia recién creada sin
+        // obligar a la persona a registrarse otra vez.
+        try {
+          license = await requestCentral(platformUrl, productKey, { action: "license-status", ...baseBody });
+        } catch {
+          throw provisionError;
+        }
+      }
     }
 
     const { error: cacheError } = await admin.schema("nb").from("license_cache").upsert({
