@@ -378,6 +378,7 @@ const APP_VERSION='1.83.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
+const LICENSE_SYNC_URL=SB_URL+'/functions/v1/sync-license';
 const EMAIL_DOMAIN='@nexobalance.app';
 const PAGOS=['Efectivo','Débito','Crédito','Transferencia','Mercado Pago','Otro'];
 const PALETTE=['#0ea5e9','#6366f1','#16a34a','#f59e0b','#dc2626','#db2777','#7c3aed','#0d9488','#ea580c','#4f46e5','#65a30d','#0891b2'];
@@ -437,7 +438,7 @@ function onTurnstileLoad(){
   }catch(e){}
 }
 
-let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,rechazadosIds:[],avisoPull:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
+let S={uid:null,userPhone:null,tab:'inicio',movs:[],cats:[],budgets:[],plan:[],goals:[],recurring:[],accounts:[],presuMes:null,settings:{theme:'light',tc:40,tcAuto:false,tcUpdated:null},online:navigator.onLine,syncing:false,pendientes:0,rechazados:0,rechazadosIds:[],avisoPull:false,editingMov:null,editingCat:null,saldoOculto:false,userName:null,isAdmin:false,license:null,licenseLocked:false,filtro:{q:'',tipo:'',cats:[],desde:'',hasta:''}};
 
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)})}
 function nowISO(){return new Date().toISOString()}
@@ -445,6 +446,76 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function toast(msg){const h=document.getElementById('toastHost');h.innerHTML='<div class="toast">'+esc(msg)+'</div>';clearTimeout(h._t);h._t=setTimeout(()=>h.innerHTML='',2600)}
 function fmt(n){return Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function money(n,mon){return (mon==='USD'?'US$ ':'$ ')+fmt(n)}
+
+function licenciaVigente(license){
+  if(!license||license.valid!==true)return false;
+  if(!license.valid_until)return license.status==='superadmin';
+  return new Date(license.valid_until).getTime()>=Date.now();
+}
+function fechaLicencia(value){
+  if(!value)return 'Sin fecha';
+  const iso=String(value).slice(0,10);
+  const d=new Date(iso+'T12:00:00');
+  return isNaN(d.getTime())?iso:d.toLocaleDateString('es-UY',{day:'numeric',month:'long',year:'numeric'});
+}
+async function sincronizarLicencia(){
+  let guardada=null;
+  try{guardada=await kvGet('license_status')}catch(e){}
+  if(!navigator.onLine)return licenciaVigente(guardada)?guardada:{valid:false,status:'offline',message:'Conéctate a Internet para verificar tu licencia.'};
+  try{
+    const{data}=await sb.auth.getSession();
+    const token=data&&data.session&&data.session.access_token;
+    if(!token)throw new Error('AUTH_REQUIRED');
+    const response=await fetch(LICENSE_SYNC_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SB_KEY},
+      body:'{}'
+    });
+    const result=await response.json();
+    if(!response.ok||!result||!result.ok||!result.license)throw new Error((result&&result.error)||'LICENSE_CHECK_FAILED');
+    const license=result.license;
+    await kvSet('license_status',license);
+    return license;
+  }catch(e){
+    return licenciaVigente(guardada)?guardada:{valid:false,status:'unavailable',message:'No pudimos verificar tu licencia. Intenta nuevamente con Internet.'};
+  }
+}
+function mostrarBloqueoLicencia(license){
+  S.license=license||null;S.licenseLocked=true;
+  document.getElementById('navBar').classList.add('hidden');
+  document.getElementById('fabBtn').classList.add('hidden');
+  document.getElementById('fabMenu').classList.add('hidden');
+  document.getElementById('fabBackdrop').classList.add('hidden');
+  const titulo=license&&license.status==='offline'?'Necesitas conexión':'Tu licencia no está activa';
+  const detalle=license&&license.message?license.message:'Tu período de prueba terminó o tu licencia necesita atención.';
+  document.getElementById('screen').innerHTML=`<div style="min-height:72vh;display:flex;align-items:center"><div class="card" style="width:100%;text-align:center"><div style="font-size:2.4rem;margin-bottom:12px">🔐</div><h1 style="margin-bottom:10px">${esc(titulo)}</h1><p class="sub" style="line-height:1.55;margin-bottom:18px">${esc(detalle)}</p><button class="btn" onclick="reintentarLicencia()">Verificar licencia</button><button class="link" style="width:100%;margin-top:8px" onclick="doLogout()">Cerrar sesión</button><a class="link" style="display:block;margin-top:10px" href="https://wa.me/59898308375?text=${encodeURIComponent('Hola JosmaTech, necesito ayuda con mi licencia de NexoBalance.')}" target="_blank" rel="noopener">Contactar a JosmaTech</a></div></div>`;
+}
+function habilitarAplicacion(){
+  S.licenseLocked=false;
+  document.getElementById('navBar').classList.remove('hidden');
+  document.getElementById('fabMenu').classList.remove('hidden');
+}
+async function reintentarLicencia(){
+  const license=await sincronizarLicencia();
+  S.license=license;
+  if(!licenciaVigente(license))return mostrarBloqueoLicencia(license);
+  habilitarAplicacion();render(true);
+}
+function resumenLicencia(){
+  const l=S.license;
+  if(!l)return '';
+  if(l.status==='superadmin')return '<span class="pill" style="background:rgba(155,92,255,.14);color:var(--purple)">Acceso JosmaTech</span>';
+  if(l.status==='trial'&&l.trial_ends_at)return '<button class="pill" style="color:var(--pri)" onclick="abrirLicencia()">Prueba hasta '+esc(fechaLicencia(l.trial_ends_at))+'</button>';
+  return '<button class="pill" style="color:var(--pri)" onclick="abrirLicencia()">Licencia '+esc(l.valid?'activa':'requiere atención')+'</button>';
+}
+function abrirLicencia(){
+  const l=S.license||{};
+  const estado=l.status==='superadmin'?'Acceso administrativo':l.status==='trial'?'Prueba gratis':l.valid?'Licencia activa':'Licencia no activa';
+  const precio=Number(l.pricing&&l.pricing.daily_price!==undefined?l.pricing.daily_price:l.daily_price||0);
+  const moneda=(l.pricing&&l.pricing.currency)||l.currency||'UYU';
+  const deuda=Number(l.pricing&&l.pricing.amount_due!==undefined?l.pricing.amount_due:l.amount_due||0);
+  document.getElementById('sheetHost').innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet"><div class="handle"></div><h2 style="margin-bottom:14px">Tu licencia de NexoBalance</h2><div style="background:var(--chip);border-radius:14px;padding:4px 14px;margin-bottom:16px"><div class="row spread" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="sub">Estado</span><strong>${esc(estado)}</strong></div><div class="row spread" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="sub">Plan</span><strong>${esc((l.plan&&l.plan.name)||l.plan_name||'Mensual')}</strong></div>${l.trial_ends_at?`<div class="row spread" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="sub">Prueba hasta</span><strong>${esc(fechaLicencia(l.trial_ends_at))}</strong></div>`:''}<div class="row spread" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="sub">Precio por día</span><strong>${esc(moneda)} ${fmt(precio)}</strong></div><div class="row spread" style="padding:10px 0"><span class="sub">Saldo pendiente</span><strong>${esc(moneda)} ${fmt(deuda)}</strong></div></div><p class="sub" style="line-height:1.5;margin-bottom:14px">Tu licencia se administra desde JosmaTech. Si precisas extender tu prueba o realizar un pago, escríbenos.</p><a class="btn" style="background:#25D366;text-decoration:none" href="https://wa.me/59898308375?text=${encodeURIComponent('Hola JosmaTech, necesito ayuda con mi licencia de NexoBalance.')}" target="_blank" rel="noopener">Contactar por WhatsApp</a><button class="link" style="width:100%;margin-top:8px" onclick="closeSheet()">Cerrar</button></div></div>`;
+}
 function toUYU(m){return m.moneda==='USD'?m.monto*(Number(S.settings.tc)||40):m.monto*1}
 function autoIcon(name){const n=name.toLowerCase();for(const[k,v]of ICON_MAP){if(n.includes(k))return v}return '🏷️'}
 function autoColor(name){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length]}
@@ -990,6 +1061,13 @@ async function startApp(user,isNew){
   S.uid=user.id;
   document.getElementById('authView').classList.add('hidden');
   document.getElementById('appView').classList.remove('hidden');
+  const license=await sincronizarLicencia();
+  S.license=license;
+  if(!licenciaVigente(license)){
+    mostrarBloqueoLicencia(license);
+    return;
+  }
+  habilitarAplicacion();
   S.movs=await idbAll('movs');
   S.cats=await idbAll('cats');
   S.budgets=await idbAll('budgets');
@@ -1117,12 +1195,13 @@ function pedirBorrarLocal(pend){
   );
 }
 
-function go(tab){S.tab=tab;closeFab();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));document.getElementById('fabBtn').classList.toggle('hidden',tab==='ajustes'||tab==='cats'||tab==='presu');render();window.scrollTo(0,0);try{sessionStorage.setItem('nb_tab',tab);sessionStorage.removeItem('nb_scroll')}catch(e){}}
+function go(tab){if(S.licenseLocked)return;S.tab=tab;closeFab();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));document.getElementById('fabBtn').classList.toggle('hidden',tab==='ajustes'||tab==='cats'||tab==='presu');render();window.scrollTo(0,0);try{sessionStorage.setItem('nb_tab',tab);sessionStorage.removeItem('nb_scroll')}catch(e){}}
 
 function monthRange(d){const y=d.getFullYear(),m=d.getMonth();const a=new Date(y,m,1),b=new Date(y,m+1,0);const p=n=>String(n).padStart(2,'0');return[y+'-'+p(m+1)+'-01',y+'-'+p(m+1)+'-'+p(b.getDate())]}
 function movsActivos(){return S.movs.filter(m=>!m.deleted)}
 
 function render(sinAnimar){
+  if(S.licenseLocked)return;
   const el=document.getElementById('screen');
   document.body.classList.toggle('sinAnim',!!sinAnimar);
   if(S.tab==='inicio'){
@@ -1175,6 +1254,7 @@ function viewInicio(){
     <div><div class="sub" style="font-weight:600;margin-bottom:3px">¡Hola${S.userName?', '+esc(S.userName):''}!</div><h1>Resumen de hoy</h1></div>
     <div class="pill" style="background:rgba(23,136,255,.13);color:var(--pri);display:flex;align-items:center;gap:5px;padding:7px 12px;white-space:nowrap">${ic('calendar',14)}${esc(hoyStr)}</div>
   </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">${resumenLicencia()}</div>
   <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:16px">${ayudaBtn('inicio')}<span class="pill" id="syncPill">…</span></div>
 
   <div class="card" style="position:relative;overflow:hidden;background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff">
@@ -3210,6 +3290,11 @@ function viewAjustes(){
       <div class="iconbadge" style="background:var(--pri);color:#fff">📘</div>
       <div class="mtxt"><div style="font-weight:700">Manual y asistente</div><div class="sub">Pregunta cómo hacer algo y te lo explica al instante</div></div>
       <span style="color:var(--pri)">${ic('chevron',18)}</span>
+    </div>
+    <div class="item" onclick="abrirLicencia()">
+      <div class="iconbadge" style="background:rgba(155,92,255,.14);color:var(--purple)">${ic('shield',19)}</div>
+      <div class="mtxt"><div style="font-weight:700">Licencia y plan</div><div class="sub">${S.license&&S.license.status==='trial'&&S.license.trial_ends_at?'Prueba hasta '+esc(fechaLicencia(S.license.trial_ends_at)):(S.license&&S.license.status==='superadmin'?'Acceso administrativo JosmaTech':'Consulta tu vigencia y precio')}</div></div>
+      <span style="color:var(--sub)">${ic('chevron',18)}</span>
     </div>
   </div>
   <div class="card">

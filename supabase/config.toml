@@ -1,0 +1,4 @@
+project_id = "kvyaniyvlxxcxlyxkkpn"
+
+[functions.sync-license]
+verify_jwt = true
