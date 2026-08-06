@@ -68,7 +68,7 @@ Deno.serve(async (request) => {
       ? user.user_metadata.display_name.trim()
       : "";
 
-    await admin.from("profiles").upsert({
+    await admin.schema("nb").from("profiles").upsert({
       id: user.id,
       phone,
       display_name: displayName || null,
@@ -76,6 +76,7 @@ Deno.serve(async (request) => {
     }, { onConflict: "id", ignoreDuplicates: true });
 
     const { data: profile, error: profileError } = await admin
+      .schema("nb")
       .from("profiles")
       .select("id,phone,display_name,is_admin")
       .eq("id", user.id)
@@ -94,7 +95,7 @@ Deno.serve(async (request) => {
         plan: { code: "admin", name: "Administrador JosmaTech" },
         pricing: { daily_price: 0, currency: "UYU", amount_due: 0 },
       };
-      await admin.from("license_cache").upsert({
+      await admin.schema("nb").from("license_cache").upsert({
         user_id: user.id,
         platform_license_id: null,
         status: bypass.status,
@@ -128,7 +129,7 @@ Deno.serve(async (request) => {
       license = await requestCentral(platformUrl, productKey, { action: "provision-trial", ...baseBody });
     }
 
-    const { error: cacheError } = await admin.from("license_cache").upsert({
+    const { error: cacheError } = await admin.schema("nb").from("license_cache").upsert({
       user_id: user.id,
       platform_license_id: license.license_id || null,
       status: license.status || "error",
