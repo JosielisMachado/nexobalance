@@ -257,6 +257,7 @@ svg text{font-family:inherit}
     <span class="fl">›</span>
   </button>
   <div id="loginForm">
+    <div class="field"><label>País</label><select class="inp" id="loginCode" onchange="onLoginCountryChange()"></select></div>
     <div class="field"><label>Número de teléfono</label><input class="inp" id="loginPhone" type="tel" inputmode="tel" placeholder="098 123 456"></div>
     <div class="field"><label>Contraseña</label><div style="position:relative">
       <input class="inp" id="loginPass" type="password" placeholder="Tu contraseña" style="padding-right:46px">
@@ -374,7 +375,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.83.0';
+const APP_VERSION='1.84.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -943,6 +944,7 @@ async function init(){
   document.documentElement.dataset.theme=(localStorage.getItem('nb_theme'))||'light';
   sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'nb'}});
   onCountryChange();
+  initLoginCountry();
   window.addEventListener('online',()=>{S.online=true;updateSyncPill();trySync()});
   window.addEventListener('offline',()=>{S.online=false;updateSyncPill()});
   const{data}=await sb.auth.getSession();
@@ -952,6 +954,8 @@ async function init(){
 function showAuth(){document.getElementById('authView').classList.remove('hidden');document.getElementById('appView').classList.add('hidden')}
 function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg)}
 function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
+function initLoginCountry(){const registro=document.getElementById('regCode'),login=document.getElementById('loginCode');if(!registro||!login)return;login.innerHTML=registro.innerHTML;onLoginCountryChange()}
+function onLoginCountryChange(){const sel=document.getElementById('loginCode'),phoneEl=document.getElementById('loginPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.setAttribute('maxlength',digits);phoneEl.placeholder='Ej: '+'9'.repeat(digits);if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits)}
 
 function abrirBienvenida(){
   document.getElementById('sheetHost').innerHTML=`
@@ -989,7 +993,7 @@ function sanitizePhoneInput(el){
   const max=Number(el.getAttribute('maxlength'))||8;
   el.value=el.value.replace(/\D/g,'').slice(0,max);
 }
-function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
+function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith(c))return{digits:p,email:p+EMAIL_DOMAIN};if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
 
 function turnstileListo(token){
   const configurado=TURNSTILE_SITEKEY&&!TURNSTILE_SITEKEY.includes('PEGAR');
@@ -1029,13 +1033,12 @@ async function doRegister(){
 
 async function doLogin(){
   const phone=document.getElementById('loginPhone').value.trim();
+  const code=document.getElementById('loginCode').value.trim()||'598';
   const pass=document.getElementById('loginPass').value;
   if(!phone||!pass)return toast('Completa teléfono y contraseña');
   if(!navigator.onLine)return toast('Necesitas Internet para iniciar sesión la primera vez');
   if(!turnstileListo(turnstileTokenLogin))return toast('Marca la casilla de verificación para continuar');
-  let digits=phone.replace(/\D/g,'');
-  if(!digits.startsWith('598')){if(digits.startsWith('0'))digits=digits.slice(1);digits='598'+digits}
-  const email=digits+EMAIL_DOMAIN;
+  const{email}=phoneToEmail(code,phone);
   const captchaOpt=turnstileTokenLogin?{captchaToken:turnstileTokenLogin}:undefined;
   const{data,error}=await sb.auth.signInWithPassword({email,password:pass,options:captchaOpt});
   if(twLoginId&&window.turnstile)turnstile.reset(twLoginId);
