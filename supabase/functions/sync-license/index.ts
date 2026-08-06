@@ -41,6 +41,31 @@ async function requestCentral(endpoint: string, productKey: string, body: Record
   return result.data;
 }
 
+function cachedLicenseIsCurrent(cache: Record<string, any> | null) {
+  if (!cache?.valid) return false;
+  const until = cache.valid_until || cache.grace_until || cache.paid_through || cache.trial_ends_at;
+  if (!until) return cache.status === "superadmin";
+  return new Date(`${String(until).slice(0, 10)}T23:59:59.999Z`).getTime() >= Date.now();
+}
+
+function licenseFromCache(cache: Record<string, any>) {
+  return {
+    ...(cache.raw && typeof cache.raw === "object" ? cache.raw : {}),
+    valid: true,
+    status: cache.status,
+    trial_ends_at: cache.trial_ends_at,
+    paid_through: cache.paid_through,
+    grace_until: cache.grace_until,
+    valid_until: cache.valid_until,
+    plan: { code: cache.plan_code, name: cache.plan_name },
+    pricing: {
+      daily_price: Number(cache.daily_price || 0),
+      currency: cache.currency || "UYU",
+      amount_due: Number(cache.amount_due || 0),
+    },
+  };
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (request.method !== "POST") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
@@ -121,44 +146,54 @@ Deno.serve(async (request) => {
       plan_code: "mensual",
     };
 
-    let license: Record<string, any>;
     try {
-      license = await requestCentral(platformUrl, productKey, { action: "license-status", ...baseBody });
-    } catch (error) {
-      if (!(error instanceof Error) || error.message !== "LICENSE_NOT_FOUND") throw error;
+      let license: Record<string, any>;
       try {
-        license = await requestCentral(platformUrl, productKey, { action: "provision-trial", ...baseBody });
-      } catch (provisionError) {
-        // El centro puede crear la prueba y agotar la primera respuesta. Si eso
-        // ocurre, una segunda consulta recupera la licencia recién creada sin
-        // obligar a la persona a registrarse otra vez.
+        license = await requestCentral(platformUrl, productKey, { action: "license-status", ...baseBody });
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== "LICENSE_NOT_FOUND") throw error;
         try {
-          license = await requestCentral(platformUrl, productKey, { action: "license-status", ...baseBody });
-        } catch {
-          throw provisionError;
+          license = await requestCentral(platformUrl, productKey, { action: "provision-trial", ...baseBody });
+        } catch (provisionError) {
+          // El centro puede crear la prueba y agotar la primera respuesta. Si eso
+          // ocurre, una segunda consulta recupera la licencia recién creada sin
+          // obligar a la persona a registrarse otra vez.
+          try {
+            license = await requestCentral(platformUrl, productKey, { action: "license-status", ...baseBody });
+          } catch {
+            throw provisionError;
+          }
         }
       }
-    }
 
-    const { error: cacheError } = await admin.schema("nb").from("license_cache").upsert({
-      user_id: user.id,
-      platform_license_id: license.license_id || null,
-      status: license.status || "error",
-      valid: license.valid === true,
-      plan_code: license.plan?.code || null,
-      plan_name: license.plan?.name || null,
-      trial_ends_at: license.trial_ends_at || null,
-      paid_through: license.paid_through || null,
-      grace_until: license.grace_until || null,
-      valid_until: license.valid_until || null,
-      daily_price: Number(license.pricing?.daily_price || 0),
-      currency: license.pricing?.currency || "UYU",
-      amount_due: Number(license.pricing?.amount_due || 0),
-      checked_at: new Date().toISOString(),
-      raw: license,
-    });
-    if (cacheError) throw cacheError;
-    return json({ ok: true, license });
+      const { error: cacheError } = await admin.schema("nb").from("license_cache").upsert({
+        user_id: user.id,
+        platform_license_id: license.license_id || null,
+        status: license.status || "error",
+        valid: license.valid === true,
+        plan_code: license.plan?.code || null,
+        plan_name: license.plan?.name || null,
+        trial_ends_at: license.trial_ends_at || null,
+        paid_through: license.paid_through || null,
+        grace_until: license.grace_until || null,
+        valid_until: license.valid_until || null,
+        daily_price: Number(license.pricing?.daily_price || 0),
+        currency: license.pricing?.currency || "UYU",
+        amount_due: Number(license.pricing?.amount_due || 0),
+        checked_at: new Date().toISOString(),
+        raw: license,
+      });
+      if (cacheError) throw cacheError;
+      return json({ ok: true, license });
+    } catch (licenseError) {
+      const { data: cached } = await admin.schema("nb").from("license_cache")
+        .select("status,valid,plan_code,plan_name,trial_ends_at,paid_through,grace_until,valid_until,daily_price,currency,amount_due,raw")
+        .eq("user_id", user.id).maybeSingle();
+      if (cachedLicenseIsCurrent(cached)) {
+        return json({ ok: true, cached: true, license: licenseFromCache(cached) });
+      }
+      throw licenseError;
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "LICENSE_CHECK_FAILED";
     console.error("sync-license", message);
