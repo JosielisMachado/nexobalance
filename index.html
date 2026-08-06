@@ -88,6 +88,10 @@ button:focus-visible,.inp:focus-visible,.chip:focus-visible,.item:focus-visible{
 .field label{display:block;font-size:var(--fs-sm);color:var(--sub);margin-bottom:var(--sp-2);font-weight:var(--fw-sb)}
 .inp{width:100%;min-height:var(--touch);background:var(--chip);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);font-size:var(--fs-base);outline:none;transition:var(--t-fast) var(--ease)}
 .inp:focus{border-color:var(--pri);box-shadow:var(--ring)}
+.inp::placeholder{color:var(--sub);opacity:.78;font-size:.92em}
+.field[data-guide]{position:relative}
+.field[data-guide]:focus-within::after{content:attr(data-guide);display:block;margin-top:6px;font-size:.76rem;line-height:1.35;color:var(--pri);animation:field-guide-in .16s var(--ease)}
+@keyframes field-guide-in{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:translateY(0)}}
 textarea.inp{resize:vertical;min-height:64px}
 .seg{display:flex;background:var(--chip);border-radius:var(--r-md);padding:var(--sp-1);gap:var(--sp-1)}
 .seg button{flex:1;min-height:var(--touch-sm);padding:0 var(--sp-2);border-radius:var(--r-xs);font-weight:var(--fw-b);color:var(--sub);transition:var(--t-fast) var(--ease)}
@@ -258,9 +262,9 @@ svg text{font-family:inherit}
   </button>
   <div id="loginForm">
     <div class="field"><label>País</label><select class="inp" id="loginCode" onchange="onLoginCountryChange()"></select></div>
-    <div class="field"><label>Número de teléfono</label><input class="inp" id="loginPhone" type="tel" inputmode="tel" placeholder="098 123 456"></div>
+    <div class="field"><label>Número de teléfono</label><input class="inp" id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="098 123 456" oninput="sanitizePhoneInput(this)"></div>
     <div class="field"><label>Contraseña</label><div style="position:relative">
-      <input class="inp" id="loginPass" type="password" placeholder="Tu contraseña" style="padding-right:46px">
+      <input class="inp" id="loginPass" type="password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="Tu contraseña" style="padding-right:46px">
       <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div></div>
     <div id="turnstileLogin" style="margin-bottom:14px"></div>
@@ -269,7 +273,7 @@ svg text{font-family:inherit}
     <button class="link" style="width:100%;margin-top:4px" onclick="toggleAuth(true)">Crear cuenta nueva</button>
   </div>
   <div id="registerForm" class="hidden">
-    <div class="field"><label>Tu nombre</label><input class="inp" id="regName" placeholder="Ej: Josielis"></div>
+    <div class="field"><label>Tu nombre</label><input class="inp" id="regName" type="text" maxlength="80" autocomplete="name" autocapitalize="words" placeholder="Ej: Josielis"></div>
     <div class="field"><label>País</label>
       <select class="inp" id="regCode" onchange="onCountryChange()">
         <option value="54" data-digits="10">🇦🇷 Argentina +54</option>
@@ -301,11 +305,11 @@ svg text{font-family:inherit}
     </div>
     <div class="field"><label>Número de teléfono</label><input class="inp" id="regPhone" type="tel" inputmode="numeric" placeholder="98308375" maxlength="8" oninput="sanitizePhoneInput(this)"></div>
     <div class="field"><label>Contraseña (mínimo 8 caracteres)</label><div style="position:relative">
-      <input class="inp" id="regPass" type="password" placeholder="Elige una contraseña" style="padding-right:46px">
+      <input class="inp" id="regPass" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Elige una contraseña" style="padding-right:46px">
       <button type="button" onclick="togglePassVis('regPass',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div></div>
     <div class="field"><label>Repetir contraseña</label><div style="position:relative">
-      <input class="inp" id="regPassConfirm" type="password" placeholder="Repite tu contraseña" style="padding-right:46px">
+      <input class="inp" id="regPassConfirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Repite tu contraseña" style="padding-right:46px">
       <button type="button" onclick="togglePassVis('regPassConfirm',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div></div>
     <div id="turnstileReg" style="margin-bottom:14px"></div>
@@ -375,7 +379,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.84.0';
+const APP_VERSION='1.85.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -945,6 +949,8 @@ async function init(){
   sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'nb'}});
   onCountryChange();
   initLoginCountry();
+  aplicarContratoCampos();
+  new MutationObserver(records=>{for(const record of records){record.addedNodes.forEach(node=>{if(node.nodeType===1)aplicarContratoCampos(node)})}}).observe(document.body,{childList:true,subtree:true});
   window.addEventListener('online',()=>{S.online=true;updateSyncPill();trySync()});
   window.addEventListener('offline',()=>{S.online=false;updateSyncPill()});
   const{data}=await sb.auth.getSession();
@@ -954,8 +960,23 @@ async function init(){
 function showAuth(){document.getElementById('authView').classList.remove('hidden');document.getElementById('appView').classList.add('hidden')}
 function toggleAuth(reg){document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg)}
 function togglePaises(){const l=document.getElementById('paisesList'),b=document.getElementById('paisesBtn');const show=l.style.display==='none';l.style.display=show?'block':'none';b.textContent=show?'Ocultar países ‹':'Ver países donde ya se usa ›'}
+const VOSEO_COUNTRY_CODES=new Set(['54','595','598']);
+function usaVoseo(code){return VOSEO_COUNTRY_CODES.has(String(code||''))}
+function textoVoz(tuteo,voseo,code){return usaVoseo(code)?voseo:tuteo}
+function actualizarVoz(code){
+  const actual=String(code||document.getElementById('loginCode')?.value||document.getElementById('regCode')?.value||'598');
+  document.documentElement.dataset.voz=usaVoseo(actual)?'voseo':'tuteo';
+  const loginPass=document.getElementById('loginPass'),regPass=document.getElementById('regPass');
+  if(loginPass)loginPass.placeholder=textoVoz('Tu contraseña','Tu contraseña',actual);
+  if(regPass)regPass.placeholder=textoVoz('Elige una contraseña','Elegí una contraseña',actual);
+  const loginField=document.getElementById('loginPhone')?.closest('.field');
+  const regField=document.getElementById('regPhone')?.closest('.field');
+  const guide=textoVoz('Escribe solo los dígitos de tu número','Escribí solo los dígitos de tu número',actual);
+  if(loginField)loginField.dataset.voiceGuide=guide;
+  if(regField)regField.dataset.voiceGuide=guide;
+}
 function initLoginCountry(){const registro=document.getElementById('regCode'),login=document.getElementById('loginCode');if(!registro||!login)return;login.innerHTML=registro.innerHTML;onLoginCountryChange()}
-function onLoginCountryChange(){const sel=document.getElementById('loginCode'),phoneEl=document.getElementById('loginPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.setAttribute('maxlength',digits);phoneEl.placeholder='Ej: '+'9'.repeat(digits);if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits)}
+function onLoginCountryChange(){const sel=document.getElementById('loginCode'),phoneEl=document.getElementById('loginPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.setAttribute('maxlength',digits);phoneEl.placeholder='Ej: '+'9'.repeat(digits);if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits);actualizarVoz(sel.value)}
 
 function abrirBienvenida(){
   document.getElementById('sheetHost').innerHTML=`
@@ -988,12 +1009,55 @@ function onCountryChange(){
   phoneEl.setAttribute('maxlength',digits);
   phoneEl.placeholder='Ej: '+'9'.repeat(digits);
   if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits);
+  actualizarVoz(sel.value);
 }
 function sanitizePhoneInput(el){
   const max=Number(el.getAttribute('maxlength'))||8;
   el.value=el.value.replace(/\D/g,'').slice(0,max);
 }
 function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith(c))return{digits:p,email:p+EMAIL_DOMAIN};if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
+
+const JMT_FIELD_LIMITS={
+  regName:{max:80,guide:'Nombre · hasta 80 caracteres'},
+  loginPhone:{guide:'Número · solo dígitos del país elegido'},
+  regPhone:{guide:'Número · solo dígitos del país elegido'},
+  rsPhone:{guide:'Número · solo dígitos del país elegido'},
+  rsCodigo:{max:6,guide:'Código de seguridad · 6 dígitos'},
+  mDesc:{max:120,guide:'Descripción · hasta 120 caracteres'},
+  mTags:{max:160,guide:'Etiquetas · hasta 160 caracteres'},
+  mNotas:{max:500,guide:'Notas · hasta 500 caracteres'},
+  gNombre:{max:80,guide:'Nombre · hasta 80 caracteres'},
+  acNombre:{max:80,guide:'Nombre de cuenta · hasta 80 caracteres'}
+};
+function aplicarContratoCampos(root=document){
+  const campos=root.querySelectorAll?.('input, textarea, select')||[];
+  campos.forEach(el=>{
+    const type=(el.getAttribute('type')||'text').toLowerCase();
+    if(['hidden','button','submit','reset','checkbox','radio','file','image'].includes(type))return;
+    const config=JMT_FIELD_LIMITS[el.id]||{};
+    if(config.max&&!el.maxLength)el.maxLength=config.max;
+    if(!el.maxLength||el.maxLength<0){
+      if(el.tagName==='TEXTAREA')el.maxLength=500;
+      else if(type==='email')el.maxLength=254;
+      else if(type==='password')el.maxLength=128;
+      else if(type==='tel')el.maxLength=16;
+      else if(['text','search','url'].includes(type))el.maxLength=120;
+    }
+    if(type==='password'&&!el.minLength)el.minLength=8;
+    if(type==='tel')el.inputMode='numeric';
+    if(type==='number'&&!el.inputMode)el.inputMode=String(el.step||'').includes('.')?'decimal':'numeric';
+    const field=el.closest('.field');
+    if(field){
+      const baseGuide=field.dataset.voiceGuide||config.guide||(
+        el.tagName==='TEXTAREA'?'Texto · hasta '+el.maxLength+' caracteres':
+        type==='number'?'Número':type==='email'?'Correo electrónico':type==='password'?'Contraseña · entre 8 y 128 caracteres':
+        type==='tel'?'Número · solo dígitos':el.maxLength>0?'Texto · hasta '+el.maxLength+' caracteres':'Selecciona una opción'
+      );
+      field.dataset.guide=baseGuide;
+    }
+    el.dataset.jmtContract='1';
+  });
+}
 
 function turnstileListo(token){
   const configurado=TURNSTILE_SITEKEY&&!TURNSTILE_SITEKEY.includes('PEGAR');
@@ -5371,38 +5435,48 @@ function openResetSheet(){
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div><h2 style="margin-bottom:6px">Recuperar contraseña</h2>
     <p class="sub" style="margin-bottom:14px">Solicita tu código por WhatsApp, ingrésalo aquí junto a tu nueva contraseña.</p>
-    <div class="field"><label>Número de teléfono</label><input class="inp" id="rsPhone" type="tel" inputmode="tel" placeholder="098308375"></div>
+    <div class="field"><label>País</label><select class="inp" id="rsCode" onchange="onResetCountryChange()"></select></div>
+    <div class="field"><label>Número de teléfono</label><input class="inp" id="rsPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="098308375" oninput="sanitizePhoneInput(this)"></div>
     <button type="button" class="btn" style="width:100%;background:#25D366;margin-bottom:14px" onclick="solicitarCodigoWA()">Solicitar código por WhatsApp</button>
     <div class="field"><label>Código recibido</label><input class="inp" id="rsCodigo" type="text" inputmode="numeric" maxlength="6" placeholder="123456"></div>
     <div class="field"><label>Nueva contraseña (mínimo 8 caracteres)</label><div style="position:relative">
-      <input class="inp" id="rsPass1" type="password" style="padding-right:46px">
+      <input class="inp" id="rsPass1" type="password" minlength="8" maxlength="128" autocomplete="new-password" style="padding-right:46px">
       <button type="button" onclick="togglePassVis('rsPass1',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px">${ic('eye',19)}</button>
     </div></div>
     <div class="field"><label>Repite la nueva contraseña</label><div style="position:relative">
-      <input class="inp" id="rsPass2" type="password" style="padding-right:46px">
+      <input class="inp" id="rsPass2" type="password" minlength="8" maxlength="128" autocomplete="new-password" style="padding-right:46px">
       <button type="button" onclick="togglePassVis('rsPass2',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--sub);padding:6px">${ic('eye',19)}</button>
     </div></div>
     <button class="btn" onclick="doResetPassword()">Actualizar contraseña</button>
   </div></div>`;
+  initResetCountry();
+  aplicarContratoCampos(document.getElementById('sheetHost'));
 }
+
+function initResetCountry(){const registro=document.getElementById('regCode'),reset=document.getElementById('rsCode');if(!registro||!reset)return;reset.innerHTML=registro.innerHTML;const loginCode=document.getElementById('loginCode')?.value;if(loginCode)reset.value=loginCode;onResetCountryChange()}
+function onResetCountryChange(){const sel=document.getElementById('rsCode'),phoneEl=document.getElementById('rsPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.maxLength=digits;phoneEl.placeholder='Ej: '+'9'.repeat(digits);sanitizePhoneInput(phoneEl);actualizarVoz(sel.value)}
 
 function solicitarCodigoWA(){
   const phoneRaw=document.getElementById('rsPhone').value.trim();
+  const code=document.getElementById('rsCode')?.value||'598';
+  const expectedDigits=Number(document.getElementById('rsCode')?.selectedOptions[0]?.dataset.digits)||8;
   const digits=phoneRaw.replace(/\D/g,'');
-  if(digits.length<6)return toast('Escribe primero tu número de teléfono');
-  const msg=`Hola JosmaTech 👋 Necesito recuperar mi contraseña de NexoBalance. Mi número registrado es: ${phoneRaw}`;
+  if(digits.length!==expectedDigits)return toast('Escribe los '+expectedDigits+' dígitos de tu número');
+  const msg=`Hola JosmaTech 👋 Necesito recuperar mi contraseña de NexoBalance. Mi número registrado es: +${code}${digits}`;
   window.open('https://wa.me/59898308375?text='+encodeURIComponent(msg),'_blank');
 }
 
 async function doResetPassword(){
   if(!navigator.onLine)return toast('Necesitas Internet para esto');
   const phoneRaw=document.getElementById('rsPhone').value.trim();
+  const code=document.getElementById('rsCode')?.value||'598';
+  const expectedDigits=Number(document.getElementById('rsCode')?.selectedOptions[0]?.dataset.digits)||8;
   const codigo=document.getElementById('rsCodigo').value.trim();
   const pass1=document.getElementById('rsPass1').value;
   const pass2=document.getElementById('rsPass2').value;
-  let digits=phoneRaw.replace(/\D/g,'');
-  if(!digits.startsWith('598')&&digits.length<=9){if(digits.startsWith('0'))digits=digits.slice(1);digits='598'+digits}
-  const phone='+'+digits;
+  const localDigits=phoneRaw.replace(/\D/g,'');
+  if(localDigits.length!==expectedDigits)return toast('El número debe tener '+expectedDigits+' dígitos para el país elegido');
+  const phone='+'+phoneToEmail(code,localDigits).digits;
   if(!codigo||codigo.length!==6)return toast('Ingresa el código de 6 dígitos');
   if(!pass1||pass1.length<8)return toast('La contraseña debe tener al menos 8 caracteres');
   if(pass1!==pass2)return toast('Las contraseñas no coinciden');
