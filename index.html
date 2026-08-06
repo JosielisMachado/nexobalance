@@ -92,6 +92,11 @@ button:focus-visible,.inp:focus-visible,.chip:focus-visible,.item:focus-visible{
 .field[data-guide]{position:relative}
 .field[data-guide]:focus-within::after{content:attr(data-guide);display:block;margin-top:6px;font-size:.76rem;line-height:1.35;color:var(--pri);animation:field-guide-in .16s var(--ease)}
 @keyframes field-guide-in{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:translateY(0)}}
+.phone-progress{display:flex;align-items:center;gap:6px;margin-top:8px;min-height:18px;color:var(--sub)}
+.phone-progress-slots{display:flex;gap:4px;flex:1;max-width:178px}
+.phone-progress-slot{height:3px;flex:1;border-radius:99px;background:var(--line);transition:background .16s var(--ease),transform .16s var(--ease)}
+.phone-progress-slot.done{background:var(--pri);transform:scaleY(1.35)}
+.phone-progress-count{font-size:.72rem;font-weight:700;white-space:nowrap}
 textarea.inp{resize:vertical;min-height:64px}
 .seg{display:flex;background:var(--chip);border-radius:var(--r-md);padding:var(--sp-1);gap:var(--sp-1)}
 .seg button{flex:1;min-height:var(--touch-sm);padding:0 var(--sp-2);border-radius:var(--r-xs);font-weight:var(--fw-b);color:var(--sub);transition:var(--t-fast) var(--ease)}
@@ -379,7 +384,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.85.0';
+const APP_VERSION='1.86.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -976,7 +981,7 @@ function actualizarVoz(code){
   if(regField)regField.dataset.voiceGuide=guide;
 }
 function initLoginCountry(){const registro=document.getElementById('regCode'),login=document.getElementById('loginCode');if(!registro||!login)return;login.innerHTML=registro.innerHTML;onLoginCountryChange()}
-function onLoginCountryChange(){const sel=document.getElementById('loginCode'),phoneEl=document.getElementById('loginPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.setAttribute('maxlength',digits);phoneEl.placeholder='Ej: '+'9'.repeat(digits);if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits);actualizarVoz(sel.value)}
+function onLoginCountryChange(){const sel=document.getElementById('loginCode'),phoneEl=document.getElementById('loginPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.setAttribute('maxlength',digits);phoneEl.placeholder='Ej: '+'9'.repeat(digits);if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits);actualizarGuiaTelefono('loginPhone');actualizarVoz(sel.value)}
 
 function abrirBienvenida(){
   document.getElementById('sheetHost').innerHTML=`
@@ -1009,11 +1014,29 @@ function onCountryChange(){
   phoneEl.setAttribute('maxlength',digits);
   phoneEl.placeholder='Ej: '+'9'.repeat(digits);
   if(phoneEl.value.replace(/\D/g,'').length>digits)phoneEl.value=phoneEl.value.replace(/\D/g,'').slice(0,digits);
+  actualizarGuiaTelefono('regPhone');
   actualizarVoz(sel.value);
+}
+function actualizarGuiaTelefono(inputId){
+  const input=document.getElementById(inputId);
+  if(!input)return;
+  const max=Number(input.maxLength)||8;
+  const usados=input.value.replace(/\D/g,'').slice(0,max).length;
+  const progressId=inputId+'Progress';
+  let progress=document.getElementById(progressId);
+  if(!progress){
+    progress=document.createElement('div');
+    progress.id=progressId;
+    progress.className='phone-progress';
+    progress.setAttribute('aria-hidden','true');
+    input.insertAdjacentElement('afterend',progress);
+  }
+  progress.innerHTML='<div class="phone-progress-slots">'+Array.from({length:max},(_,i)=>'<span class="phone-progress-slot'+(i<usados?' done':'')+'"></span>').join('')+'</div><span class="phone-progress-count">'+usados+' de '+max+'</span>';
 }
 function sanitizePhoneInput(el){
   const max=Number(el.getAttribute('maxlength'))||8;
   el.value=el.value.replace(/\D/g,'').slice(0,max);
+  actualizarGuiaTelefono(el.id);
 }
 function phoneToEmail(code,phone){const c=(code||'').replace(/\D/g,'');let p=(phone||'').replace(/\D/g,'');if(c&&p.startsWith(c))return{digits:p,email:p+EMAIL_DOMAIN};if(c&&p.startsWith('0'))p=p.slice(1);const digits=c+p;return{digits,email:digits+EMAIL_DOMAIN}}
 
@@ -5454,7 +5477,7 @@ function openResetSheet(){
 }
 
 function initResetCountry(){const registro=document.getElementById('regCode'),reset=document.getElementById('rsCode');if(!registro||!reset)return;reset.innerHTML=registro.innerHTML;const loginCode=document.getElementById('loginCode')?.value;if(loginCode)reset.value=loginCode;onResetCountryChange()}
-function onResetCountryChange(){const sel=document.getElementById('rsCode'),phoneEl=document.getElementById('rsPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.maxLength=digits;phoneEl.placeholder='Ej: '+'9'.repeat(digits);sanitizePhoneInput(phoneEl);actualizarVoz(sel.value)}
+function onResetCountryChange(){const sel=document.getElementById('rsCode'),phoneEl=document.getElementById('rsPhone');if(!sel||!phoneEl)return;const digits=Number(sel.selectedOptions[0]?.dataset.digits)||8;phoneEl.maxLength=digits;phoneEl.placeholder='Ej: '+'9'.repeat(digits);sanitizePhoneInput(phoneEl);actualizarGuiaTelefono('rsPhone');actualizarVoz(sel.value)}
 
 function solicitarCodigoWA(){
   const phoneRaw=document.getElementById('rsPhone').value.trim();
