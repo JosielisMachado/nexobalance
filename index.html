@@ -384,7 +384,7 @@ svg text{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION='1.86.0';
+const APP_VERSION='1.87.0';
 const TURNSTILE_SITEKEY='0x4AAAAAAD48MhjFbxxarJkl';
 const SB_URL='https://kvyaniyvlxxcxlyxkkpn.supabase.co';
 const SB_KEY='sb_publishable_-rxFle7cW-zjMO_j5gixpg_Y97EMB3e';
@@ -947,6 +947,22 @@ function updateSyncPill(){
 
 const DEFAULT_CATS=[['Salario','ingreso'],['Ventas','ingreso'],['Comisiones','ingreso'],['Otros ingresos','ingreso'],['Comida','gasto'],['Transporte','gasto'],['Servicios','gasto'],['Internet','gasto'],['Educación','gasto'],['Salud','gasto'],['Hogar','gasto'],['Mascotas','gasto'],['Regalos','gasto'],['Entretenimiento','gasto'],['Otros','gasto']];
 async function seedCats(){for(const[name,tipo]of DEFAULT_CATS){const t=nowISO();await enqueue('cat',{id:uuid(),user_id:S.uid,name,tipo,icon:autoIcon(name),color:autoColor(name),parent_id:null,deleted:false,created_at:t,updated_at:t})}}
+const CUENTAS_DE_FABRICA=[
+  {nombre:'Efectivo',tipo:'efectivo',icono:'💵',color:'#16a34a',principal:true},
+  {nombre:'Tarjeta',tipo:'tarjeta',icono:'💳',color:'#2563eb',principal:false}
+];
+async function asegurarCuentasDeFabrica(){
+  const creada=await kvGet('cuentas_fabrica_v1');
+  if(creada)return false;
+  if(cuentasActivas().length){await kvSet('cuentas_fabrica_v1',true);return false}
+  const t=nowISO();
+  const monedaLocal=detectPais().cur||'UYU';
+  for(const cuenta of CUENTAS_DE_FABRICA){
+    await enqueue('acc',{id:uuid(),user_id:S.uid,...cuenta,saldo_inicial:0,moneda:monedaLocal,deleted:false,created_at:t,updated_at:t});
+  }
+  await kvSet('cuentas_fabrica_v1',true);
+  return true;
+}
 
 async function init(){
   if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
@@ -1149,6 +1165,8 @@ window.addEventListener('scroll',()=>{
 
 async function startApp(user,isNew){
   S.uid=user.id;
+  const authPhone=String(user.email||'').split('@')[0].replace(/\D/g,'');
+  if(authPhone)S.userPhone='+'+authPhone;
   document.getElementById('authView').classList.add('hidden');
   document.getElementById('appView').classList.remove('hidden');
   const license=await sincronizarLicencia();
@@ -1165,6 +1183,7 @@ async function startApp(user,isNew){
   S.goals=await idbAll('goals');
   S.recurring=await idbAll('recurring');
   S.accounts=await idbAll('accounts');
+  const cuentasInicialesCreadas=await asegurarCuentasDeFabrica();
   const st=await kvGet('settings');if(st)S.settings=Object.assign(S.settings,st);
   if(S.settings.name)S.userName=S.settings.name;
   document.documentElement.dataset.theme=S.settings.theme||'light';
@@ -1178,6 +1197,7 @@ async function startApp(user,isNew){
   }catch(e){}
   try{await autoRegistrarFijos()}catch(e){}
   render();
+  if(cuentasInicialesCreadas)setTimeout(mostrarBienvenidaCuentas,550);
   setTimeout(mostrarPildoraManual,1200);
   // Restaurar posición de scroll tras el render
   try{
@@ -1873,6 +1893,33 @@ async function sincronizarApertura(cuentaId,saldo,fecha,moneda){
   });
 }
 
+function mostrarBienvenidaCuentas(){
+  const efectivo=cuentasActivas().find(a=>a.tipo==='efectivo');
+  const tarjeta=cuentasActivas().find(a=>a.tipo==='tarjeta');
+  if(!efectivo||!tarjeta)return;
+  const code=document.getElementById('loginCode')?.value||document.getElementById('regCode')?.value||'598';
+  const voz=(tuteo,voseo)=>textoVoz(tuteo,voseo,code);
+  document.getElementById('sheetHost').innerHTML=`
+  <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+    <div class="handle"></div>
+    <div style="width:46px;height:46px;border-radius:15px;background:rgba(23,136,255,.14);display:grid;place-items:center;font-size:1.5rem;margin-bottom:12px">👋</div>
+    <h2 style="margin-bottom:7px">Antes de anotar, ubica tu dinero</h2>
+    <p class="sub" style="font-size:.88rem;line-height:1.55;margin-bottom:15px">Creamos dos cuentas para empezar: <b>Efectivo</b> y <b>Tarjeta</b>. Escribe cuánto tienes hoy en cada una. Su suma será tu saldo inicial en Inicio, antes de registrar cualquier ingreso o gasto.</p>
+    <div style="background:var(--chip);border-radius:14px;padding:4px 14px;margin-bottom:16px">
+      <div class="row" style="gap:10px;padding:10px 0;border-bottom:1px solid var(--line)"><span style="font-size:1.2rem">💵</span><div><b>Efectivo</b><div class="sub" style="font-size:.76rem">Lo que tienes físicamente contigo.</div></div></div>
+      <div class="row" style="gap:10px;padding:10px 0"><span style="font-size:1.2rem">💳</span><div><b>Tarjeta</b><div class="sub" style="font-size:.76rem">Saldo disponible en tu tarjeta o banco.</div></div></div>
+    </div>
+    <button class="btn" onclick="abrirCuentaInicial('${efectivo.id}')">${voz('Configurar efectivo ahora','Configurá efectivo ahora')}</button>
+    <button class="btn ghost" style="margin-top:9px" onclick="abrirCuentaInicial('${tarjeta.id}')">También quiero configurar tarjeta</button>
+    <button class="link" style="width:100%;margin-top:12px" onclick="closeSheet()">Lo haré después desde Ajustes → Cuentas</button>
+  </div></div>`;
+}
+function abrirCuentaInicial(id){
+  closeSheet();
+  go('ajustes');
+  setTimeout(()=>editarCuenta(id),120);
+}
+
 function abrirCuentas(){
   const cuentas=cuentasActivas();
   const sinAsignar=movsSinCuenta();
@@ -1956,6 +2003,7 @@ async function asignarTodosSinCuenta(){
 const ICONOS_CUENTA=['💵','🏦','💳','📱','🗂️','💰','🪙','🏧','💴','🧾'];
 function editarCuenta(id){
   const a=id?cuentaById(id):null;
+  const monedaLocal=detectPais().cur||'UYU';
   document.getElementById('sheetHost').innerHTML=`
   <div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">
     <div class="handle"></div><h2 style="margin-bottom:14px">${a?'Editar':'Nueva'} cuenta</h2>
@@ -1978,7 +2026,7 @@ function editarCuenta(id){
     </div>
     <div class="field"><label>Moneda</label>
       <div class="seg">
-        <button class="${!a||a.moneda==='UYU'?'on':''}" onclick="_accMon='UYU';this.classList.add('on');this.nextElementSibling.classList.remove('on')">${localFlag()} ${detectPais().cur}</button>
+        <button class="${!a||a.moneda===monedaLocal?'on':''}" onclick="_accMon='${monedaLocal}';this.classList.add('on');this.nextElementSibling.classList.remove('on')">${localFlag()} ${monedaLocal}</button>
         <button class="${a&&a.moneda==='USD'?'on':''}" onclick="_accMon='USD';this.classList.add('on');this.previousElementSibling.classList.remove('on')">${usdFlag()} USD</button>
       </div>
     </div>
@@ -1997,7 +2045,7 @@ function editarCuenta(id){
     ${a?`<button class="link" style="width:100%;margin-top:8px;color:var(--bad)" onclick="eliminarCuenta('${a.id}')">Eliminar cuenta</button>`:''}
   </div></div>`;
   window._accIc=a?a.icono:'💵';
-  window._accMon=a?a.moneda:'UYU';
+  window._accMon=a?a.moneda:monedaLocal;
 }
 function acSugerirIcono(tipo){
   const t=TIPOS_CUENTA.find(x=>x.id===tipo);
@@ -2032,11 +2080,11 @@ async function guardarCuenta(id){
     icono:window._accIc||(tc?tc.ic:'💵'),
     color:prev?prev.color:'#1788FF',
     saldo_inicial:0,
-    moneda:window._accMon||'UYU',
+    moneda:window._accMon||(detectPais().cur||'UYU'),
     principal,deleted:false,
     created_at:prev?prev.created_at:t,updated_at:t
   });
-  await sincronizarApertura(idFinal,saldo,fechaAp,window._accMon||'UYU');
+  await sincronizarApertura(idFinal,saldo,fechaAp,window._accMon||(detectPais().cur||'UYU'));
   closeSheet();toast(id?'Cuenta actualizada':'Cuenta creada');
 }
 async function eliminarCuenta(id){
